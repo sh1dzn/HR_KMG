@@ -78,7 +78,7 @@ class GoalEvent(Base):
     new_status = Column(SQLEnum(GoalStatus), nullable=True)
     old_text = Column(Text, nullable=True)
     new_text = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    event_metadata = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships

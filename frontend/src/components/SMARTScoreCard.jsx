@@ -1,154 +1,225 @@
-import { CheckCircleIcon, XCircleIcon, LightBulbIcon } from '@heroicons/react/24/outline'
+import { useState } from 'react'
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  ClipboardDocumentIcon,
+} from '@heroicons/react/24/outline'
 
 const criteriaNames = {
   specific: 'S - Конкретность',
   measurable: 'M - Измеримость',
   achievable: 'A - Достижимость',
   relevant: 'R - Релевантность',
-  time_bound: 'T - Ограниченность во времени'
+  time_bound: 'T - Ограниченность во времени',
 }
 
-function ScoreBar({ score, label }) {
-  const getColorClass = (score) => {
-    if (score >= 0.85) return 'bg-green-500'
-    if (score >= 0.7) return 'bg-yellow-500'
-    return 'bg-red-500'
+const qualityConfig = {
+  high: {
+    text: 'Высокое качество',
+    bg: 'bg-green-50',
+    textColor: 'text-green-700',
+    border: 'border-green-200',
+    dot: 'bg-green-500',
+  },
+  medium: {
+    text: 'Среднее качество',
+    bg: 'bg-amber-50',
+    textColor: 'text-amber-700',
+    border: 'border-amber-200',
+    dot: 'bg-amber-500',
+  },
+  low: {
+    text: 'Требует доработки',
+    bg: 'bg-red-50',
+    textColor: 'text-red-700',
+    border: 'border-red-200',
+    dot: 'bg-red-500',
+  },
+}
+
+const goalTypeLabels = {
+  activity: 'Деятельностная',
+  output: 'Результатная',
+  impact: 'Влияние на бизнес',
+}
+
+const strategicLinkLabels = {
+  strategic: 'Стратегическая',
+  functional: 'Функциональная',
+  operational: 'Операционная',
+}
+
+/* Score ring */
+function ScoreDisplay({ score }) {
+  const percentage = Math.round(score * 100)
+  const radius = 64
+  const stroke = 8
+  const normalizedRadius = radius - stroke / 2
+  const circumference = 2 * Math.PI * normalizedRadius
+  const offset = circumference - (score * circumference)
+
+  const getColor = () => {
+    if (percentage >= 85) return '#16a34a'
+    if (percentage >= 60) return '#d97706'
+    return '#dc2626'
   }
 
   return (
-    <div className="mb-4">
-      <div className="flex justify-between mb-1">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm font-medium text-gray-700">{(score * 100).toFixed(0)}%</span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full ${getColorClass(score)}`}
-          style={{ width: `${score * 100}%` }}
+    <div className="relative inline-flex items-center justify-center">
+      <svg width={radius * 2} height={radius * 2} className="-rotate-90">
+        <circle
+          cx={radius}
+          cy={radius}
+          r={normalizedRadius}
+          fill="none"
+          stroke="#e5e7eb"
+          strokeWidth={stroke}
         />
+        <circle
+          cx={radius}
+          cy={radius}
+          r={normalizedRadius}
+          fill="none"
+          stroke={getColor()}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-500"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-semibold text-gray-900">{percentage}%</span>
+        <span className="text-xs text-gray-500 mt-0.5">SMART-индекс</span>
       </div>
     </div>
   )
 }
 
+/* Criterion card */
 function CriterionCard({ name, criterion }) {
+  const satisfied = criterion.is_satisfied
+  const percentage = Math.round(criterion.score * 100)
+
   return (
-    <div className={`p-4 rounded-lg border ${
-      criterion.is_satisfied
-        ? 'bg-green-50 border-green-200'
-        : 'bg-red-50 border-red-200'
-    }`}>
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-medium text-gray-900">{name}</span>
-        {criterion.is_satisfied ? (
-          <CheckCircleIcon className="h-5 w-5 text-green-600" />
+        <span className="text-sm font-medium text-gray-900">{name}</span>
+        {satisfied ? (
+          <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
         ) : (
-          <XCircleIcon className="h-5 w-5 text-red-600" />
+          <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
         )}
       </div>
-      <div className="text-2xl font-bold text-gray-900 mb-1">
-        {(criterion.score * 100).toFixed(0)}%
+      <div className="text-xl font-semibold text-gray-900 mb-2">{percentage}%</div>
+      <div className="w-full bg-gray-100 rounded-lg h-1.5 mb-3">
+        <div
+          className={`h-1.5 rounded-lg transition-all duration-500 ${satisfied ? 'bg-green-500' : 'bg-red-500'}`}
+          style={{ width: `${percentage}%` }}
+        />
       </div>
-      <p className="text-sm text-gray-600">{criterion.comment}</p>
+      {criterion.comment && (
+        <p className="text-sm text-gray-500 leading-relaxed">{criterion.comment}</p>
+      )}
     </div>
   )
 }
 
+/* Main component */
 export default function SMARTScoreCard({ evaluation }) {
-  const { smart_evaluation, overall_score, quality_level, goal_type, strategic_link, recommendations, reformulated_goal } = evaluation
+  const [copied, setCopied] = useState(false)
 
-  const getQualityBadge = (level) => {
-    const badges = {
-      high: { text: 'Высокое качество', class: 'bg-green-100 text-green-800' },
-      medium: { text: 'Среднее качество', class: 'bg-yellow-100 text-yellow-800' },
-      low: { text: 'Требует доработки', class: 'bg-red-100 text-red-800' }
-    }
-    return badges[level] || badges.low
-  }
+  const {
+    smart_evaluation,
+    overall_score,
+    quality_level,
+    goal_type,
+    strategic_link,
+    recommendations,
+    reformulated_goal,
+    goal_text,
+  } = evaluation
 
-  const qualityBadge = getQualityBadge(quality_level)
+  const quality = qualityConfig[quality_level] || qualityConfig.low
 
-  const goalTypeLabels = {
-    activity: 'Деятельностная',
-    output: 'Результатная',
-    impact: 'Влияние на бизнес'
-  }
-
-  const strategicLinkLabels = {
-    strategic: 'Стратегическая',
-    functional: 'Функциональная',
-    operational: 'Операционная'
+  const handleCopy = async () => {
+    if (!reformulated_goal) return
+    try {
+      await navigator.clipboard.writeText(reformulated_goal)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* clipboard API may not be available */ }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Overall score card */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Результат оценки</h2>
-            <p className="text-gray-600 mt-1">{evaluation.goal_text}</p>
+    <div className="space-y-5 animate-fade-in">
+      {/* Overall score */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-gray-900">Результат оценки</h2>
+            {goal_text && (
+              <p className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">{goal_text}</p>
+            )}
           </div>
-          <span className={`px-4 py-2 rounded-full text-sm font-medium ${qualityBadge.class}`}>
-            {qualityBadge.text}
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border flex-shrink-0 ${quality.bg} ${quality.textColor} ${quality.border}`}>
+            <span className={`w-1.5 h-1.5 rounded-lg ${quality.dot}`} />
+            {quality.text}
           </span>
         </div>
 
-        {/* Overall score */}
-        <div className="text-center py-6 bg-gray-50 rounded-xl mb-6">
-          <div className="text-5xl font-bold text-primary-600">
-            {(overall_score * 100).toFixed(0)}%
-          </div>
-          <div className="text-gray-600 mt-2">Общий SMART-индекс</div>
+        <div className="flex justify-center py-4 mb-6">
+          <ScoreDisplay score={overall_score} />
         </div>
 
-        {/* SMART criteria grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Критерии SMART</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {Object.entries(smart_evaluation).map(([key, criterion]) => (
-            <CriterionCard
-              key={key}
-              name={criteriaNames[key]}
-              criterion={criterion}
-            />
+            <CriterionCard key={key} name={criteriaNames[key]} criterion={criterion} />
           ))}
         </div>
       </div>
 
-      {/* Goal classification */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Классификация цели</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-purple-50 rounded-lg">
-            <div className="text-sm text-purple-600 mb-1">Тип цели</div>
-            <div className="font-semibold text-gray-900">
-              {goal_type?.type_russian || goalTypeLabels[goal_type?.type] || 'Не определён'}
-            </div>
-            <p className="text-sm text-gray-600 mt-1">{goal_type?.explanation}</p>
-          </div>
-          {strategic_link && (
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="text-sm text-blue-600 mb-1">Стратегическая связка</div>
-              <div className="font-semibold text-gray-900">
-                {strategic_link?.level_russian || strategicLinkLabels[strategic_link?.level] || 'Не определена'}
+      {/* Classification */}
+      {(goal_type || strategic_link) && (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Классификация цели</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {goal_type && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Тип цели</div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {goal_type.type_russian || goalTypeLabels[goal_type.type] || 'Не определён'}
+                </div>
+                {goal_type.explanation && (
+                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{goal_type.explanation}</p>
+                )}
               </div>
-              <p className="text-sm text-gray-600 mt-1">{strategic_link?.explanation}</p>
-            </div>
-          )}
+            )}
+            {strategic_link && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Стратегическая связка</div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {strategic_link.level_russian || strategicLinkLabels[strategic_link.level] || 'Не определена'}
+                </div>
+                {strategic_link.explanation && (
+                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{strategic_link.explanation}</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Recommendations */}
       {recommendations && recommendations.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <LightBulbIcon className="h-5 w-5 mr-2 text-yellow-500" />
-            Рекомендации по улучшению
-          </h3>
-          <ul className="space-y-2">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Рекомендации по улучшению</h3>
+          <ul className="space-y-2.5">
             {recommendations.map((rec, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-primary-600 mr-2">•</span>
-                <span className="text-gray-700">{rec}</span>
+              <li key={index} className="flex items-start gap-2.5 text-sm text-gray-600 leading-relaxed">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-lg bg-primary-500 flex-shrink-0" />
+                <span>{rec}</span>
               </li>
             ))}
           </ul>
@@ -157,17 +228,18 @@ export default function SMARTScoreCard({ evaluation }) {
 
       {/* Reformulated goal */}
       {reformulated_goal && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-green-800 mb-2">
-            Улучшенная формулировка
-          </h3>
-          <p className="text-green-900 font-medium">{reformulated_goal}</p>
-          <button
-            onClick={() => navigator.clipboard.writeText(reformulated_goal)}
-            className="mt-3 text-sm text-green-600 hover:text-green-800"
-          >
-            Скопировать в буфер обмена
-          </button>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <h3 className="text-sm font-semibold text-green-800">Улучшенная формулировка</h3>
+            <button
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-white border border-green-200 px-3 py-1.5 rounded-lg transition-colors duration-150 flex-shrink-0 cursor-pointer"
+            >
+              <ClipboardDocumentIcon className="h-4 w-4" />
+              {copied ? 'Скопировано' : 'Скопировать'}
+            </button>
+          </div>
+          <p className="text-sm text-green-900 font-medium leading-relaxed">{reformulated_goal}</p>
         </div>
       )}
     </div>

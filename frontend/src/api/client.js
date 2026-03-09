@@ -37,6 +37,12 @@ export const reformulateGoal = async (goalText, position = null, department = nu
   return response.data
 }
 
+// Employees API
+export const getEmployees = async (params = {}) => {
+  const response = await client.get('/employees/', { params })
+  return response.data
+}
+
 // Goal Generation API
 export const generateGoals = async (employeeId, quarter, year, focusAreas = null, count = 3) => {
   const response = await client.post('/generation/generate', {

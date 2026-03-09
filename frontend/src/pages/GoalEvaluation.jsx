@@ -64,51 +64,56 @@ export default function GoalEvaluation() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      {/* Page description */}
+      <div>
+        <h1 className="text-lg font-semibold text-gray-900 mb-1">
           Оценка целей по SMART
         </h1>
-        <p className="text-gray-600">
-          Введите текст цели для автоматической оценки по методологии SMART
+        <p className="text-sm text-gray-500 leading-relaxed">
+          Введите текст цели для автоматической оценки по методологии SMART.
+          Система проанализирует формулировку и предоставит детальную обратную
+          связь по каждому критерию с рекомендациями по улучшению.
         </p>
       </div>
 
       {/* Input form */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Текст цели *
+      <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Текст цели <span className="text-red-500">*</span>
           </label>
           <textarea
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            rows={3}
+            className="input-field"
+            rows={4}
             placeholder="Например: Увеличить объём продаж на 20% к концу Q2 2026"
             value={goalText}
             onChange={(e) => setGoalText(e.target.value)}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Должность (опционально)
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Должность
+              <span className="font-normal text-gray-400 ml-1">(опционально)</span>
             </label>
             <input
               type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="input-field"
               placeholder="Менеджер по продажам"
               value={position}
               onChange={(e) => setPosition(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Подразделение (опционально)
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Подразделение
+              <span className="font-normal text-gray-400 ml-1">(опционально)</span>
             </label>
             <input
               type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="input-field"
               placeholder="Управление продаж"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
@@ -116,19 +121,26 @@ export default function GoalEvaluation() {
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           <button
             onClick={handleEvaluate}
             disabled={loading}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary inline-flex items-center gap-2"
           >
+            {loading && (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
             {loading ? 'Оценка...' : 'Оценить цель'}
           </button>
+
           {evaluation && (
             <button
               onClick={handleReformulate}
               disabled={loading}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="btn-secondary inline-flex items-center gap-2"
             >
               Переформулировать
             </button>
@@ -136,21 +148,23 @@ export default function GoalEvaluation() {
         </div>
 
         {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error}
           </div>
         )}
       </div>
 
       {/* Example goals */}
-      <div className="bg-gray-50 rounded-xl p-4 mb-6">
-        <p className="text-sm text-gray-600 mb-2">Примеры целей для тестирования:</p>
+      <div>
+        <p className="text-sm font-medium text-gray-500 mb-2">
+          Примеры целей для быстрого тестирования:
+        </p>
         <div className="flex flex-wrap gap-2">
           {exampleGoals.map((goal, i) => (
             <button
               key={i}
               onClick={() => setGoalText(goal)}
-              className="text-sm px-3 py-1 bg-white border border-gray-200 rounded-full hover:border-primary-300 hover:text-primary-600"
+              className="cursor-pointer text-sm px-3 py-1.5 bg-white border border-gray-200 rounded-lg font-medium text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors duration-150"
             >
               {goal.length > 40 ? goal.substring(0, 40) + '...' : goal}
             </button>

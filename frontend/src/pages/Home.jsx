@@ -3,72 +3,89 @@ import {
   ClipboardDocumentCheckIcon,
   SparklesIcon,
   ChartBarIcon,
-  UserGroupIcon
+  UserGroupIcon,
 } from '@heroicons/react/24/outline'
 
 const features = [
   {
     name: 'Оценка целей (SMART)',
-    description: 'Автоматическая оценка целей по методологии SMART с рекомендациями по улучшению',
+    description:
+      'Автоматическая оценка целей по методологии SMART с детальными рекомендациями по улучшению формулировок',
     href: '/evaluation',
     icon: ClipboardDocumentCheckIcon,
-    color: 'bg-blue-500',
+    iconBg: 'bg-primary-100',
+    iconColor: 'text-primary-600',
   },
   {
     name: 'Генерация целей',
-    description: 'AI-генерация целей на основе ВНД, стратегии и должности сотрудника',
+    description:
+      'AI-генерация целей на основе внутренних нормативных документов, стратегии компании и должности сотрудника',
     href: '/generation',
     icon: SparklesIcon,
-    color: 'bg-purple-500',
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
   },
   {
     name: 'Дашборд качества',
-    description: 'Аналитика качества целеполагания по подразделениям и кварталам',
+    description:
+      'Комплексная аналитика качества целеполагания по подразделениям, кварталам и ключевым метрикам',
     href: '/dashboard',
     icon: ChartBarIcon,
-    color: 'bg-green-500',
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
   },
   {
     name: 'Цели сотрудников',
-    description: 'Просмотр и управление целями сотрудников компании',
+    description:
+      'Централизованный просмотр и управление целями всех сотрудников компании с фильтрацией и поиском',
     href: '/employees',
     icon: UserGroupIcon,
-    color: 'bg-orange-500',
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
   },
+]
+
+const stats = [
+  { value: '8', label: 'Подразделений' },
+  { value: '58', label: 'Сотрудников' },
+  { value: '150+', label: 'Целей' },
+  { value: '0.75', label: 'Средний SMART' },
 ]
 
 export default function Home() {
   return (
-    <div>
-      {/* Hero section */}
-      <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+    <div className="animate-fade-in space-y-6">
+      {/* Welcome banner */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-xs p-6">
+        <h1 className="text-lg font-semibold text-gray-900 mb-2">
           HR AI Module
         </h1>
-        <p className="text-lg text-gray-600 max-w-3xl">
-          Интеллектуальная система управления целями сотрудников. Оценивайте цели по SMART,
-          генерируйте новые на основе стратегии компании и отслеживайте качество целеполагания
-          в реальном времени.
+        <p className="text-sm text-gray-500 leading-relaxed max-w-2xl">
+          Интеллектуальная система управления целями сотрудников. Оценивайте
+          цели по SMART, генерируйте новые на основе стратегии компании
+          и отслеживайте качество целеполагания в реальном времени.
         </p>
       </div>
 
-      {/* Features grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Feature cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {features.map((feature) => (
           <Link
             key={feature.name}
             to={feature.href}
-            className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
+            className="bg-white border border-gray-200 rounded-lg shadow-xs p-5 transition-shadow duration-150 hover:shadow-card hover:border-gray-300"
           >
-            <div className="flex items-start">
-              <div className={`${feature.color} p-3 rounded-lg`}>
-                <feature.icon className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">
+            <div className="flex items-start gap-3">
+              <span
+                className={`flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${feature.iconBg}`}
+              >
+                <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
                   {feature.name}
                 </h3>
-                <p className="mt-1 text-gray-600">
+                <p className="text-sm text-gray-500 leading-relaxed">
                   {feature.description}
                 </p>
               </div>
@@ -77,41 +94,34 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Quick stats placeholder */}
-      <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      {/* Stats row */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900 mb-3">
           Быстрая статистика
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-3xl font-bold text-primary-600">8</div>
-            <div className="text-sm text-gray-600">Подразделений</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-3xl font-bold text-primary-600">58</div>
-            <div className="text-sm text-gray-600">Сотрудников</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-3xl font-bold text-primary-600">150+</div>
-            <div className="text-sm text-gray-600">Целей</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-3xl font-bold text-green-600">0.75</div>
-            <div className="text-sm text-gray-600">Средний SMART</div>
-          </div>
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-white border border-gray-200 rounded-lg shadow-xs py-4 px-3 text-center"
+            >
+              <div className="text-lg font-semibold text-gray-900">
+                {stat.value}
+              </div>
+              <div className="text-sm text-gray-500 mt-0.5">{stat.label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Info box */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-blue-800 mb-2">
-          О проекте
-        </h3>
-        <p className="text-blue-700">
-          Данный модуль разработан в рамках хакатона "Внедрение ИИ в HR-процессы".
-          Система использует GPT-4 для оценки и генерации целей, RAG-pipeline для
-          работы с внутренними нормативными документами (ВНД) и ChromaDB для
-          векторного поиска.
+      {/* About section */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-xs p-5">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">О проекте</h3>
+        <p className="text-sm text-gray-500 leading-relaxed">
+          Данный модуль разработан в рамках хакатона &laquo;Внедрение ИИ
+          в HR-процессы&raquo;. Система использует GPT-4 для оценки и генерации
+          целей, RAG-pipeline для работы с внутренними нормативными документами
+          (ВНД) и ChromaDB для векторного поиска.
         </p>
       </div>
     </div>

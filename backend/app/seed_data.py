@@ -72,10 +72,10 @@ def seed_positions(db):
 
 def seed_employees(db, departments, positions):
     """Создать сотрудников"""
-    first_names = ["Александр", "Мария", "Дмитрий", "Елена", "Сергей", "Анна", "Андрей", "Ольга",
-                   "Максим", "Наталья", "Иван", "Екатерина", "Артём", "Татьяна", "Николай"]
-    last_names = ["Иванов", "Петрова", "Сидоров", "Козлова", "Новиков", "Морозова", "Волков",
-                  "Соколова", "Лебедев", "Кузнецова", "Попов", "Семенова", "Орлов", "Федорова"]
+    first_names = ["Айбек", "Дана", "Асет", "Айгерим", "Нурлан", "Мадина", "Ерлан", "Жанар",
+                   "Бауыржан", "Аяулым", "Дамир", "Камила", "Арман", "Томирис", "Қанат"]
+    last_names = ["Серіков", "Нұрланова", "Кенжебаев", "Оспанова", "Жұмабеков", "Ахметова", "Сатыбалдиев",
+                  "Байғабылова", "Тұрсынов", "Қасымова", "Бектұров", "Сәрсенова", "Мұратов", "Әбілова"]
 
     employees = []
 
@@ -85,7 +85,7 @@ def seed_employees(db, departments, positions):
         emp = Employee(
             employee_code=f"EMP{1000 + i}",
             full_name=name,
-            email=f"head_{dept.code.lower()}@company.ru",
+            email=f"head_{dept.code.lower()}@kmg.kz",
             department_id=dept.id,
             position_id=positions[1].id,  # Director
             manager_id=None,
@@ -109,7 +109,7 @@ def seed_employees(db, departments, positions):
         emp = Employee(
             employee_code=f"EMP{2000 + i}",
             full_name=name,
-            email=f"emp{2000 + i}@company.ru",
+            email=f"emp{2000 + i}@kmg.kz",
             department_id=dept.id,
             position_id=pos.id,
             manager_id=head.id if head else None,

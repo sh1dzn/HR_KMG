@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
+from sqlalchemy import func
 from app.models import Employee, Goal, Document, GoalStatus
-from app.schemas.generation import GenerationRequest, GenerationResponse
+from app.schemas.generation import GenerationRequest, GenerationResponse, HistoricalCheck
 from app.services.goal_generator import goal_generator
 
 router = APIRouter()
@@ -43,6 +44,9 @@ async def generate_goals(
 
     # Get manager goals if cascading requested and not provided
     manager_goals = request.manager_goals
+    cascaded_from_manager = False
+    manager_name = None
+    manager_goals_used = []
     if not manager_goals and employee.manager_id:
         manager = db.query(Employee).filter(Employee.id == employee.manager_id).first()
         if manager:
@@ -52,6 +56,41 @@ async def generate_goals(
                 Goal.year == request.year
             ).all()
             manager_goals = [g.title for g in manager_goal_objects]
+            if manager_goals:
+                cascaded_from_manager = True
+                manager_name = manager.full_name
+                manager_goals_used = manager_goals
+
+    # Historical achievability check (F-20)
+    dept_employees = db.query(Employee.id).filter(
+        Employee.department_id == employee.department_id
+    ).subquery()
+    past_goals = db.query(Goal).filter(
+        Goal.employee_id.in_(db.query(dept_employees.c.id)),
+    ).all()
+
+    total_past = len(past_goals)
+    completed = sum(1 for g in past_goals if g.status == GoalStatus.COMPLETED)
+    smart_scores = [g.smart_score for g in past_goals if g.smart_score is not None]
+    avg_smart = sum(smart_scores) / len(smart_scores) if smart_scores else None
+    completion_rate = (completed / total_past * 100) if total_past > 0 else 0
+
+    if completion_rate >= 70:
+        assessment = "Высокая достижимость — подразделение стабильно выполняет цели"
+    elif completion_rate >= 40:
+        assessment = "Средняя достижимость — рекомендуется проверить реалистичность показателей"
+    elif total_past > 0:
+        assessment = "Низкая достижимость — рассмотрите снижение амбициозности целей"
+    else:
+        assessment = "Нет исторических данных для оценки"
+
+    historical_check = HistoricalCheck(
+        total_past_goals=total_past,
+        completed_count=completed,
+        completion_rate=round(completion_rate, 1),
+        avg_smart_score=round(avg_smart, 2) if avg_smart else None,
+        assessment=assessment
+    )
 
     # Generate goals
     response = await goal_generator.generate_goals(
@@ -65,6 +104,11 @@ async def generate_goals(
         manager_goals=manager_goals,
         count=request.count
     )
+
+    response.cascaded_from_manager = cascaded_from_manager
+    response.manager_name = manager_name
+    response.manager_goals_used = manager_goals_used
+    response.historical_check = historical_check
 
     return response
 

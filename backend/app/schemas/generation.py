@@ -39,6 +39,15 @@ class GeneratedGoal(BaseModel):
     suggested_weight: float = Field(..., ge=0.0, le=100.0, description="Рекомендуемый вес")
 
 
+class HistoricalCheck(BaseModel):
+    """Historical achievability assessment"""
+    total_past_goals: int = Field(0, description="Всего целей в истории")
+    completed_count: int = Field(0, description="Выполненных целей")
+    completion_rate: float = Field(0.0, description="Процент выполнения")
+    avg_smart_score: Optional[float] = Field(None, description="Средний SMART-балл")
+    assessment: str = Field("", description="Оценка достижимости")
+
+
 class GenerationResponse(BaseModel):
     """Response with generated goals"""
     employee_id: int
@@ -50,6 +59,10 @@ class GenerationResponse(BaseModel):
     generated_goals: List[GeneratedGoal]
     total_suggested_weight: float = Field(..., description="Сумма рекомендуемых весов")
     generation_context: str = Field(..., description="Контекст генерации")
+    cascaded_from_manager: bool = Field(False, description="Использовано каскадирование от руководителя")
+    manager_name: Optional[str] = Field(None, description="Имя руководителя")
+    manager_goals_used: List[str] = Field(default_factory=list, description="Цели руководителя")
+    historical_check: Optional[HistoricalCheck] = Field(None, description="Проверка по историческим данным")
 
 
 class DepartmentStats(BaseModel):

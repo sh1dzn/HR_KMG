@@ -11,8 +11,14 @@ class LLMService:
     """Service for interacting with OpenAI GPT-4"""
 
     def __init__(self):
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self._client = None
         self.model = settings.OPENAI_MODEL
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        return self._client
 
     async def complete(
         self,

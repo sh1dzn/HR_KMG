@@ -1,8 +1,50 @@
 import { useState, useEffect } from 'react'
 import { getDashboardSummary } from '../api/client'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+} from 'recharts'
 
-const COLORS = ['#8b5cf6', '#3b82f6', '#6b7280']
+const COLORS = ['#6366f1', '#a855f7', '#64748b']
+
+const CustomTooltipPie = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-xs">
+        <p className="text-sm font-semibold text-gray-900">{payload[0].name}</p>
+        <p className="text-sm text-gray-600">{payload[0].value.toFixed(1)}%</p>
+      </div>
+    )
+  }
+  return null
+}
+
+const CustomTooltipBar = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-xs">
+        <p className="text-sm font-semibold text-gray-900 mb-1">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-sm text-gray-600">{entry.name}: {entry.value}%</p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
+const renderCustomLabel = ({ cx, cy, midAngle, outerRadius, name, value }) => {
+  const RADIAN = Math.PI / 180
+  const radius = outerRadius + 30
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+  return (
+    <text x={x} y={y} fill="#334155" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-medium">
+      {name}: {value.toFixed(0)}%
+    </text>
+  )
+}
 
 export default function Dashboard() {
   const [quarter, setQuarter] = useState('Q2')
@@ -11,14 +53,11 @@ export default function Dashboard() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    loadDashboard()
-  }, [quarter, year])
+  useEffect(() => { loadDashboard() }, [quarter, year])
 
   const loadDashboard = async () => {
     setLoading(true)
     setError(null)
-
     try {
       const result = await getDashboardSummary(quarter, year)
       setData(result)
@@ -32,15 +71,23 @@ export default function Dashboard() {
   if (loading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Загрузка данных...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-gray-200 border-t-primary-600 rounded-full animate-spin" />
+          <span className="text-sm text-gray-500 font-medium">Загрузка данных...</span>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-red-700">
-        {error}
+      <div className="bg-white border border-red-200 rounded-lg p-4">
+        <div className="flex items-center gap-3 text-red-700">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+          </svg>
+          <span className="text-sm font-medium">{error}</span>
+        </div>
       </div>
     )
   }
@@ -55,227 +102,148 @@ export default function Dashboard() {
     name: dept.department_name.substring(0, 15),
     score: (dept.average_smart_score * 100).toFixed(0),
     goals: dept.total_goals,
-    maturity: (dept.maturity_index * 100).toFixed(0)
+    maturity: (dept.maturity_index * 100).toFixed(0),
   })) || []
+
+  const getSmartScoreColor = (score) => {
+    if (score >= 0.85) return 'text-green-600'
+    if (score >= 0.7) return 'text-amber-600'
+    return 'text-red-600'
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Дашборд качества целеполагания
-            </h1>
-            <p className="text-gray-600">
-              Аналитика по подразделениям и периодам
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value)}
-            >
-              <option value="Q1">Q1</option>
-              <option value="Q2">Q2</option>
-              <option value="Q3">Q3</option>
-              <option value="Q4">Q4</option>
-            </select>
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value))}
-            >
-              <option value={2025}>2025</option>
-              <option value={2026}>2026</option>
-            </select>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">
+            Дашборд качества целеполагания
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Аналитика по подразделениям и периодам
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
+            <option value="Q1">Q1</option>
+            <option value="Q2">Q2</option>
+            <option value="Q3">Q3</option>
+            <option value="Q4">Q4</option>
+          </select>
+          <select className="select-field" value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
+            <option value={2025}>2025</option>
+            <option value={2026}>2026</option>
+          </select>
         </div>
       </div>
 
       {data && (
         <>
-          {/* Summary cards */}
+          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="text-sm text-gray-500 mb-1">Подразделений</div>
-              <div className="text-3xl font-bold text-gray-900">{data.total_departments}</div>
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <div className="text-2xl font-semibold text-gray-900">{data.total_departments}</div>
+              <div className="text-sm text-gray-500 mt-1">Подразделений</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="text-sm text-gray-500 mb-1">Сотрудников</div>
-              <div className="text-3xl font-bold text-gray-900">{data.total_employees}</div>
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <div className="text-2xl font-semibold text-gray-900">{data.total_employees}</div>
+              <div className="text-sm text-gray-500 mt-1">Сотрудников</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="text-sm text-gray-500 mb-1">Целей</div>
-              <div className="text-3xl font-bold text-gray-900">{data.total_goals}</div>
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <div className="text-2xl font-semibold text-gray-900">{data.total_goals}</div>
+              <div className="text-sm text-gray-500 mt-1">Целей</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="text-sm text-gray-500 mb-1">Средний SMART</div>
-              <div className="text-3xl font-bold text-primary-600">
-                {(data.average_smart_score * 100).toFixed(0)}%
-              </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-5">
+              <div className="text-2xl font-semibold text-primary-600">{(data.average_smart_score * 100).toFixed(0)}%</div>
+              <div className="text-sm text-gray-500 mt-1">Средний SMART</div>
             </div>
           </div>
 
-          {/* Charts row */}
+          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Strategic link pie chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Стратегическая связка целей
-              </h2>
-              <div className="h-64">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">Стратегическая связка целей</h2>
+              <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={strategicLinkData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value.toFixed(0)}%`}
-                    >
+                    <Pie data={strategicLinkData} cx="50%" cy="50%" innerRadius={65} outerRadius={90} paddingAngle={3} fill="#8884d8" dataKey="value" label={renderCustomLabel} strokeWidth={0}>
                       {strategicLinkData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip content={<CustomTooltipPie />} />
+                    <Legend verticalAlign="bottom" height={36} formatter={(value) => (<span className="text-sm text-gray-600">{value}</span>)} iconType="circle" iconSize={10} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-center gap-4 mt-4">
-                {strategicLinkData.map((item, index) => (
-                  <div key={item.name} className="flex items-center">
-                    <div
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: COLORS[index] }}
-                    />
-                    <span className="text-sm text-gray-600">{item.name}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            {/* Department bar chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                SMART-индекс по подразделениям
-              </h2>
-              <div className="h-64">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">SMART-индекс по подразделениям</h2>
+              <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={departmentChartData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" domain={[0, 100]} />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip />
-                    <Bar dataKey="score" fill="#3b82f6" name="SMART %" />
+                  <BarChart data={departmentChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
+                    <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 12, fill: '#374151' }} tickLine={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltipBar />} />
+                    <Bar dataKey="score" fill="#2563eb" name="SMART %" radius={[0, 4, 4, 0]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          {/* Top issues */}
-          {data.top_issues && data.top_issues.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Топ проблем в целеполагании
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {data.top_issues.map((issue, index) => (
-                  <span
-                    key={index}
-                    className="px-4 py-2 bg-red-50 text-red-700 rounded-lg text-sm"
-                  >
-                    {issue}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Department details table */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {/* Department Table */}
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Детализация по подразделениям
-              </h2>
+              <h2 className="text-base font-semibold text-gray-900">Детализация по подразделениям</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Подразделение
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      Сотрудников
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      Целей
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      SMART
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                      Зрелость
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Слабые критерии
-                    </th>
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подразделение</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудников</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Целей</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">SMART</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Зрелость</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Слабые критерии</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {data.departments_stats.map((dept) => (
-                    <tr key={dept.department_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                        {dept.department_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-gray-600">
-                        {dept.total_employees}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-gray-600">
-                        {dept.total_goals}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`font-semibold ${
-                          dept.average_smart_score >= 0.85 ? 'text-green-600' :
-                          dept.average_smart_score >= 0.7 ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          {(dept.average_smart_score * 100).toFixed(0)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-primary-600 h-2 rounded-full"
-                            style={{ width: `${dept.maturity_index * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          {(dept.maturity_index * 100).toFixed(0)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {dept.weak_criteria.map((criteria, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-1 bg-red-50 text-red-600 text-xs rounded"
-                            >
-                              {criteria}
-                            </span>
-                          ))}
-                          {dept.weak_criteria.length === 0 && (
-                            <span className="text-green-600 text-sm">Нет проблем</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {data.departments_stats.map((dept) => {
+                    const smartPercent = (dept.average_smart_score * 100).toFixed(0)
+                    const maturityPercent = (dept.maturity_index * 100).toFixed(0)
+                    return (
+                      <tr key={dept.department_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">{dept.total_employees}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">{dept.total_goals}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`text-sm font-semibold ${getSmartScoreColor(dept.average_smart_score)}`}>{smartPercent}%</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-full max-w-[120px] bg-gray-200 rounded-lg h-2 overflow-hidden">
+                              <div className="h-2 rounded-lg bg-primary-500" style={{ width: `${maturityPercent}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium">{maturityPercent}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {dept.weak_criteria.map((criteria, i) => (
+                              <span key={i} className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-700 text-xs font-medium rounded-lg">{criteria}</span>
+                            ))}
+                            {dept.weak_criteria.length === 0 && (
+                              <span className="text-green-600 text-sm font-medium">Нет проблем</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
