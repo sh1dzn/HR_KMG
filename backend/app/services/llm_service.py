@@ -1,0 +1,116 @@
+"""
+LLM Service - OpenAI GPT-4 Integration
+"""
+import json
+from typing import Optional, Dict, Any, List
+from openai import OpenAI
+from app.config import settings
+
+
+class LLMService:
+    """Service for interacting with OpenAI GPT-4"""
+
+    def __init__(self):
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.model = settings.OPENAI_MODEL
+
+    async def complete(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 2000,
+        response_format: Optional[Dict] = None
+    ) -> str:
+        """
+        Generate completion from GPT-4
+
+        Args:
+            prompt: User prompt
+            system_prompt: System instructions
+            temperature: Creativity level (0.0-1.0)
+            max_tokens: Maximum response length
+            response_format: Optional JSON response format
+
+        Returns:
+            Generated text response
+        """
+        messages = []
+
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        messages.append({"role": "user", "content": prompt})
+
+        kwargs = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+
+        if response_format:
+            kwargs["response_format"] = response_format
+
+        response = self.client.chat.completions.create(**kwargs)
+
+        return response.choices[0].message.content
+
+    async def complete_json(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.2
+    ) -> Dict[str, Any]:
+        """
+        Generate JSON response from GPT-4
+
+        Args:
+            prompt: User prompt
+            system_prompt: System instructions
+            temperature: Creativity level
+
+        Returns:
+            Parsed JSON dictionary
+        """
+        response = await self.complete(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            response_format={"type": "json_object"}
+        )
+
+        return json.loads(response)
+
+    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """
+        Get embeddings for texts using OpenAI
+
+        Args:
+            texts: List of texts to embed
+
+        Returns:
+            List of embedding vectors
+        """
+        response = self.client.embeddings.create(
+            model=settings.OPENAI_EMBEDDING_MODEL,
+            input=texts
+        )
+
+        return [item.embedding for item in response.data]
+
+    def get_embedding(self, text: str) -> List[float]:
+        """
+        Get embedding for single text
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            Embedding vector
+        """
+        return self.get_embeddings([text])[0]
+
+
+# Global instance
+llm_service = LLMService()
