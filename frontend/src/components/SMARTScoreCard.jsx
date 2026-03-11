@@ -4,6 +4,7 @@ import {
   XCircleIcon,
   ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 const criteriaNames = {
   specific: 'S - Конкретность',
@@ -102,7 +103,8 @@ function CriterionCard({ name, criterion }) {
   const percentage = Math.round(criterion.score * 100)
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
+    <Card className="rounded-xl bg-white/80">
+      <CardContent className="p-4 pt-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-900">{name}</span>
         {satisfied ? (
@@ -121,7 +123,8 @@ function CriterionCard({ name, criterion }) {
       {criterion.comment && (
         <p className="text-sm text-gray-500 leading-relaxed">{criterion.comment}</p>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -153,7 +156,8 @@ export default function SMARTScoreCard({ evaluation }) {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="panel rounded-2xl p-6">
+      <Card>
+        <CardContent className="p-6 pt-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-gray-900">Результат оценки</h2>
@@ -177,14 +181,19 @@ export default function SMARTScoreCard({ evaluation }) {
             <CriterionCard key={key} name={criteriaNames[key]} criterion={criterion} />
           ))}
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {(goal_type || strategic_link) && (
-        <div className="panel rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Классификация цели</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle>Классификация цели</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {goal_type && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+              <Card className="rounded-xl bg-slate-50/80 shadow-none">
+                <CardContent className="p-4 pt-4">
                 <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Тип цели</div>
                 <div className="text-sm font-semibold text-gray-900">
                   {goal_type.type_russian || goalTypeLabels[goal_type.type] || 'Не определён'}
@@ -192,10 +201,12 @@ export default function SMARTScoreCard({ evaluation }) {
                 {goal_type.explanation && (
                   <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{goal_type.explanation}</p>
                 )}
-              </div>
+                </CardContent>
+              </Card>
             )}
             {strategic_link && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+              <Card className="rounded-xl bg-slate-50/80 shadow-none">
+                <CardContent className="p-4 pt-4">
                 <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Стратегическая связка</div>
                 <div className="text-sm font-semibold text-gray-900">
                   {strategic_link.level_russian || strategicLinkLabels[strategic_link.level] || 'Не определена'}
@@ -203,15 +214,20 @@ export default function SMARTScoreCard({ evaluation }) {
                 {strategic_link.explanation && (
                   <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{strategic_link.explanation}</p>
                 )}
-              </div>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {recommendations && recommendations.length > 0 && (
-        <div className="panel rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Рекомендации по улучшению</h3>
+        <Card>
+          <CardHeader className="pb-0">
+            <CardTitle>Рекомендации по улучшению</CardTitle>
+          </CardHeader>
+          <CardContent>
           <ul className="space-y-2.5">
             {recommendations.map((rec, index) => (
               <li key={index} className="flex items-start gap-2.5 text-sm text-gray-600 leading-relaxed">
@@ -220,11 +236,13 @@ export default function SMARTScoreCard({ evaluation }) {
               </li>
             ))}
           </ul>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {reformulated_goal && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-6">
+        <Card className="border-emerald-200 bg-emerald-50/90">
+          <CardContent className="p-6 pt-6">
           <div className="flex items-start justify-between gap-4 mb-2">
             <h3 className="text-sm font-semibold text-green-800">Улучшенная формулировка</h3>
             <button
@@ -236,7 +254,8 @@ export default function SMARTScoreCard({ evaluation }) {
             </button>
           </div>
           <p className="text-sm text-green-900 font-medium leading-relaxed">{reformulated_goal}</p>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

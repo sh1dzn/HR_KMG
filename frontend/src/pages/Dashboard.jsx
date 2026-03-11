@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getDashboardSummary } from '../api/client'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -81,14 +82,16 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="bg-white border border-red-200 rounded-lg p-4">
+      <Card className="border-red-200 bg-white">
+        <CardContent className="p-4 pt-4">
         <div className="flex items-center gap-3 text-red-700">
           <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
           </svg>
           <span className="text-sm font-medium">{error}</span>
         </div>
-      </div>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -138,9 +141,12 @@ export default function Dashboard() {
       {data && (
         <>
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <div className="panel rounded-2xl p-5">
-              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Executive Summary</div>
-              <div className="mt-3 text-lg font-semibold text-slate-950">
+            <Card>
+              <CardHeader className="p-5 pb-0">
+                <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Executive Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5">
+              <div className="text-lg font-semibold text-slate-950">
                 В {data.quarter} {data.year} средний индекс качества целей составляет {(data.average_smart_score * 100).toFixed(0)}%.
               </div>
               <div className="mt-2 text-sm leading-6 text-slate-600">
@@ -148,10 +154,14 @@ export default function Dashboard() {
                 Метрика показывает, насколько контур целей связан с общими
                 приоритетами бизнеса и распределением по подразделениям.
               </div>
-            </div>
-            <div className="panel rounded-2xl p-5">
-              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Top Issues</div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="p-5 pb-0">
+                <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Top Issues</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5">
+              <div className="flex flex-wrap gap-2">
                 {data.top_issues.length > 0 ? data.top_issues.map((issue) => (
                   <span key={issue} className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 border border-rose-100">
                     {issue}
@@ -160,31 +170,43 @@ export default function Dashboard() {
                   <span className="text-sm text-slate-500">По эвристической оценке критичных провалов не выявлено.</span>
                 )}
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="panel rounded-2xl p-5">
+            <Card>
+              <CardContent className="p-5 pt-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_departments}</div>
               <div className="text-sm text-gray-500 mt-1">Подразделений</div>
-            </div>
-            <div className="panel rounded-2xl p-5">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-5 pt-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_employees}</div>
               <div className="text-sm text-gray-500 mt-1">Сотрудников</div>
-            </div>
-            <div className="panel rounded-2xl p-5">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-5 pt-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_goals}</div>
               <div className="text-sm text-gray-500 mt-1">Целей</div>
-            </div>
-            <div className="panel rounded-2xl p-5">
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-5 pt-5">
               <div className="text-2xl font-semibold text-cyan-800">{(data.average_smart_score * 100).toFixed(0)}%</div>
               <div className="text-sm text-gray-500 mt-1">Средний SMART</div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="panel rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Стратегическая связка целей</h2>
+            <Card>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-base">Стратегическая связка целей</CardTitle>
+              </CardHeader>
+              <CardContent>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -198,10 +220,14 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            <div className="panel rounded-2xl p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">SMART-индекс по подразделениям</h2>
+            <Card>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-base">SMART-индекс по подразделениям</CardTitle>
+              </CardHeader>
+              <CardContent>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={departmentChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
@@ -213,17 +239,18 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="panel overflow-hidden rounded-2xl">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-900">Детализация по подразделениям</h2>
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-gray-200 px-6 py-4">
+              <CardTitle className="text-base">Детализация по подразделениям</CardTitle>
               <p className="mt-1 text-sm text-gray-500">
                 Таблица показывает зрелость целеполагания и основные слабые
                 критерии по каждому подразделению.
               </p>
-            </div>
+            </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -272,7 +299,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         </>
       )}
     </div>

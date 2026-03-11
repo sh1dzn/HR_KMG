@@ -8,6 +8,7 @@ import {
   BuildingOffice2Icon,
   CheckBadgeIcon,
 } from '@heroicons/react/24/outline'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 
 const features = [
   {
@@ -136,23 +137,21 @@ export default function Home() {
           <Link
             key={feature.name}
             to={feature.href}
-            className="panel rounded-2xl p-5 transition-transform duration-150 hover:-translate-y-0.5"
+            className="transition-transform duration-150 hover:-translate-y-0.5"
           >
-            <div className="flex items-start gap-3">
-              <span
-                className={`flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg ${feature.iconBg}`}
-              >
-                <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                  {feature.name}
-                </h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            </div>
+            <Card className="h-full transition-colors hover:border-slate-300">
+              <CardHeader className="flex-row items-start gap-3 space-y-0 p-5">
+                <span
+                  className={`inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${feature.iconBg}`}
+                >
+                  <feature.icon className={`h-5 w-5 ${feature.iconColor}`} />
+                </span>
+                <div className="min-w-0">
+                  <CardTitle>{feature.name}</CardTitle>
+                  <CardDescription className="mt-1">{feature.description}</CardDescription>
+                </div>
+              </CardHeader>
+            </Card>
           </Link>
         ))}
       </div>
@@ -161,44 +160,51 @@ export default function Home() {
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Масштаб данных</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="panel rounded-2xl py-5 px-3 text-center"
-            >
-              <div className="text-lg font-semibold text-gray-900">{stat.value}</div>
-              <div className="text-sm text-gray-500 mt-0.5">{stat.label}</div>
-            </div>
+            <Card key={stat.label} className="text-center">
+              <CardContent className="px-3 py-5">
+                <div className="text-lg font-semibold text-gray-900">{stat.value}</div>
+                <div className="mt-0.5 text-sm text-gray-500">{stat.label}</div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="panel rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Функциональный контур</h3>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {mvpChecklist.map((item) => (
-              <div key={item} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-700">
-                <CheckBadgeIcon className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Архитектура решения</h3>
-          <div className="space-y-3">
-            {architecture.map((item) => (
-              <div key={item.title} className="flex gap-3 rounded-xl border border-slate-200 bg-white/70 px-4 py-3">
-                <item.icon className="mt-0.5 h-5 w-5 flex-none text-slate-700" />
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                  <div className="text-sm leading-5 text-slate-600">{item.text}</div>
+        <Card>
+          <CardHeader className="p-5 pb-0">
+            <CardTitle>Функциональный контур</CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {mvpChecklist.map((item) => (
+                <div key={item} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-700">
+                  <CheckBadgeIcon className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
+                  <span>{item}</span>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="p-5 pb-0">
+            <CardTitle>Архитектура решения</CardTitle>
+          </CardHeader>
+          <CardContent className="p-5">
+            <div className="space-y-3">
+              {architecture.map((item) => (
+                <div key={item.title} className="flex gap-3 rounded-xl border border-slate-200 bg-white/70 px-4 py-3">
+                  <item.icon className="mt-0.5 h-5 w-5 flex-none text-slate-700" />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                    <div className="text-sm leading-5 text-slate-600">{item.text}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

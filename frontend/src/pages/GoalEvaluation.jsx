@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { evaluateGoal, reformulateGoal } from '../api/client'
 import SMARTScoreCard from '../components/SMARTScoreCard'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 const evaluationSignals = [
   'SMART по 5 критериям',
@@ -82,19 +83,24 @@ export default function GoalEvaluation() {
             улучшенную редакцию формулировки.
           </p>
         </div>
-        <div className="panel-subtle p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Состав результата</div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {evaluationSignals.map((item) => (
-              <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
+        <Card className="bg-slate-50/80">
+          <CardHeader className="p-4 pb-0">
+            <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Состав результата</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-2">
+              {evaluationSignals.map((item) => (
+                <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="panel rounded-2xl p-6">
+      <Card>
+        <CardContent className="p-6 pt-6">
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Текст цели <span className="text-red-500">*</span>
@@ -173,7 +179,8 @@ export default function GoalEvaluation() {
             {error}
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
       <div>
         <p className="text-sm font-medium text-gray-500 mb-2">Примеры для быстрого тестирования:</p>

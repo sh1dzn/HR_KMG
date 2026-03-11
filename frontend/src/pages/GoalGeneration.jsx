@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { generateGoals, getFocusAreas, getEmployees, createGoal } from '../api/client'
 import { SparklesIcon, DocumentTextIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 const generationFlow = [
   '1. Профиль сотрудника и квартальный фокус',
@@ -158,20 +159,27 @@ export default function GoalGeneration() {
             обоснованием, источником и предварительной оценкой качества.
           </p>
         </div>
-        <div className="panel-subtle p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Процесс подготовки</div>
-          <div className="mt-3 space-y-2">
-            {generationFlow.map((step) => (
-              <div key={step} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                {step}
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card className="bg-slate-50/80">
+          <CardHeader className="p-4 pb-0">
+            <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Процесс подготовки</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              {generationFlow.map((step) => (
+                <div key={step} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                  {step}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="panel rounded-2xl p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-5">Параметры генерации</h2>
+      <Card>
+        <CardHeader className="pb-0">
+          <CardTitle className="text-base">Параметры генерации</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
           <div className="sm:col-span-2">
@@ -274,10 +282,12 @@ export default function GoalGeneration() {
             {error}
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
       {loading && (
-        <div className="panel rounded-2xl p-10 text-center">
+        <Card>
+          <CardContent className="p-10 text-center">
           <div className="inline-flex items-center gap-3">
             <svg
               className="h-5 w-5 animate-spin text-cyan-700"
@@ -293,12 +303,14 @@ export default function GoalGeneration() {
               <p className="text-sm text-gray-500">Сервис анализирует документы и формирует предложения</p>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {result && !loading && (
         <div className="space-y-4">
-          <div className="panel rounded-2xl p-6">
+          <Card>
+            <CardContent className="p-6 pt-6">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-900 mb-1">Сгенерированные цели</h2>
@@ -396,7 +408,8 @@ export default function GoalGeneration() {
                 </div>
               </div>
             )}
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Goal Cards */}
           {result.generated_goals.map((goal, index) => {
@@ -407,7 +420,8 @@ export default function GoalGeneration() {
               : 'border-gray-200'
 
             return (
-            <div key={index} className={`panel rounded-2xl p-6 transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
+            <Card key={index} className={`transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
+              <CardContent className="p-6 pt-6">
               <div className="flex items-start justify-between gap-6">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center flex-wrap gap-2 mb-3">
@@ -495,7 +509,8 @@ export default function GoalGeneration() {
                   </button>
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
           )})}
         </div>
       )}
