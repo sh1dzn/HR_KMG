@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import {
   HomeIcon,
@@ -5,6 +6,8 @@ import {
   SparklesIcon,
   ChartBarIcon,
   UserGroupIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import GoalEvaluation from './pages/GoalEvaluation'
 import GoalGeneration from './pages/GoalGeneration'
@@ -31,11 +34,30 @@ const pageTitles = {
 
 function App() {
   const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const currentTitle = pageTitles[location.pathname] || 'HR AI Module'
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   return (
     <div className="flex min-h-screen bg-transparent">
-      <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-950 text-slate-100">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          aria-label="Закрыть меню"
+          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside
+        className={[
+          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[88vw] flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-transform duration-200 ease-out lg:w-64',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        ].join(' ')}
+      >
         <div className="flex h-16 items-center gap-3 border-b border-slate-800 px-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
             <KmgLogo className="h-7 w-7 text-slate-100" />
@@ -44,6 +66,14 @@ function App() {
             <div className="text-sm font-semibold leading-tight text-white">Performance Goals</div>
             <div className="text-[11px] leading-tight text-slate-400">КМГ-КУМКОЛЬ</div>
           </div>
+          <button
+            type="button"
+            aria-label="Закрыть меню"
+            className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
@@ -87,9 +117,25 @@ function App() {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col pl-64">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/75 px-8 backdrop-blur">
+      <div className="flex flex-1 flex-col lg:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div>
+            <div className="mb-0.5 flex items-center gap-3 lg:hidden">
+              <button
+                type="button"
+                aria-label="Открыть меню"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <Bars3Icon className="h-5 w-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                  <KmgLogo className="h-5 w-5 text-slate-800" />
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">KMG Goals</span>
+              </div>
+            </div>
             <h1 className="text-base font-semibold text-slate-900">{currentTitle}</h1>
             <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
           </div>
@@ -98,7 +144,7 @@ function App() {
           </div>
         </header>
 
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/evaluation" element={<GoalEvaluation />} />
