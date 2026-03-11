@@ -14,7 +14,12 @@ const statusBadges = {
     class: 'bg-gray-100 text-gray-700',
     icon: DocumentCheckIcon,
   },
-  pending: {
+  active: {
+    label: 'Активна',
+    class: 'bg-blue-50 text-blue-700',
+    icon: DocumentCheckIcon,
+  },
+  submitted: {
     label: 'На согласовании',
     class: 'bg-amber-50 text-amber-700',
     icon: ClockIcon,
@@ -24,15 +29,30 @@ const statusBadges = {
     class: 'bg-green-50 text-green-700',
     icon: CheckCircleIcon,
   },
-  rejected: {
-    label: 'Отклонена',
+  in_progress: {
+    label: 'В работе',
+    class: 'bg-sky-50 text-sky-700',
+    icon: ClockIcon,
+  },
+  done: {
+    label: 'Выполнена',
+    class: 'bg-green-50 text-green-700',
+    icon: CheckCircleIcon,
+  },
+  cancelled: {
+    label: 'Отменена',
     class: 'bg-red-50 text-red-700',
     icon: XCircleIcon,
   },
-  completed: {
-    label: 'Выполнена',
-    class: 'bg-blue-50 text-blue-700',
-    icon: CheckCircleIcon,
+  overdue: {
+    label: 'Просрочена',
+    class: 'bg-rose-50 text-rose-700',
+    icon: XCircleIcon,
+  },
+  archived: {
+    label: 'Архив',
+    class: 'bg-gray-200 text-gray-700',
+    icon: DocumentCheckIcon,
   },
 }
 
@@ -142,9 +162,14 @@ export default function EmployeeGoals() {
           >
             <option value="">Все статусы</option>
             <option value="draft">Черновик</option>
-            <option value="pending">На согласовании</option>
+            <option value="active">Активна</option>
+            <option value="submitted">На согласовании</option>
             <option value="approved">Утверждена</option>
-            <option value="rejected">Отклонена</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Выполнена</option>
+            <option value="cancelled">Отменена</option>
+            <option value="overdue">Просрочена</option>
+            <option value="archived">Архив</option>
           </select>
         </div>
       </div>

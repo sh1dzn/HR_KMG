@@ -4,7 +4,6 @@ Evaluation API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from app.database import get_db
 from app.models import Goal, Employee
 from app.schemas.evaluation import (
@@ -16,8 +15,15 @@ from app.schemas.evaluation import (
 )
 from app.services.smart_evaluator import smart_evaluator
 from app.config import settings
+from app.utils.smart_heuristics import evaluate_goal_heuristically
 
 router = APIRouter()
+
+
+def _criterion_score(criterion) -> float:
+    if isinstance(criterion, dict):
+        return float(criterion.get("score", 0))
+    return float(criterion.score)
 
 
 @router.post("/evaluate", response_model=EvaluationResponse)
@@ -85,53 +91,51 @@ async def evaluate_batch(
     total_weight = 0
 
     for goal in goals:
-        evaluation = await smart_evaluator.evaluate_goal(
-            goal_text=goal.title,
-            position=employee.position.name if employee.position else None,
-            department=employee.department.name if employee.department else None
-        )
+        try:
+            evaluation = await smart_evaluator.evaluate_goal(
+                goal_text=goal.goal_text,
+                position=employee.position.name if employee.position else None,
+                department=employee.department.name if employee.department else None
+            )
+            overall_score = evaluation.overall_score
+            quality_level = evaluation.quality_level
+            smart = evaluation.smart_evaluation
+        except Exception:
+            heuristic = evaluate_goal_heuristically(
+                goal.goal_text,
+                metric=goal.metric,
+                deadline=goal.deadline,
+                priority=goal.priority,
+            )
+            overall_score = heuristic["overall_score"]
+            quality_level = "high" if overall_score >= settings.SMART_THRESHOLD_HIGH else "medium" if overall_score >= settings.SMART_THRESHOLD_MEDIUM else "low"
+            smart = type("SmartProxy", (), heuristic["smart_details"])()
 
         # Collect issues
         main_issues = []
-        smart = evaluation.smart_evaluation
-        if smart.specific.score < 0.7:
+        if _criterion_score(smart.specific) < 0.7:
             main_issues.append("Недостаточно конкретная")
-        if smart.measurable.score < 0.7:
+        if _criterion_score(smart.measurable) < 0.7:
             main_issues.append("Нет измеримых показателей")
-        if smart.achievable.score < 0.7:
+        if _criterion_score(smart.achievable) < 0.7:
             main_issues.append("Сомнения в достижимости")
-        if smart.relevant.score < 0.7:
+        if _criterion_score(smart.relevant) < 0.7:
             main_issues.append("Слабая связь с ролью")
-        if smart.time_bound.score < 0.7:
+        if _criterion_score(smart.time_bound) < 0.7:
             main_issues.append("Не указан срок")
 
         all_issues.extend(main_issues)
 
         evaluations.append(GoalEvaluationSummary(
-            goal_id=goal.id,
-            goal_text=goal.title,
-            overall_score=evaluation.overall_score,
-            quality_level=evaluation.quality_level,
+            goal_id=str(goal.goal_id),
+            goal_text=goal.goal_text,
+            overall_score=overall_score,
+            quality_level=quality_level,
             main_issues=main_issues
         ))
 
-        total_score += evaluation.overall_score
-        total_weight += goal.weight or 0
-
-        # Update goal with evaluation
-        goal.smart_score = evaluation.overall_score
-        goal.smart_details = {
-            "specific": evaluation.smart_evaluation.specific.model_dump(),
-            "measurable": evaluation.smart_evaluation.measurable.model_dump(),
-            "achievable": evaluation.smart_evaluation.achievable.model_dump(),
-            "relevant": evaluation.smart_evaluation.relevant.model_dump(),
-            "time_bound": evaluation.smart_evaluation.time_bound.model_dump()
-        }
-        goal.goal_type = evaluation.goal_type.type
-        if evaluation.strategic_link:
-            goal.strategic_link = evaluation.strategic_link.level
-
-    db.commit()
+        total_score += overall_score
+        total_weight += float(goal.weight or 0)
 
     # Calculate aggregates
     average_score = total_score / len(goals) if goals else 0
@@ -164,7 +168,7 @@ async def evaluate_batch(
         goals_evaluated=evaluations,
         total_goals=len(goals),
         average_score=round(average_score, 2),
-        total_weight=total_weight,
+        total_weight=round(total_weight, 2),
         weight_valid=weight_valid,
         goals_count_valid=goals_count_valid,
         top_issues=top_issues,

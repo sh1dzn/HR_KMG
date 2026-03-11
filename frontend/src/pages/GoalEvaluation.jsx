@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { evaluateGoal, reformulateGoal } from '../api/client'
 import SMARTScoreCard from '../components/SMARTScoreCard'
 
+const evaluationSignals = [
+  'SMART по 5 критериям',
+  'Релевантность роли и подразделению',
+  'Рекомендации к улучшению',
+  'Переформулировка слабой цели',
+]
+
 export default function GoalEvaluation() {
   const [goalText, setGoalText] = useState('')
   const [position, setPosition] = useState('')
@@ -65,20 +72,31 @@ export default function GoalEvaluation() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Page description */}
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900 mb-1">
-          Оценка целей по SMART
-        </h1>
-        <p className="text-sm text-gray-500 leading-relaxed">
-          Введите текст цели для автоматической оценки по методологии SMART.
-          Система проанализирует формулировку и предоставит детальную обратную
-          связь по каждому критерию с рекомендациями по улучшению.
-        </p>
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 mb-1">
+            Оценка целей по SMART
+          </h1>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Сценарий из `hackaton.md`: AI проверяет формулировку цели, ее
+            измеримость, достижимость и релевантность роли. На выходе команда
+            получает индекс качества, пояснения и улучшенную формулировку для
+            защиты решения.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Что возвращает API</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {evaluationSignals.map((item) => (
+              <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Input form */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-card p-6">
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Текст цели <span className="text-red-500">*</span>
@@ -119,6 +137,11 @@ export default function GoalEvaluation() {
               onChange={(e) => setDepartment(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          Для демо лучше вводить цель в формате “что сделать + как измерить + к какому сроку”.
+          Так результат на защите будет ближе к критериям S/M/T из ТЗ.
         </div>
 
         <div className="flex items-center gap-3">

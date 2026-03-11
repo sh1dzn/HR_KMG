@@ -113,14 +113,14 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
             Дашборд качества целеполагания
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Аналитика по подразделениям и периодам
+            Аналитика для защиты по `hackaton.md`: SMART-индекс, стратегическая
+            связка, зрелость подразделений и проблемные зоны по кварталам.
           </p>
         </div>
         <div className="flex gap-3">
@@ -139,7 +139,31 @@ export default function Dashboard() {
 
       {data && (
         <>
-          {/* Stats */}
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white">
+              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-300">Executive Summary</div>
+              <div className="mt-3 text-lg font-semibold">
+                В {data.quarter} {data.year} средний индекс качества целей составляет {(data.average_smart_score * 100).toFixed(0)}%.
+              </div>
+              <div className="mt-2 text-sm leading-6 text-slate-300">
+                Доля стратегически связанных целей: {data.strategic_goals_percent.toFixed(1)}%.
+                Это основной показатель, который хорошо читается на защите вместе с разбивкой по подразделениям.
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Top Issues</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {data.top_issues.length > 0 ? data.top_issues.map((issue) => (
+                  <span key={issue} className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 border border-rose-100">
+                    {issue}
+                  </span>
+                )) : (
+                  <span className="text-sm text-slate-500">По эвристической оценке критичных провалов не выявлено.</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white border border-gray-200 rounded-lg p-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_departments}</div>
@@ -159,9 +183,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Стратегическая связка целей</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -178,7 +201,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="bg-white border border-gray-200 rounded-xl p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">SMART-индекс по подразделениям</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -194,10 +217,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Department Table */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-base font-semibold text-gray-900">Детализация по подразделениям</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Таблица показывает зрелость целеполагания, которую требуют критерии оценки на хакатоне.
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">

@@ -66,7 +66,7 @@ class BatchEvaluationRequest(BaseModel):
 
 class GoalEvaluationSummary(BaseModel):
     """Summary evaluation for a single goal in batch"""
-    goal_id: int
+    goal_id: str
     goal_text: str
     overall_score: float
     quality_level: str

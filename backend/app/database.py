@@ -2,6 +2,7 @@
 Database connection and session management
 """
 from sqlalchemy import create_engine
+from sqlalchemy import text
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
@@ -30,6 +31,6 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables"""
-    from app.models import department, employee, goal, document
-    Base.metadata.create_all(bind=engine)
+    """Verify database connectivity against the existing PostgreSQL schema."""
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))

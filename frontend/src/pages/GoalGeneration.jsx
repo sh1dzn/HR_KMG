@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react'
 import { generateGoals, getFocusAreas, getEmployees, createGoal } from '../api/client'
 import { SparklesIcon, DocumentTextIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
+const generationFlow = [
+  '1. Профиль сотрудника и квартальный фокус',
+  '2. Подбор релевантных ВНД и стратегий',
+  '3. Генерация 3-5 целей в SMART-формате',
+  '4. Каскадирование от руководителя и проверка истории',
+]
+
 export default function GoalGeneration() {
   const [employeeId, setEmployeeId] = useState('')
   const [quarter, setQuarter] = useState('Q2')
@@ -142,17 +149,28 @@ export default function GoalGeneration() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-
-      {/* Description */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Генерация целей</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Автоматическая генерация целей на основе ВНД, стратегии компании и профиля сотрудника.
-        </p>
+      <div className="grid gap-4 lg:grid-cols-[1.25fr_0.95fr]">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Генерация целей</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Экран демонстрирует главный сценарий хакатона: Goal Generator
+            формирует набор целей из ВНД, стратегии, роли сотрудника и
+            квартальных приоритетов с источником и SMART-предоценкой.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Pipeline</div>
+          <div className="mt-3 space-y-2">
+            {generationFlow.map((step) => (
+              <div key={step} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                {step}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Form Card */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-xs p-6">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-xs p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-5">Параметры генерации</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
@@ -236,6 +254,11 @@ export default function GoalGeneration() {
           </div>
         )}
 
+        <div className="mb-6 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+          Для защиты удобно показать два контраста: генерацию без фокусов и генерацию с фокусами вроде
+          “Цифровизация” или “Снижение затрат”. Разница в контексте будет видна сразу.
+        </div>
+
         <div className="border-t border-gray-200 pt-5">
           <button
             onClick={handleGenerate}
@@ -280,7 +303,7 @@ export default function GoalGeneration() {
         <div className="space-y-4">
 
           {/* Results Header */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-xs p-6">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xs p-6">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-900 mb-1">Сгенерированные цели</h2>
@@ -299,6 +322,21 @@ export default function GoalGeneration() {
                 <div className="text-sm text-gray-500 mt-2">
                   Сумма весов: <span className="font-semibold text-gray-900">{result.total_suggested_weight.toFixed(0)}%</span>
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">MVP-функция</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">Генерация 3-5 целей</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Обоснование</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">Источник ВНД + rationale</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Контроль</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">SMART + историческая достижимость</div>
               </div>
             </div>
 
@@ -376,7 +414,7 @@ export default function GoalGeneration() {
               : 'border-gray-200'
 
             return (
-            <div key={index} className={`bg-white border rounded-lg shadow-xs p-6 transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
+            <div key={index} className={`bg-white border rounded-xl shadow-xs p-6 transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between gap-6">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center flex-wrap gap-2 mb-3">
@@ -420,13 +458,16 @@ export default function GoalGeneration() {
               </div>
 
               {goal.source_document && (
-                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mt-0.5">
                       <DocumentTextIcon className="h-4 w-4 text-gray-500" />
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-gray-700">{goal.source_document.title}</div>
+                      <div className="mt-1 inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                        Источник из ВНД / стратегии
+                      </div>
                       <p className="text-sm text-gray-500 mt-1 leading-relaxed">
                         {goal.source_document.relevant_fragment.substring(0, 200)}...
                       </p>

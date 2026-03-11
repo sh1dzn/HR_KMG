@@ -4,12 +4,12 @@ Generation API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Optional
 from app.database import get_db
-from sqlalchemy import func
 from app.models import Employee, Goal, Document, GoalStatus
 from app.schemas.generation import GenerationRequest, GenerationResponse, HistoricalCheck
 from app.services.goal_generator import goal_generator
+from app.utils.smart_heuristics import evaluate_goal_heuristically
 
 router = APIRouter()
 
@@ -55,7 +55,7 @@ async def generate_goals(
                 Goal.quarter == request.quarter,
                 Goal.year == request.year
             ).all()
-            manager_goals = [g.title for g in manager_goal_objects]
+            manager_goals = [g.goal_text for g in manager_goal_objects]
             if manager_goals:
                 cascaded_from_manager = True
                 manager_name = manager.full_name
@@ -70,8 +70,11 @@ async def generate_goals(
     ).all()
 
     total_past = len(past_goals)
-    completed = sum(1 for g in past_goals if g.status == GoalStatus.COMPLETED)
-    smart_scores = [g.smart_score for g in past_goals if g.smart_score is not None]
+    completed = sum(1 for g in past_goals if g.status == GoalStatus.DONE)
+    smart_scores = [
+        evaluate_goal_heuristically(g.goal_text, g.metric, g.deadline, g.priority)["overall_score"]
+        for g in past_goals
+    ]
     avg_smart = sum(smart_scores) / len(smart_scores) if smart_scores else None
     completion_rate = (completed / total_past * 100) if total_past > 0 else 0
 
@@ -125,22 +128,25 @@ async def generate_and_save_goals(
     """
     # Generate goals
     response = await generate_goals(request, db)
+    employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
     # Save goals to database
     saved_goals = []
     for gen_goal in response.generated_goals:
         goal = Goal(
             employee_id=request.employee_id,
-            title=gen_goal.goal_text,
+            department_id=employee.department_id,
+            employee_name_snapshot=employee.full_name,
+            position_snapshot=employee.position.name if employee.position else None,
+            department_name_snapshot=employee.department.name if employee.department else None,
+            goal_text=gen_goal.goal_text,
             metric=gen_goal.metric,
             weight=gen_goal.suggested_weight,
             quarter=request.quarter,
             year=request.year,
             status=GoalStatus.DRAFT,
-            smart_score=gen_goal.smart_score,
-            goal_type=gen_goal.goal_type,
-            strategic_link=gen_goal.strategic_link,
-            source_document_id=gen_goal.source_document.doc_id if gen_goal.source_document.doc_id > 0 else None
         )
         db.add(goal)
         saved_goals.append(goal)
@@ -153,7 +159,7 @@ async def generate_and_save_goals(
 
     return {
         "message": f"Создано {len(saved_goals)} целей",
-        "goal_ids": [g.id for g in saved_goals],
+        "goal_ids": [str(g.goal_id) for g in saved_goals],
         "generated_goals": response.generated_goals
     }
 
@@ -172,17 +178,20 @@ async def get_available_documents(
     query = db.query(Document).filter(Document.is_active == True)
 
     if department:
-        query = query.filter(Document.department_scope.contains(department))
+        query = query.filter(Document.department_scope.is_not(None))
     if doc_type:
         query = query.filter(Document.doc_type == doc_type)
 
-    documents = query.all()
+    documents = [
+        doc for doc in query.all()
+        if not department or department in doc.get_department_scope_list()
+    ]
 
     return {
         "total": len(documents),
         "documents": [
             {
-                "doc_id": doc.doc_id,
+                "doc_id": str(doc.doc_id),
                 "title": doc.title,
                 "doc_type": doc.doc_type.value if doc.doc_type else None,
                 "keywords": doc.get_keywords_list(),

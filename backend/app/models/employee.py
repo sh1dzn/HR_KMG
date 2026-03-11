@@ -1,9 +1,8 @@
 """
 Employee and Position models
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date
+from sqlalchemy import Column, BigInteger, Text, Boolean, DateTime, ForeignKey, Date
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from app.database import Base
 
 
@@ -11,11 +10,11 @@ class Position(Base):
     """Job position model"""
     __tablename__ = "positions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    grade = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id = Column(BigInteger, primary_key=True, index=True)
+    name = Column(Text, nullable=False)
+    grade = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
 
     # Relationships
     employees = relationship("Employee", back_populates="position")
@@ -28,17 +27,17 @@ class Employee(Base):
     """Employee model"""
     __tablename__ = "employees"
 
-    id = Column(Integer, primary_key=True, index=True)
-    employee_code = Column(String(50), unique=True, nullable=False)
-    full_name = Column(String(255), nullable=False)
-    email = Column(String(255), nullable=True)
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
-    position_id = Column(Integer, ForeignKey("positions.id"), nullable=False)
-    manager_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+    employee_code = Column(Text, unique=True, nullable=True)
+    full_name = Column(Text, nullable=False)
+    email = Column(Text, nullable=True)
+    department_id = Column(BigInteger, ForeignKey("departments.id"), nullable=False)
+    position_id = Column(BigInteger, ForeignKey("positions.id"), nullable=False)
+    manager_id = Column(BigInteger, ForeignKey("employees.id"), nullable=True)
     hire_date = Column(Date, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
 
     # Relationships
     department = relationship("Department", back_populates="employees")

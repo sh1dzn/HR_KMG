@@ -7,7 +7,7 @@ from typing import Optional, List
 
 class SourceDocument(BaseModel):
     """Source document reference"""
-    doc_id: int = Field(..., description="ID документа")
+    doc_id: str = Field(..., description="ID документа")
     title: str = Field(..., description="Название документа")
     doc_type: str = Field(..., description="Тип документа")
     relevant_fragment: str = Field(..., description="Релевантный фрагмент текста")

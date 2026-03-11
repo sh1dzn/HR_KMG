@@ -9,22 +9,14 @@ from enum import Enum
 
 class GoalStatusEnum(str, Enum):
     DRAFT = "draft"
-    PENDING = "pending"
+    ACTIVE = "active"
+    SUBMITTED = "submitted"
     APPROVED = "approved"
-    REJECTED = "rejected"
-    COMPLETED = "completed"
-
-
-class GoalTypeEnum(str, Enum):
-    ACTIVITY = "activity"
-    OUTPUT = "output"
-    IMPACT = "impact"
-
-
-class StrategicLinkEnum(str, Enum):
-    STRATEGIC = "strategic"
-    FUNCTIONAL = "functional"
-    OPERATIONAL = "operational"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    CANCELLED = "cancelled"
+    OVERDUE = "overdue"
+    ARCHIVED = "archived"
 
 
 class GoalBase(BaseModel):
@@ -57,14 +49,14 @@ class GoalUpdate(BaseModel):
 
 class GoalResponse(GoalBase):
     """Schema for goal response"""
-    id: int
+    id: str
     employee_id: int
     status: GoalStatusEnum
     smart_score: Optional[float] = None
     smart_details: Optional[dict] = None
-    goal_type: Optional[GoalTypeEnum] = None
-    strategic_link: Optional[StrategicLinkEnum] = None
-    source_document_id: Optional[int] = None
+    goal_type: Optional[str] = None
+    strategic_link: Optional[str] = None
+    source_document_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
