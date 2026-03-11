@@ -65,7 +65,7 @@ class GoalGenerator:
             "goal_type_russian": "<результатная/влияние/деятельностная>",
             "strategic_link": "<strategic/functional/operational>",
             "strategic_link_russian": "<стратегическая/функциональная/операционная>",
-            "source_doc_id": <int>,
+            "source_doc_id": "<string>",
             "source_doc_title": "<название документа>",
             "source_doc_type": "<тип документа>",
             "source_fragment": "<релевантный фрагмент из документа>",
@@ -160,8 +160,9 @@ class GoalGenerator:
         total_weight = 0
 
         for goal_data in result.get("goals", []):
+            source_doc_id = goal_data.get("source_doc_id")
             source_doc = SourceDocument(
-                doc_id=goal_data.get("source_doc_id", 0),
+                doc_id=str(source_doc_id) if source_doc_id is not None else "",
                 title=goal_data.get("source_doc_title", "Неизвестный документ"),
                 doc_type=goal_data.get("source_doc_type", "vnd"),
                 relevant_fragment=goal_data.get("source_fragment", "")
