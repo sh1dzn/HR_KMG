@@ -74,18 +74,16 @@ export default function GoalEvaluation() {
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">
-            Оценка целей по SMART
-          </h1>
+          <h1 className="text-xl font-semibold text-gray-900 mb-1">Оценка целей по SMART</h1>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Сценарий из `hackaton.md`: AI проверяет формулировку цели, ее
-            измеримость, достижимость и релевантность роли. На выходе команда
-            получает индекс качества, пояснения и улучшенную формулировку для
-            защиты решения.
+            Экран предназначен для проверки качества формулировки цели,
+            измеримости результата, достижимости и привязки к роли сотрудника.
+            На выходе пользователь получает индекс качества, пояснения и
+            улучшенную редакцию формулировки.
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Что возвращает API</div>
+        <div className="panel-subtle p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Состав результата</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {evaluationSignals.map((item) => (
               <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
@@ -96,7 +94,7 @@ export default function GoalEvaluation() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl shadow-card p-6">
+      <div className="panel rounded-2xl p-6">
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Текст цели <span className="text-red-500">*</span>
@@ -139,9 +137,9 @@ export default function GoalEvaluation() {
           </div>
         </div>
 
-        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          Для демо лучше вводить цель в формате “что сделать + как измерить + к какому сроку”.
-          Так результат на защите будет ближе к критериям S/M/T из ТЗ.
+        <div className="mb-6 rounded-2xl border border-cyan-100 bg-cyan-50/80 px-4 py-3 text-sm text-cyan-900">
+          Наиболее показательный результат получается для целей в формате:
+          ожидаемый результат, метрика оценки и целевой срок.
         </div>
 
         <div className="flex items-center gap-3">
@@ -171,23 +169,20 @@ export default function GoalEvaluation() {
         </div>
 
         {error && (
-          <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
       </div>
 
-      {/* Example goals */}
       <div>
-        <p className="text-sm font-medium text-gray-500 mb-2">
-          Примеры целей для быстрого тестирования:
-        </p>
+        <p className="text-sm font-medium text-gray-500 mb-2">Примеры для быстрого тестирования:</p>
         <div className="flex flex-wrap gap-2">
           {exampleGoals.map((goal, i) => (
             <button
               key={i}
               onClick={() => setGoalText(goal)}
-              className="cursor-pointer text-sm px-3 py-1.5 bg-white border border-gray-200 rounded-lg font-medium text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors duration-150"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors duration-150 hover:border-cyan-300 hover:text-cyan-700"
             >
               {goal.length > 40 ? goal.substring(0, 40) + '...' : goal}
             </button>

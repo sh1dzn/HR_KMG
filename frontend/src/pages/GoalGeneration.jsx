@@ -153,13 +153,13 @@ export default function GoalGeneration() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Генерация целей</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Экран демонстрирует главный сценарий хакатона: Goal Generator
-            формирует набор целей из ВНД, стратегии, роли сотрудника и
-            квартальных приоритетов с источником и SMART-предоценкой.
+            Экран формирует набор целей по профилю сотрудника, квартальному
+            периоду и выбранным фокус-направлениям. Каждая цель сопровождается
+            обоснованием, источником и предварительной оценкой качества.
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Pipeline</div>
+        <div className="panel-subtle p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Процесс подготовки</div>
           <div className="mt-3 space-y-2">
             {generationFlow.map((step) => (
               <div key={step} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
@@ -170,7 +170,7 @@ export default function GoalGeneration() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl shadow-xs p-6">
+      <div className="panel rounded-2xl p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-5">Параметры генерации</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
@@ -228,7 +228,6 @@ export default function GoalGeneration() {
           </div>
         </div>
 
-        {/* Focus Areas */}
         {focusAreas.length > 0 && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -242,8 +241,8 @@ export default function GoalGeneration() {
                   onClick={() => toggleFocusArea(area.name)}
                   className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                     selectedFocusAreas.includes(area.name)
-                      ? 'bg-primary-50 text-primary-700 border-primary-300'
-                      : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-150'
+                      ? 'border-cyan-300 bg-cyan-50 text-cyan-800'
+                      : 'border-gray-200 bg-gray-100 text-gray-600 hover:bg-slate-100'
                   }`}
                   title={area.description}
                 >
@@ -254,9 +253,9 @@ export default function GoalGeneration() {
           </div>
         )}
 
-        <div className="mb-6 rounded-xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-900">
-          Для защиты удобно показать два контраста: генерацию без фокусов и генерацию с фокусами вроде
-          “Цифровизация” или “Снижение затрат”. Разница в контексте будет видна сразу.
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
+          Фокус-направления помогают сузить контекст и получить более предметные
+          цели по текущему квартальному приоритету.
         </div>
 
         <div className="border-t border-gray-200 pt-5">
@@ -271,18 +270,17 @@ export default function GoalGeneration() {
         </div>
 
         {error && (
-          <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-sm">
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
             {error}
           </div>
         )}
       </div>
 
-      {/* Loading */}
       {loading && (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-xs p-10 text-center">
+        <div className="panel rounded-2xl p-10 text-center">
           <div className="inline-flex items-center gap-3">
             <svg
-              className="h-5 w-5 text-primary-600 animate-spin"
+              className="h-5 w-5 animate-spin text-cyan-700"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -292,18 +290,15 @@ export default function GoalGeneration() {
             </svg>
             <div className="text-left">
               <p className="text-sm font-medium text-gray-900">Генерация целей...</p>
-              <p className="text-sm text-gray-500">AI анализирует документы и формирует цели</p>
+              <p className="text-sm text-gray-500">Сервис анализирует документы и формирует предложения</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Results */}
       {result && !loading && (
         <div className="space-y-4">
-
-          {/* Results Header */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xs p-6">
+          <div className="panel rounded-2xl p-6">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-900 mb-1">Сгенерированные цели</h2>
@@ -316,7 +311,7 @@ export default function GoalGeneration() {
                 </p>
               </div>
               <div className="text-right flex-shrink-0 ml-4">
-                <span className="inline-block px-2.5 py-1 text-sm font-medium bg-primary-50 text-primary-700 rounded-lg border border-primary-200">
+                <span className="inline-block rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-sm font-medium text-cyan-800">
                   {result.quarter} {result.year}
                 </span>
                 <div className="text-sm text-gray-500 mt-2">
@@ -325,16 +320,16 @@ export default function GoalGeneration() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
                 <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">MVP-функция</div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">Генерация 3-5 целей</div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
                 <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Обоснование</div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">Источник ВНД + rationale</div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
                 <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Контроль</div>
                 <div className="mt-1 text-sm font-semibold text-slate-900">SMART + историческая достижимость</div>
               </div>
@@ -354,25 +349,24 @@ export default function GoalGeneration() {
             )}
 
             {savedCount > 0 && (
-              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
                 Сохранено {savedCount} {savedCount === 1 ? 'цель' : savedCount < 5 ? 'цели' : 'целей'} в систему как черновик.
               </div>
             )}
 
             {result.generation_context && (
-              <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
+              <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
                 <span className="font-semibold">Контекст генерации:</span>{' '}
                 {result.generation_context}
               </div>
             )}
 
-            {/* F-14: Cascading indicator */}
             {result.cascaded_from_manager && (
-              <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-800">
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                 <span className="font-semibold">Каскадирование:</span>{' '}
                 Цели сформированы с учётом целей руководителя ({result.manager_name}).
                 {result.manager_goals_used?.length > 0 && (
-                  <ul className="mt-2 space-y-1 list-disc list-inside text-purple-700">
+                  <ul className="mt-2 list-inside list-disc space-y-1 text-slate-600">
                     {result.manager_goals_used.map((g, i) => (
                       <li key={i}>{g}</li>
                     ))}
@@ -381,7 +375,6 @@ export default function GoalGeneration() {
               </div>
             )}
 
-            {/* F-20: Historical achievability check */}
             {result.historical_check && (
               <div className={`mt-4 p-3 rounded-lg text-sm border ${
                 result.historical_check.completion_rate >= 70
@@ -414,11 +407,11 @@ export default function GoalGeneration() {
               : 'border-gray-200'
 
             return (
-            <div key={index} className={`bg-white border rounded-xl shadow-xs p-6 transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
+            <div key={index} className={`panel rounded-2xl p-6 transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between gap-6">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center flex-wrap gap-2 mb-3">
-                    <span className="inline-block px-2.5 py-0.5 text-sm font-medium bg-primary-50 text-primary-700 rounded-lg border border-primary-200">
+                    <span className="inline-block rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-sm font-medium text-slate-700">
                       Цель {index + 1}
                     </span>
                     <span className={`inline-block px-2.5 py-0.5 text-sm font-medium rounded-lg border ${strategicLinkColor(goal.strategic_link)}`}>
@@ -476,7 +469,6 @@ export default function GoalGeneration() {
                 </div>
               )}
 
-              {/* Accept / Reject buttons */}
               {state !== 'saved' && (
                 <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
                   <button

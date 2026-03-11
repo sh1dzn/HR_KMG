@@ -34,18 +34,19 @@ function App() {
   const currentTitle = pageTitles[location.pathname] || 'HR AI Module'
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-gray-200 bg-white">
-        <div className="flex items-center gap-2.5 px-5 h-14 border-b border-gray-200">
-          <KmgLogo className="h-8 w-8 text-primary-600" />
+    <div className="flex min-h-screen bg-transparent">
+      <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-800 bg-slate-950 text-slate-100">
+        <div className="flex h-16 items-center gap-3 border-b border-slate-800 px-5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+            <KmgLogo className="h-7 w-7 text-slate-100" />
+          </div>
           <div>
-            <div className="text-sm font-semibold text-gray-900 leading-tight">HR AI Module</div>
-            <div className="text-[11px] text-gray-400 leading-tight">КМГ-КУМКОЛЬ</div>
+            <div className="text-sm font-semibold leading-tight text-white">Performance Goals</div>
+            <div className="text-[11px] leading-tight text-slate-400">КМГ-КУМКОЛЬ</div>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-3 space-y-0.5">
+        <nav className="flex-1 space-y-1 px-3 py-4">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
@@ -53,16 +54,16 @@ function App() {
               end={item.href === '/'}
               className={({ isActive }) =>
                 [
-                  'group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-150',
+                  'group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors duration-150',
                   isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                    ? 'bg-white/10 text-white'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-100',
                 ].join(' ')
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={`h-[18px] w-[18px] flex-shrink-0 ${isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                  <item.icon className={`h-[18px] w-[18px] flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-200'}`} />
                   <span>{item.name}</span>
                 </>
               )}
@@ -70,26 +71,34 @@ function App() {
           ))}
         </nav>
 
-        <div className="px-4 py-3 border-t border-gray-200">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+        <div className="border-t border-slate-800 px-4 py-4">
+          <div className="mb-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200">
+            Рабочая база: mock_smart
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-xs font-semibold text-slate-100">
               HR
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">HR Admin</div>
-              <div className="text-xs text-gray-400">Администратор</div>
+              <div className="truncate text-sm font-medium text-white">HR Admin</div>
+              <div className="text-xs text-slate-400">Администратор платформы</div>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col pl-60">
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6">
-          <h1 className="text-base font-semibold text-gray-900">{currentTitle}</h1>
+      <div className="flex flex-1 flex-col pl-64">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/75 px-8 backdrop-blur">
+          <div>
+            <h1 className="text-base font-semibold text-slate-900">{currentTitle}</h1>
+            <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
+          </div>
+          <div className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 md:block">
+            PostgreSQL • FastAPI • React
+          </div>
         </header>
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/evaluation" element={<GoalEvaluation />} />

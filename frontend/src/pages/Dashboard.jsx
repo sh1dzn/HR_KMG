@@ -5,7 +5,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 
-const COLORS = ['#6366f1', '#a855f7', '#64748b']
+const COLORS = ['#0f766e', '#1d4ed8', '#94a3b8']
 
 const CustomTooltipPie = ({ active, payload }) => {
   if (active && payload && payload.length) {
@@ -72,7 +72,7 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-gray-200 border-t-primary-600 rounded-full animate-spin" />
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-cyan-700" />
           <span className="text-sm text-gray-500 font-medium">Загрузка данных...</span>
         </div>
       </div>
@@ -115,12 +115,10 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Дашборд качества целеполагания
-          </h1>
+          <h1 className="text-xl font-semibold text-gray-900">Дашборд качества целеполагания</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Аналитика для защиты по `hackaton.md`: SMART-индекс, стратегическая
-            связка, зрелость подразделений и проблемные зоны по кварталам.
+            Квартальная аналитика по качеству формулировок, зрелости
+            подразделений и доле стратегически связанных целей.
           </p>
         </div>
         <div className="flex gap-3">
@@ -140,17 +138,18 @@ export default function Dashboard() {
       {data && (
         <>
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white">
-              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-300">Executive Summary</div>
-              <div className="mt-3 text-lg font-semibold">
+            <div className="panel rounded-2xl p-5">
+              <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Executive Summary</div>
+              <div className="mt-3 text-lg font-semibold text-slate-950">
                 В {data.quarter} {data.year} средний индекс качества целей составляет {(data.average_smart_score * 100).toFixed(0)}%.
               </div>
-              <div className="mt-2 text-sm leading-6 text-slate-300">
+              <div className="mt-2 text-sm leading-6 text-slate-600">
                 Доля стратегически связанных целей: {data.strategic_goals_percent.toFixed(1)}%.
-                Это основной показатель, который хорошо читается на защите вместе с разбивкой по подразделениям.
+                Метрика показывает, насколько контур целей связан с общими
+                приоритетами бизнеса и распределением по подразделениям.
               </div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="panel rounded-2xl p-5">
               <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Top Issues</div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {data.top_issues.length > 0 ? data.top_issues.map((issue) => (
@@ -165,26 +164,26 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="panel rounded-2xl p-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_departments}</div>
               <div className="text-sm text-gray-500 mt-1">Подразделений</div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="panel rounded-2xl p-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_employees}</div>
               <div className="text-sm text-gray-500 mt-1">Сотрудников</div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="panel rounded-2xl p-5">
               <div className="text-2xl font-semibold text-gray-900">{data.total_goals}</div>
               <div className="text-sm text-gray-500 mt-1">Целей</div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
-              <div className="text-2xl font-semibold text-primary-600">{(data.average_smart_score * 100).toFixed(0)}%</div>
+            <div className="panel rounded-2xl p-5">
+              <div className="text-2xl font-semibold text-cyan-800">{(data.average_smart_score * 100).toFixed(0)}%</div>
               <div className="text-sm text-gray-500 mt-1">Средний SMART</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="panel rounded-2xl p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Стратегическая связка целей</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -201,7 +200,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="panel rounded-2xl p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">SMART-индекс по подразделениям</h2>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
@@ -210,18 +209,19 @@ export default function Dashboard() {
                     <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
                     <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 12, fill: '#374151' }} tickLine={false} axisLine={false} />
                     <Tooltip content={<CustomTooltipBar />} />
-                    <Bar dataKey="score" fill="#2563eb" name="SMART %" radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="score" fill="#0f766e" name="SMART %" radius={[0, 4, 4, 0]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="panel overflow-hidden rounded-2xl">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-base font-semibold text-gray-900">Детализация по подразделениям</h2>
               <p className="mt-1 text-sm text-gray-500">
-                Таблица показывает зрелость целеполагания, которую требуют критерии оценки на хакатоне.
+                Таблица показывает зрелость целеполагания и основные слабые
+                критерии по каждому подразделению.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -251,7 +251,7 @@ export default function Dashboard() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col items-center gap-1">
                             <div className="w-full max-w-[120px] bg-gray-200 rounded-lg h-2 overflow-hidden">
-                              <div className="h-2 rounded-lg bg-primary-500" style={{ width: `${maturityPercent}%` }} />
+                              <div className="h-2 rounded-lg bg-cyan-700" style={{ width: `${maturityPercent}%` }} />
                             </div>
                             <span className="text-xs text-gray-500 font-medium">{maturityPercent}%</span>
                           </div>

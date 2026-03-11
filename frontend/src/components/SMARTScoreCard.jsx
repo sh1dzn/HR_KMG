@@ -102,7 +102,7 @@ function CriterionCard({ name, criterion }) {
   const percentage = Math.round(criterion.score * 100)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="rounded-xl border border-slate-200 bg-white/80 p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-900">{name}</span>
         {satisfied ? (
@@ -153,8 +153,7 @@ export default function SMARTScoreCard({ evaluation }) {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Overall score */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+      <div className="panel rounded-2xl p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-gray-900">Результат оценки</h2>
@@ -180,13 +179,12 @@ export default function SMARTScoreCard({ evaluation }) {
         </div>
       </div>
 
-      {/* Classification */}
       {(goal_type || strategic_link) && (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+        <div className="panel rounded-2xl p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Классификация цели</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {goal_type && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                 <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Тип цели</div>
                 <div className="text-sm font-semibold text-gray-900">
                   {goal_type.type_russian || goalTypeLabels[goal_type.type] || 'Не определён'}
@@ -197,7 +195,7 @@ export default function SMARTScoreCard({ evaluation }) {
               </div>
             )}
             {strategic_link && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
                 <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Стратегическая связка</div>
                 <div className="text-sm font-semibold text-gray-900">
                   {strategic_link.level_russian || strategicLinkLabels[strategic_link.level] || 'Не определена'}
@@ -211,14 +209,13 @@ export default function SMARTScoreCard({ evaluation }) {
         </div>
       )}
 
-      {/* Recommendations */}
       {recommendations && recommendations.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-card p-6">
+        <div className="panel rounded-2xl p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Рекомендации по улучшению</h3>
           <ul className="space-y-2.5">
             {recommendations.map((rec, index) => (
               <li key={index} className="flex items-start gap-2.5 text-sm text-gray-600 leading-relaxed">
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-lg bg-primary-500 flex-shrink-0" />
+                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-lg bg-cyan-700" />
                 <span>{rec}</span>
               </li>
             ))}
@@ -226,9 +223,8 @@ export default function SMARTScoreCard({ evaluation }) {
         </div>
       )}
 
-      {/* Reformulated goal */}
       {reformulated_goal && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-6">
           <div className="flex items-start justify-between gap-4 mb-2">
             <h3 className="text-sm font-semibold text-green-800">Улучшенная формулировка</h3>
             <button
