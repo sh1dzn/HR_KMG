@@ -2,6 +2,8 @@
 Goals API endpoints
 Управление целями сотрудников
 """
+from datetime import datetime, timezone
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -138,7 +140,9 @@ async def create_goal(goal_data: GoalCreate, db: Session = Depends(get_db)):
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
 
+    now = datetime.now(timezone.utc)
     goal = Goal(
+        goal_id=str(uuid4()),
         employee_id=goal_data.employee_id,
         department_id=employee.department_id,
         employee_name_snapshot=employee.full_name,
@@ -151,6 +155,8 @@ async def create_goal(goal_data: GoalCreate, db: Session = Depends(get_db)):
         quarter=goal_data.quarter,
         year=goal_data.year,
         status=GoalStatus.DRAFT,
+        created_at=now,
+        updated_at=now,
     )
 
     db.add(goal)
@@ -195,6 +201,8 @@ async def update_goal(goal_id: str, goal_data: GoalUpdate, db: Session = Depends
             goal.goal_text = value
         else:
             setattr(goal, field, value)
+
+    goal.updated_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(goal)

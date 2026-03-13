@@ -91,25 +91,21 @@ async def evaluate_batch(
     total_weight = 0
 
     for goal in goals:
-        try:
-            evaluation = await smart_evaluator.evaluate_goal(
-                goal_text=goal.goal_text,
-                position=employee.position.name if employee.position else None,
-                department=employee.department.name if employee.department else None
-            )
-            overall_score = evaluation.overall_score
-            quality_level = evaluation.quality_level
-            smart = evaluation.smart_evaluation
-        except Exception:
-            heuristic = evaluate_goal_heuristically(
-                goal.goal_text,
-                metric=goal.metric,
-                deadline=goal.deadline,
-                priority=goal.priority,
-            )
-            overall_score = heuristic["overall_score"]
-            quality_level = "high" if overall_score >= settings.SMART_THRESHOLD_HIGH else "medium" if overall_score >= settings.SMART_THRESHOLD_MEDIUM else "low"
-            smart = type("SmartProxy", (), heuristic["smart_details"])()
+        heuristic = evaluate_goal_heuristically(
+            goal.goal_text,
+            metric=goal.metric,
+            deadline=goal.deadline,
+            priority=goal.priority,
+        )
+        overall_score = heuristic["overall_score"]
+        quality_level = (
+            "high"
+            if overall_score >= settings.SMART_THRESHOLD_HIGH
+            else "medium"
+            if overall_score >= settings.SMART_THRESHOLD_MEDIUM
+            else "low"
+        )
+        smart = type("SmartProxy", (), heuristic["smart_details"])()
 
         # Collect issues
         main_issues = []

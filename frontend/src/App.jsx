@@ -118,29 +118,55 @@ function App() {
       </aside>
 
       <div className="flex flex-1 flex-col lg:pl-64">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur sm:px-6 lg:px-8">
-          <div>
-            <div className="mb-0.5 flex items-center gap-3 lg:hidden">
-              <button
-                type="button"
-                aria-label="Открыть меню"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
-                onClick={() => setMobileMenuOpen(true)}
-              >
-                <Bars3Icon className="h-5 w-5" />
-              </button>
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white">
-                  <KmgLogo className="h-5 w-5 text-slate-800" />
+        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur">
+          <div className="px-4 py-3 sm:px-6 lg:flex lg:h-16 lg:items-center lg:justify-between lg:px-8 lg:py-0">
+            <div className="lg:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-label="Открыть меню"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+                    onClick={() => setMobileMenuOpen(true)}
+                  >
+                    <Bars3Icon className="h-5 w-5" />
+                  </button>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                      <KmgLogo className="h-5 w-5 text-slate-800" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        KMG Goals
+                      </div>
+                      <div className="truncate text-sm font-semibold text-slate-900">Performance Goals</div>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">KMG Goals</span>
+                <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                  mock_smart
+                </div>
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="truncate text-lg font-semibold text-slate-900">{currentTitle}</h1>
+                  <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
+                </div>
+                <div className="flex-shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                  React • API
+                </div>
               </div>
             </div>
-            <h1 className="text-base font-semibold text-slate-900">{currentTitle}</h1>
-            <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
-          </div>
-          <div className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 md:block">
-            PostgreSQL • FastAPI • React
+
+            <div className="hidden lg:block">
+              <div>
+                <h1 className="text-base font-semibold text-slate-900">{currentTitle}</h1>
+                <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
+              </div>
+            </div>
+            <div className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 md:hidden lg:block">
+              PostgreSQL • FastAPI • React
+            </div>
           </div>
         </header>
 

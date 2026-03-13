@@ -53,8 +53,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [isMobileViewport, setIsMobileViewport] = useState(false)
 
   useEffect(() => { loadDashboard() }, [quarter, year])
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobileViewport(window.innerWidth < 640)
+    updateViewport()
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [])
 
   const loadDashboard = async () => {
     setLoading(true)
@@ -124,14 +132,14 @@ export default function Dashboard() {
             подразделений и доле стратегически связанных целей.
           </p>
         </div>
-        <div className="flex gap-3">
-          <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
+        <div className="grid grid-cols-2 gap-3 sm:flex">
+          <select className="select-field w-full sm:w-auto" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
             <option value="Q1">Q1</option>
             <option value="Q2">Q2</option>
             <option value="Q3">Q3</option>
             <option value="Q4">Q4</option>
           </select>
-          <select className="select-field" value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
+          <select className="select-field w-full sm:w-auto" value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
             <option value={2025}>2025</option>
             <option value={2026}>2026</option>
           </select>
@@ -142,61 +150,61 @@ export default function Dashboard() {
         <>
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
             <Card>
-              <CardHeader className="p-5 pb-0">
+              <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
                 <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Executive Summary</CardTitle>
               </CardHeader>
-              <CardContent className="p-5">
-              <div className="text-lg font-semibold text-slate-950">
-                В {data.quarter} {data.year} средний индекс качества целей составляет {(data.average_smart_score * 100).toFixed(0)}%.
-              </div>
-              <div className="mt-2 text-sm leading-6 text-slate-600">
-                Доля стратегически связанных целей: {data.strategic_goals_percent.toFixed(1)}%.
-                Метрика показывает, насколько контур целей связан с общими
-                приоритетами бизнеса и распределением по подразделениям.
-              </div>
+              <CardContent className="p-4 sm:p-5">
+                <div className="text-base font-semibold text-slate-950 sm:text-lg">
+                  В {data.quarter} {data.year} средний индекс качества целей составляет {(data.average_smart_score * 100).toFixed(0)}%.
+                </div>
+                <div className="mt-2 text-sm leading-6 text-slate-600">
+                  Доля стратегически связанных целей: {data.strategic_goals_percent.toFixed(1)}%.
+                  Метрика показывает, насколько контур целей связан с общими
+                  приоритетами бизнеса и распределением по подразделениям.
+                </div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="p-5 pb-0">
+              <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
                 <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Top Issues</CardTitle>
               </CardHeader>
-              <CardContent className="p-5">
-              <div className="flex flex-wrap gap-2">
-                {data.top_issues.length > 0 ? data.top_issues.map((issue) => (
-                  <span key={issue} className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 border border-rose-100">
-                    {issue}
-                  </span>
-                )) : (
-                  <span className="text-sm text-slate-500">По эвристической оценке критичных провалов не выявлено.</span>
-                )}
-              </div>
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-wrap gap-2">
+                  {data.top_issues.length > 0 ? data.top_issues.map((issue) => (
+                    <span key={issue} className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
+                      {issue}
+                    </span>
+                  )) : (
+                    <span className="text-sm text-slate-500">По эвристической оценке критичных провалов не выявлено.</span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
-              <CardContent className="p-5 pt-5">
-              <div className="text-2xl font-semibold text-gray-900">{data.total_departments}</div>
-              <div className="text-sm text-gray-500 mt-1">Подразделений</div>
+              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
+                <div className="text-xl font-semibold text-gray-900 sm:text-2xl">{data.total_departments}</div>
+                <div className="mt-1 text-sm text-gray-500">Подразделений</div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-5 pt-5">
-              <div className="text-2xl font-semibold text-gray-900">{data.total_employees}</div>
-              <div className="text-sm text-gray-500 mt-1">Сотрудников</div>
+              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
+                <div className="text-xl font-semibold text-gray-900 sm:text-2xl">{data.total_employees}</div>
+                <div className="mt-1 text-sm text-gray-500">Сотрудников</div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-5 pt-5">
-              <div className="text-2xl font-semibold text-gray-900">{data.total_goals}</div>
-              <div className="text-sm text-gray-500 mt-1">Целей</div>
+              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
+                <div className="text-xl font-semibold text-gray-900 sm:text-2xl">{data.total_goals}</div>
+                <div className="mt-1 text-sm text-gray-500">Целей</div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-5 pt-5">
-              <div className="text-2xl font-semibold text-cyan-800">{(data.average_smart_score * 100).toFixed(0)}%</div>
-              <div className="text-sm text-gray-500 mt-1">Средний SMART</div>
+              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
+                <div className="text-xl font-semibold text-cyan-800 sm:text-2xl">{(data.average_smart_score * 100).toFixed(0)}%</div>
+                <div className="mt-1 text-sm text-gray-500">Средний SMART</div>
               </CardContent>
             </Card>
           </div>
@@ -207,19 +215,36 @@ export default function Dashboard() {
                 <CardTitle className="text-base">Стратегическая связка целей</CardTitle>
               </CardHeader>
               <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 sm:h-72">
+                  <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={strategicLinkData} cx="50%" cy="50%" innerRadius={65} outerRadius={90} paddingAngle={3} fill="#8884d8" dataKey="value" label={renderCustomLabel} strokeWidth={0}>
+                    <Pie
+                      data={strategicLinkData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={isMobileViewport ? 42 : 65}
+                      outerRadius={isMobileViewport ? 64 : 90}
+                      paddingAngle={3}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={isMobileViewport ? false : renderCustomLabel}
+                      strokeWidth={0}
+                    >
                       {strategicLinkData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltipPie />} />
-                    <Legend verticalAlign="bottom" height={36} formatter={(value) => (<span className="text-sm text-gray-600">{value}</span>)} iconType="circle" iconSize={10} />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      formatter={(value) => (<span className="text-xs sm:text-sm text-gray-600">{value}</span>)}
+                      iconType="circle"
+                      iconSize={10}
+                    />
                   </PieChart>
-                </ResponsiveContainer>
-              </div>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
 
@@ -228,22 +253,22 @@ export default function Dashboard() {
                 <CardTitle className="text-base">SMART-индекс по подразделениям</CardTitle>
               </CardHeader>
               <CardContent>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={departmentChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
-                    <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 12, fill: '#374151' }} tickLine={false} axisLine={false} />
-                    <Tooltip content={<CustomTooltipBar />} />
-                    <Bar dataKey="score" fill="#0f766e" name="SMART %" radius={[0, 4, 4, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                <div className="h-72 sm:h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={departmentChartData} layout="vertical" margin={{ left: 0, right: 12 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
+                      <YAxis dataKey="name" type="category" width={84} tick={{ fontSize: 11, fill: '#374151' }} tickLine={false} axisLine={false} />
+                      <Tooltip content={<CustomTooltipBar />} />
+                      <Bar dataKey="score" fill="#0f766e" name="SMART %" radius={[0, 4, 4, 0]} barSize={16} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="overflow-hidden">
+          <Card className="hidden overflow-hidden md:block">
             <CardHeader className="border-b border-gray-200 px-6 py-4">
               <CardTitle className="text-base">Детализация по подразделениям</CardTitle>
               <p className="mt-1 text-sm text-gray-500">
@@ -300,6 +325,55 @@ export default function Dashboard() {
               </table>
             </div>
           </Card>
+
+          <div className="grid gap-4 md:hidden">
+            {data.departments_stats.map((dept) => {
+              const smartPercent = (dept.average_smart_score * 100).toFixed(0)
+              const maturityPercent = (dept.maturity_index * 100).toFixed(0)
+              return (
+                <Card key={dept.department_id}>
+                  <CardHeader className="p-4 pb-0">
+                    <CardTitle className="text-sm">{dept.department_name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+                        <div className="text-xs text-slate-500">Сотрудников</div>
+                        <div className="mt-1 font-semibold text-slate-900">{dept.total_employees}</div>
+                      </div>
+                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+                        <div className="text-xs text-slate-500">Целей</div>
+                        <div className="mt-1 font-semibold text-slate-900">{dept.total_goals}</div>
+                      </div>
+                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+                        <div className="text-xs text-slate-500">SMART</div>
+                        <div className={`mt-1 font-semibold ${getSmartScoreColor(dept.average_smart_score)}`}>{smartPercent}%</div>
+                      </div>
+                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+                        <div className="text-xs text-slate-500">Зрелость</div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-lg bg-slate-200">
+                          <div className="h-2 rounded-lg bg-cyan-700" style={{ width: `${maturityPercent}%` }} />
+                        </div>
+                        <div className="mt-1 text-xs font-medium text-slate-600">{maturityPercent}%</div>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Слабые критерии</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {dept.weak_criteria.length > 0 ? dept.weak_criteria.map((criteria, i) => (
+                          <span key={i} className="inline-flex items-center rounded-lg bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                            {criteria}
+                          </span>
+                        )) : (
+                          <span className="text-sm font-medium text-green-600">Нет проблем</span>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
         </>
       )}
     </div>

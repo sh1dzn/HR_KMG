@@ -2,6 +2,8 @@
 Generation API endpoints
 Генерация целей на основе ВНД и стратегии
 """
+from datetime import datetime, timezone
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -134,8 +136,10 @@ async def generate_and_save_goals(
 
     # Save goals to database
     saved_goals = []
+    now = datetime.now(timezone.utc)
     for gen_goal in response.generated_goals:
         goal = Goal(
+            goal_id=str(uuid4()),
             employee_id=request.employee_id,
             department_id=employee.department_id,
             employee_name_snapshot=employee.full_name,
@@ -147,6 +151,8 @@ async def generate_and_save_goals(
             quarter=request.quarter,
             year=request.year,
             status=GoalStatus.DRAFT,
+            created_at=now,
+            updated_at=now,
         )
         db.add(goal)
         saved_goals.append(goal)
