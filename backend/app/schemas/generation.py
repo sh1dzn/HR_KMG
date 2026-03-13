@@ -45,6 +45,12 @@ class HistoricalCheck(BaseModel):
     completed_count: int = Field(0, description="Выполненных целей")
     completion_rate: float = Field(0.0, description="Процент выполнения")
     avg_smart_score: Optional[float] = Field(None, description="Средний SMART-балл")
+    basis: Optional[str] = Field(None, description="employee_history/department_benchmark/none")
+    employee_past_goals: int = Field(0, description="Целей в личной истории сотрудника")
+    department_past_goals: int = Field(0, description="Целей в истории подразделения")
+    employee_completion_rate: Optional[float] = Field(None, description="Процент выполнения по личной истории")
+    department_completion_rate: Optional[float] = Field(None, description="Процент выполнения по подразделению")
+    on_time_completion_rate: Optional[float] = Field(None, description="Процент выполненных в срок целей")
     assessment: str = Field("", description="Оценка достижимости")
 
 
@@ -63,6 +69,44 @@ class GenerationResponse(BaseModel):
     manager_name: Optional[str] = Field(None, description="Имя руководителя")
     manager_goals_used: List[str] = Field(default_factory=list, description="Цели руководителя")
     historical_check: Optional[HistoricalCheck] = Field(None, description="Проверка по историческим данным")
+
+
+class AcceptedGeneratedGoalsRequest(BaseModel):
+    """Request for saving reviewed generated goals."""
+    employee_id: int = Field(..., description="ID сотрудника")
+    quarter: str = Field(..., pattern="^Q[1-4]$", description="Квартал (Q1-Q4)")
+    year: int = Field(..., ge=2020, le=2030, description="Год")
+    accepted_goals: List[GeneratedGoal] = Field(..., min_length=1, description="Принятые к сохранению цели")
+    generation_context: str = Field(default="", description="Контекст генерации")
+    cascaded_from_manager: bool = Field(False, description="Использовано каскадирование от руководителя")
+    manager_name: Optional[str] = Field(None, description="Имя руководителя")
+    manager_goals_used: List[str] = Field(default_factory=list, description="Использованные цели руководителя")
+
+
+class AcceptedGeneratedGoalsResponse(BaseModel):
+    """Response for saved generated goals."""
+    message: str
+    saved_count: int
+    goal_ids: List[str]
+    saved_goal_texts: List[str] = Field(default_factory=list, description="Тексты сохраненных целей")
+    skipped_duplicates: List[str] = Field(default_factory=list, description="Цели, пропущенные как дубликаты")
+
+
+class DocumentIndexStatusResponse(BaseModel):
+    active_documents: int
+    indexed_chunks: int
+    openai_configured: bool
+    vector_index_ready: bool
+    search_mode: str
+    collection_name: str
+    persist_dir: str
+
+
+class DocumentReindexResponse(BaseModel):
+    message: str
+    indexed_documents: int
+    indexed_chunks: int
+    search_mode: str
 
 
 class DepartmentStats(BaseModel):

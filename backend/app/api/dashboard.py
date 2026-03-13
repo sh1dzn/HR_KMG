@@ -8,28 +8,18 @@ from app.database import get_db
 from app.models import Goal, Employee, Department, GoalStatus
 from app.schemas.generation import DepartmentStats, DashboardSummary
 from app.config import settings
+from app.utils.goal_context import goal_type_for_goal, load_generation_metadata, strategic_link_for_goal
 from app.utils.smart_heuristics import evaluate_goal_heuristically
 
 router = APIRouter()
 
 
-def _goal_type(goal: Goal) -> str:
-    if goal.project_id:
-        return "impact"
-    if goal.system_id:
-        return "output"
-    return "activity"
-
-
-def _strategic_link(goal: Goal) -> str:
-    if goal.project_id:
-        return "strategic"
-    if goal.system_id:
-        return "functional"
-    return "operational"
-
-
-def _department_stats(department: Department, goals: list[Goal], employees: list[Employee]) -> DepartmentStats:
+def _department_stats(
+    department: Department,
+    goals: list[Goal],
+    employees: list[Employee],
+    generation_metadata: dict[str, dict],
+) -> DepartmentStats:
     status_counts = {status.value: 0 for status in GoalStatus}
     type_counts = {"activity": 0, "output": 0, "impact": 0}
     link_counts = {"strategic": 0, "functional": 0, "operational": 0}
@@ -44,8 +34,9 @@ def _department_stats(department: Department, goals: list[Goal], employees: list
         status_key = goal.status.value if hasattr(goal.status, "value") else goal.status
         status_counts[status_key] = status_counts.get(status_key, 0) + 1
 
-        type_counts[_goal_type(goal)] += 1
-        link_counts[_strategic_link(goal)] += 1
+        metadata = generation_metadata.get(str(goal.goal_id))
+        type_counts[goal_type_for_goal(goal, metadata)] += 1
+        link_counts[strategic_link_for_goal(goal, metadata)] += 1
 
         criteria_totals["S"] += details["specific"]["score"]
         criteria_totals["M"] += details["measurable"]["score"]
@@ -93,6 +84,7 @@ async def get_dashboard_summary(
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     all_goals = goals_query.all()
+    generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in all_goals])
 
     departments = db.query(Department).filter(Department.is_active == True).all()
     department_stats = []
@@ -109,7 +101,7 @@ async def get_dashboard_summary(
         if not goals:
             continue
 
-        stats = _department_stats(department, goals, employees)
+        stats = _department_stats(department, goals, employees, generation_metadata)
         department_stats.append(stats)
         all_weak_criteria.extend(stats.weak_criteria)
         strategic_count += stats.goals_by_strategic_link["strategic"]
@@ -163,6 +155,7 @@ async def get_department_stats(
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     goals = goals_query.all()
+    generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in goals])
 
     if not goals:
         return DepartmentStats(
@@ -178,7 +171,7 @@ async def get_department_stats(
             maturity_index=0,
         )
 
-    return _department_stats(department, goals, employees)
+    return _department_stats(department, goals, employees, generation_metadata)
 
 
 @router.get("/employees/{employee_id}/goals-summary")
@@ -198,6 +191,7 @@ async def get_employee_goals_summary(
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     goals = goals_query.all()
+    generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in goals])
 
     if not goals:
         return {
@@ -230,8 +224,8 @@ async def get_employee_goals_summary(
                 "weight": float(g.weight or 0),
                 "smart_score": evaluate_goal_heuristically(g.goal_text, g.metric, g.deadline, g.priority)["overall_score"],
                 "status": g.status.value if hasattr(g.status, "value") else g.status,
-                "goal_type": _goal_type(g),
-                "strategic_link": _strategic_link(g),
+                "goal_type": goal_type_for_goal(g, generation_metadata.get(str(g.goal_id))),
+                "strategic_link": strategic_link_for_goal(g, generation_metadata.get(str(g.goal_id))),
             }
             for g in goals
         ],

@@ -47,6 +47,51 @@ class GoalUpdate(BaseModel):
     year: Optional[int] = None
 
 
+class GoalAlertInfo(BaseModel):
+    alert_type: str
+    severity: str
+    title: str
+    message: str
+
+
+class GoalEventInfo(BaseModel):
+    id: str
+    event_type: str
+    actor_id: Optional[int] = None
+    actor_name: Optional[str] = None
+    old_status: Optional[str] = None
+    new_status: Optional[str] = None
+    comment: Optional[str] = None
+    created_at: datetime
+
+
+class GoalReviewInfo(BaseModel):
+    id: str
+    verdict: str
+    reviewer_id: Optional[int] = None
+    reviewer_name: Optional[str] = None
+    comment_text: str
+    created_at: datetime
+
+
+class GoalWorkflowActionRequest(BaseModel):
+    actor_id: Optional[int] = Field(None, description="Инициатор действия")
+    comment: Optional[str] = Field(None, max_length=2000, description="Комментарий")
+
+
+class GoalWorkflowActionResponse(BaseModel):
+    message: str
+    goal: "GoalResponse"
+    available_actions: List[str] = Field(default_factory=list)
+
+
+class GoalWorkflowResponse(BaseModel):
+    goal: "GoalResponse"
+    events: List[GoalEventInfo] = Field(default_factory=list)
+    reviews: List[GoalReviewInfo] = Field(default_factory=list)
+    available_actions: List[str] = Field(default_factory=list)
+
+
 class GoalResponse(GoalBase):
     """Schema for goal response"""
     id: str
@@ -57,6 +102,7 @@ class GoalResponse(GoalBase):
     goal_type: Optional[str] = None
     strategic_link: Optional[str] = None
     source_document_id: Optional[str] = None
+    external_ref: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -64,6 +110,9 @@ class GoalResponse(GoalBase):
     employee_name: Optional[str] = None
     department_name: Optional[str] = None
     position_name: Optional[str] = None
+    manager_id: Optional[int] = None
+    manager_name: Optional[str] = None
+    alerts: List[GoalAlertInfo] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -75,3 +124,7 @@ class GoalListResponse(BaseModel):
     total: int
     page: int = 1
     per_page: int = 20
+
+
+GoalWorkflowActionResponse.model_rebuild()
+GoalWorkflowResponse.model_rebuild()

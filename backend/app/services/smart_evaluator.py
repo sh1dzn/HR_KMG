@@ -2,7 +2,6 @@
 SMART Goal Evaluator Service
 Оценка целей по методологии SMART с использованием GPT-4
 """
-import json
 from typing import Optional, Dict, List
 from app.services.llm_service import llm_service
 from app.schemas.evaluation import (
@@ -13,6 +12,7 @@ from app.schemas.evaluation import (
     StrategicLinkInfo
 )
 from app.config import settings
+from app.utils.smart_heuristics import evaluate_goal_heuristically
 
 
 class SMARTEvaluator:
@@ -128,56 +128,60 @@ T - Time-bound (Ограниченность во времени): Указан 
             context_info=context_info
         )
 
-        result = await self.llm.complete_json(
-            prompt=prompt,
-            system_prompt=self.SYSTEM_PROMPT,
-            temperature=0.2
-        )
+        try:
+            result = await self.llm.complete_json(
+                prompt=prompt,
+                system_prompt=self.SYSTEM_PROMPT,
+                temperature=0.2
+            )
 
-        # Parse SMART evaluation
-        smart_data = result["smart_evaluation"]
-        smart_evaluation = SMARTEvaluation(
-            specific=SMARTCriterion(**smart_data["specific"]),
-            measurable=SMARTCriterion(**smart_data["measurable"]),
-            achievable=SMARTCriterion(**smart_data["achievable"]),
-            relevant=SMARTCriterion(**smart_data["relevant"]),
-            time_bound=SMARTCriterion(**smart_data["time_bound"])
-        )
+            # Parse SMART evaluation
+            smart_data = result["smart_evaluation"]
+            smart_evaluation = SMARTEvaluation(
+                specific=SMARTCriterion(**smart_data["specific"]),
+                measurable=SMARTCriterion(**smart_data["measurable"]),
+                achievable=SMARTCriterion(**smart_data["achievable"]),
+                relevant=SMARTCriterion(**smart_data["relevant"]),
+                time_bound=SMARTCriterion(**smart_data["time_bound"])
+            )
 
-        # Calculate overall score
-        scores = [
-            smart_data["specific"]["score"],
-            smart_data["measurable"]["score"],
-            smart_data["achievable"]["score"],
-            smart_data["relevant"]["score"],
-            smart_data["time_bound"]["score"]
-        ]
-        overall_score = sum(scores) / len(scores)
+            # Calculate overall score
+            scores = [
+                smart_data["specific"]["score"],
+                smart_data["measurable"]["score"],
+                smart_data["achievable"]["score"],
+                smart_data["relevant"]["score"],
+                smart_data["time_bound"]["score"]
+            ]
+            overall_score = sum(scores) / len(scores)
 
-        # Determine quality level
-        if overall_score >= settings.SMART_THRESHOLD_HIGH:
-            quality_level = "high"
-        elif overall_score >= settings.SMART_THRESHOLD_MEDIUM:
-            quality_level = "medium"
-        else:
-            quality_level = "low"
+            # Determine quality level
+            if overall_score >= settings.SMART_THRESHOLD_HIGH:
+                quality_level = "high"
+            elif overall_score >= settings.SMART_THRESHOLD_MEDIUM:
+                quality_level = "medium"
+            else:
+                quality_level = "low"
 
-        # Parse goal type
-        goal_type = GoalTypeInfo(**result["goal_type"])
+            goal_type = GoalTypeInfo(**result["goal_type"])
+            strategic_link = StrategicLinkInfo(**result["strategic_link"]) if result.get("strategic_link") else None
 
-        # Parse strategic link
-        strategic_link = StrategicLinkInfo(**result["strategic_link"]) if result.get("strategic_link") else None
-
-        return EvaluationResponse(
-            goal_text=goal_text,
-            smart_evaluation=smart_evaluation,
-            overall_score=round(overall_score, 2),
-            goal_type=goal_type,
-            strategic_link=strategic_link,
-            recommendations=result.get("recommendations", []),
-            reformulated_goal=result.get("reformulated_goal"),
-            quality_level=quality_level
-        )
+            return EvaluationResponse(
+                goal_text=goal_text,
+                smart_evaluation=smart_evaluation,
+                overall_score=round(overall_score, 2),
+                goal_type=goal_type,
+                strategic_link=strategic_link,
+                recommendations=result.get("recommendations", []),
+                reformulated_goal=result.get("reformulated_goal"),
+                quality_level=quality_level
+            )
+        except Exception:
+            return self._evaluate_goal_with_heuristics(
+                goal_text=goal_text,
+                position=position,
+                department=department,
+            )
 
     async def batch_evaluate(
         self,
@@ -214,6 +218,139 @@ T - Time-bound (Ограниченность во времени): Указан 
             return "Среднее качество"
         else:
             return "Требует доработки"
+
+    def _evaluate_goal_with_heuristics(
+        self,
+        *,
+        goal_text: str,
+        position: Optional[str] = None,
+        department: Optional[str] = None,
+    ) -> EvaluationResponse:
+        heuristic = evaluate_goal_heuristically(goal_text)
+        smart_details = heuristic["smart_details"]
+        smart_evaluation = SMARTEvaluation(
+            specific=self._criterion_from_score(
+                smart_details["specific"]["score"],
+                "Формулировка достаточно конкретна.",
+                "Нужно точнее описать ожидаемый результат.",
+            ),
+            measurable=self._criterion_from_score(
+                smart_details["measurable"]["score"],
+                "Есть измеримый ориентир или KPI.",
+                "Добавьте числовой показатель или способ проверки результата.",
+            ),
+            achievable=self._criterion_from_score(
+                smart_details["achievable"]["score"],
+                "Цель выглядит достижимой для текущей роли.",
+                "Нужно уточнить реалистичность объема и ресурсов.",
+            ),
+            relevant=self._criterion_from_score(
+                smart_details["relevant"]["score"],
+                "Цель выглядит релевантной роли и функции.",
+                "Добавьте явную связь с задачами роли или подразделения.",
+            ),
+            time_bound=self._criterion_from_score(
+                smart_details["time_bound"]["score"],
+                "Срок или период выполнения просматривается.",
+                "Добавьте конкретный срок или отчетный период.",
+            ),
+        )
+
+        goal_type_value = self._infer_goal_type(goal_text)
+        strategic_link_value = self._infer_strategic_link(goal_text, department)
+        overall_score = heuristic["overall_score"]
+
+        if overall_score >= settings.SMART_THRESHOLD_HIGH:
+            quality_level = "high"
+        elif overall_score >= settings.SMART_THRESHOLD_MEDIUM:
+            quality_level = "medium"
+        else:
+            quality_level = "low"
+
+        return EvaluationResponse(
+            goal_text=goal_text,
+            smart_evaluation=smart_evaluation,
+            overall_score=overall_score,
+            goal_type=GoalTypeInfo(
+                type=goal_type_value,
+                type_russian=self._goal_type_label(goal_type_value),
+                explanation="Тип цели определен по структуре формулировки и ожидаемому результату.",
+            ),
+            strategic_link=StrategicLinkInfo(
+                level=strategic_link_value,
+                level_russian=self._strategic_link_label(strategic_link_value),
+                explanation="Связка определена по смыслу цели и контексту роли/подразделения.",
+                source=department or position,
+            ),
+            recommendations=self._build_recommendations(smart_evaluation),
+            reformulated_goal=self._build_reformulated_goal(goal_text),
+            quality_level=quality_level,
+        )
+
+    def _criterion_from_score(self, score: float, success_comment: str, fail_comment: str) -> SMARTCriterion:
+        rounded_score = round(score, 2)
+        is_satisfied = rounded_score >= settings.SMART_THRESHOLD_MEDIUM
+        return SMARTCriterion(
+            score=rounded_score,
+            comment=success_comment if is_satisfied else fail_comment,
+            is_satisfied=is_satisfied,
+        )
+
+    def _infer_goal_type(self, goal_text: str) -> str:
+        lowered = goal_text.lower()
+        if any(token in lowered for token in ["рост", "снижение", "прибыль", "выручк", "затрат", "nps", "sla", "kpi", "%"]):
+            return "impact"
+        if any(token in lowered for token in ["внедр", "запуст", "обеспеч", "разработ", "автоматиз", "подготов"]):
+            return "output"
+        return "activity"
+
+    def _infer_strategic_link(self, goal_text: str, department: Optional[str]) -> str:
+        lowered = goal_text.lower()
+        if any(token in lowered for token in ["цифров", "стратег", "трансформац", "эффектив", "затрат", "качест"]):
+            return "strategic"
+        if department:
+            return "functional"
+        return "operational"
+
+    def _goal_type_label(self, goal_type: str) -> str:
+        return {
+            "impact": "влияние",
+            "output": "результатная",
+            "activity": "деятельностная",
+        }.get(goal_type, "деятельностная")
+
+    def _strategic_link_label(self, link: str) -> str:
+        return {
+            "strategic": "стратегическая",
+            "functional": "функциональная",
+            "operational": "операционная",
+        }.get(link, "операционная")
+
+    def _build_recommendations(self, smart_evaluation: SMARTEvaluation) -> List[str]:
+        recommendations = []
+        if not smart_evaluation.specific.is_satisfied:
+            recommendations.append("Уточните ожидаемый результат и объект изменения.")
+        if not smart_evaluation.measurable.is_satisfied:
+            recommendations.append("Добавьте числовой KPI, процент или другой измеримый критерий.")
+        if not smart_evaluation.achievable.is_satisfied:
+            recommendations.append("Проверьте достижимость цели с учетом роли и доступных ресурсов.")
+        if not smart_evaluation.relevant.is_satisfied:
+            recommendations.append("Усилите связь цели с задачами подразделения или бизнес-приоритетом.")
+        if not smart_evaluation.time_bound.is_satisfied:
+            recommendations.append("Зафиксируйте конкретный срок выполнения или отчетный период.")
+        return recommendations
+
+    def _build_reformulated_goal(self, goal_text: str) -> str:
+        cleaned = goal_text.strip().rstrip(".")
+        lowered = cleaned.lower()
+
+        if "до " not in lowered and "q" not in lowered and "квартал" not in lowered:
+            cleaned = f"До конца квартала {cleaned[:1].lower()}{cleaned[1:]}"
+
+        if "%" not in cleaned and "kpi" not in lowered and "sla" not in lowered:
+            cleaned = f"{cleaned}, обеспечив измеримый результат не ниже целевого уровня"
+
+        return f"{cleaned}."
 
 
 # Global instance

@@ -6,6 +6,7 @@ import {
   SparklesIcon,
   ChartBarIcon,
   UserGroupIcon,
+  BellAlertIcon,
   Bars3Icon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
@@ -13,6 +14,7 @@ import GoalEvaluation from './pages/GoalEvaluation'
 import GoalGeneration from './pages/GoalGeneration'
 import Dashboard from './pages/Dashboard'
 import EmployeeGoals from './pages/EmployeeGoals'
+import Operations from './pages/Operations'
 import Home from './pages/Home'
 import KmgLogo from './components/KmgLogo'
 
@@ -22,6 +24,7 @@ const navigation = [
   { name: 'Генерация целей', href: '/generation', icon: SparklesIcon },
   { name: 'Дашборд', href: '/dashboard', icon: ChartBarIcon },
   { name: 'Сотрудники', href: '/employees', icon: UserGroupIcon },
+  { name: 'Операции', href: '/operations', icon: BellAlertIcon },
 ]
 
 const pageTitles = {
@@ -30,6 +33,7 @@ const pageTitles = {
   '/generation': 'Генерация целей',
   '/dashboard': 'Дашборд',
   '/employees': 'Цели сотрудников',
+  '/operations': 'Операции',
 }
 
 function App() {
@@ -177,6 +181,7 @@ function App() {
             <Route path="/generation" element={<GoalGeneration />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employees" element={<EmployeeGoals />} />
+            <Route path="/operations" element={<Operations />} />
           </Routes>
         </main>
       </div>

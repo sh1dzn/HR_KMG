@@ -4,6 +4,7 @@ import {
   SparklesIcon,
   ChartBarIcon,
   UserGroupIcon,
+  BellAlertIcon,
   DocumentDuplicateIcon,
   BuildingOffice2Icon,
   CheckBadgeIcon,
@@ -46,6 +47,15 @@ const features = [
     icon: UserGroupIcon,
     iconBg: 'bg-amber-50',
     iconColor: 'text-amber-700',
+  },
+  {
+    name: 'Операционный контур',
+    description:
+      'Alert Manager, ручная переиндексация ВНД и mock-интеграция с внешними HR-системами',
+    href: '/operations',
+    icon: BellAlertIcon,
+    iconBg: 'bg-rose-50',
+    iconColor: 'text-rose-700',
   },
 ]
 

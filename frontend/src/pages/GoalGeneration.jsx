@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { generateGoals, getFocusAreas, getEmployees, createGoal } from '../api/client'
+import { generateGoals, getFocusAreas, getEmployees, saveAcceptedGeneratedGoals } from '../api/client'
 import { SparklesIcon, DocumentTextIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
@@ -9,6 +9,13 @@ const generationFlow = [
   '3. Генерация 3-5 целей в SMART-формате',
   '4. Каскадирование от руководителя и проверка истории',
 ]
+
+const normalizeGoalText = (text = '') =>
+  text
+    .toLowerCase()
+    .replace(/[^\w\s%а-яА-Яa-zA-Z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 
 export default function GoalGeneration() {
   const [employeeId, setEmployeeId] = useState('')
@@ -23,6 +30,7 @@ export default function GoalGeneration() {
   const [employees, setEmployees] = useState([])
   const [goalStates, setGoalStates] = useState({})
   const [saving, setSaving] = useState(false)
+  const [saveSummary, setSaveSummary] = useState(null)
 
   useEffect(() => {
     loadFocusAreas()
@@ -64,6 +72,7 @@ export default function GoalGeneration() {
       )
       setResult(data)
       setGoalStates({})
+      setSaveSummary(null)
       setSaving(false)
     } catch (err) {
       setError(err.response?.data?.detail || 'Ошибка при генерации целей')
@@ -116,27 +125,39 @@ export default function GoalGeneration() {
     setError(null)
 
     try {
-      const promises = result.generated_goals
+      const acceptedGoals = result.generated_goals
         .map((goal, index) => ({ goal, index }))
         .filter(({ index }) => goalStates[index] === 'accepted')
-        .map(({ goal }) =>
-          createGoal({
-            employee_id: employeeId,
-            title: goal.goal_text,
-            description: goal.rationale,
-            metric: goal.metric,
-            weight: goal.suggested_weight,
-            quarter: quarter,
-            year: year,
-          })
-        )
+        .map(({ goal }) => goal)
 
-      await Promise.all(promises)
+      const saveResult = await saveAcceptedGeneratedGoals({
+        employee_id: employeeId,
+        quarter,
+        year,
+        accepted_goals: acceptedGoals,
+        generation_context: result.generation_context || '',
+        cascaded_from_manager: result.cascaded_from_manager || false,
+        manager_name: result.manager_name || null,
+        manager_goals_used: result.manager_goals_used || [],
+      })
+      setSaveSummary(saveResult)
+
+      const savedGoalTexts = new Set((saveResult.saved_goal_texts || []).map(normalizeGoalText))
+      const skippedDuplicates = new Set((saveResult.skipped_duplicates || []).map(normalizeGoalText))
+
       setGoalStates(prev => {
         const updated = { ...prev }
-        for (const key in updated) {
-          if (updated[key] === 'accepted') updated[key] = 'saved'
-        }
+        result.generated_goals.forEach((goal, index) => {
+          if (updated[index] !== 'accepted') return
+          const normalizedGoal = normalizeGoalText(goal.goal_text)
+          if (savedGoalTexts.has(normalizedGoal)) {
+            updated[index] = 'saved'
+            return
+          }
+          if (skippedDuplicates.has(normalizedGoal)) {
+            updated[index] = 'duplicate'
+          }
+        })
         return updated
       })
     } catch (err) {
@@ -147,6 +168,7 @@ export default function GoalGeneration() {
   }
 
   const savedCount = Object.values(goalStates).filter(s => s === 'saved').length
+  const duplicateCount = Object.values(goalStates).filter(s => s === 'duplicate').length
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -366,6 +388,21 @@ export default function GoalGeneration() {
               </div>
             )}
 
+            {saveSummary?.skipped_duplicates?.length > 0 && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                Пропущено как дубликат: {saveSummary.skipped_duplicates.length}
+                {duplicateCount > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {saveSummary.skipped_duplicates.map((goalText) => (
+                      <span key={goalText} className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-medium text-amber-800">
+                        {goalText}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {result.generation_context && (
               <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
                 <span className="font-semibold">Контекст генерации:</span>{' '}
@@ -402,6 +439,24 @@ export default function GoalGeneration() {
                 <div className="mt-2 flex flex-wrap gap-4 text-xs font-medium">
                   <span>Целей в истории: {result.historical_check.total_past_goals}</span>
                   <span>Выполнено: {result.historical_check.completed_count} ({result.historical_check.completion_rate}%)</span>
+                  {result.historical_check.basis && (
+                    <span>
+                      Основа: {result.historical_check.basis === 'employee_history'
+                        ? 'личная история'
+                        : result.historical_check.basis === 'department_benchmark'
+                        ? 'бенчмарк подразделения'
+                        : 'нет данных'}
+                    </span>
+                  )}
+                  {typeof result.historical_check.employee_completion_rate === 'number' && (
+                    <span>Личная история: {result.historical_check.employee_completion_rate}%</span>
+                  )}
+                  {typeof result.historical_check.department_completion_rate === 'number' && (
+                    <span>Подразделение: {result.historical_check.department_completion_rate}%</span>
+                  )}
+                  {typeof result.historical_check.on_time_completion_rate === 'number' && (
+                    <span>В срок: {result.historical_check.on_time_completion_rate}%</span>
+                  )}
                   {result.historical_check.avg_smart_score && (
                     <span>Средний SMART: {(result.historical_check.avg_smart_score * 100).toFixed(0)}%</span>
                   )}
@@ -416,6 +471,7 @@ export default function GoalGeneration() {
             const state = goalStates[index]
             const borderClass = state === 'accepted' ? 'border-emerald-300'
               : state === 'rejected' ? 'border-rose-300'
+              : state === 'duplicate' ? 'border-amber-300'
               : state === 'saved' ? 'border-emerald-400'
               : 'border-gray-200'
 
@@ -437,6 +493,11 @@ export default function GoalGeneration() {
                     {state === 'saved' && (
                       <span className="inline-block px-2.5 py-0.5 text-sm font-medium bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200">
                         Сохранено
+                      </span>
+                    )}
+                    {state === 'duplicate' && (
+                      <span className="inline-block px-2.5 py-0.5 text-sm font-medium bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
+                        Дубликат
                       </span>
                     )}
                   </div>
@@ -483,7 +544,7 @@ export default function GoalGeneration() {
                 </div>
               )}
 
-              {state !== 'saved' && (
+              {state !== 'saved' && state !== 'duplicate' && (
                 <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
                   <button
                     onClick={() => toggleGoalState(index, 'accepted')}

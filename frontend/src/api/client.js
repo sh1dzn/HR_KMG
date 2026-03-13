@@ -69,8 +69,23 @@ export const generateAndSaveGoals = async (employeeId, quarter, year, focusAreas
   return response.data
 }
 
+export const saveAcceptedGeneratedGoals = async (payload) => {
+  const response = await client.post('/generation/save-accepted', payload)
+  return response.data
+}
+
 export const getFocusAreas = async () => {
   const response = await client.get('/generation/focus-areas')
+  return response.data
+}
+
+export const getDocumentIndexStatus = async () => {
+  const response = await client.get('/generation/index-status')
+  return response.data
+}
+
+export const reindexDocuments = async () => {
+  const response = await client.post('/generation/reindex-documents')
   return response.data
 }
 
@@ -100,6 +115,31 @@ export const deleteGoal = async (goalId) => {
   return response.data
 }
 
+export const getGoalWorkflow = async (goalId) => {
+  const response = await client.get(`/goals/${goalId}/workflow`)
+  return response.data
+}
+
+export const submitGoal = async (goalId, payload = {}) => {
+  const response = await client.post(`/goals/${goalId}/submit`, payload)
+  return response.data
+}
+
+export const approveGoal = async (goalId, payload = {}) => {
+  const response = await client.post(`/goals/${goalId}/approve`, payload)
+  return response.data
+}
+
+export const rejectGoal = async (goalId, payload = {}) => {
+  const response = await client.post(`/goals/${goalId}/reject`, payload)
+  return response.data
+}
+
+export const commentGoal = async (goalId, payload = {}) => {
+  const response = await client.post(`/goals/${goalId}/comment`, payload)
+  return response.data
+}
+
 // Dashboard API
 export const getDashboardSummary = async (quarter = null, year = null) => {
   const params = {}
@@ -122,6 +162,23 @@ export const getEmployeeGoalsSummary = async (employeeId, quarter = null, year =
   if (quarter) params.quarter = quarter
   if (year) params.year = year
   const response = await client.get(`/dashboard/employees/${employeeId}/goals-summary`, { params })
+  return response.data
+}
+
+// Alerts API
+export const getAlertsSummary = async (params = {}) => {
+  const response = await client.get('/alerts/summary', { params })
+  return response.data
+}
+
+// Integrations API
+export const getIntegrationSystems = async () => {
+  const response = await client.get('/integrations/systems')
+  return response.data
+}
+
+export const exportGoalsToHRSystem = async (payload) => {
+  const response = await client.post('/integrations/export-goals', payload)
   return response.data
 }
 

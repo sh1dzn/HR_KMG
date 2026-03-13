@@ -55,7 +55,22 @@ export default function Dashboard() {
   const [error, setError] = useState(null)
   const [isMobileViewport, setIsMobileViewport] = useState(false)
 
-  useEffect(() => { loadDashboard() }, [quarter, year])
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await getDashboardSummary(quarter, year)
+        setData(result)
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Ошибка загрузки данных')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboard()
+  }, [quarter, year])
 
   useEffect(() => {
     const updateViewport = () => setIsMobileViewport(window.innerWidth < 640)
@@ -63,19 +78,6 @@ export default function Dashboard() {
     window.addEventListener('resize', updateViewport)
     return () => window.removeEventListener('resize', updateViewport)
   }, [])
-
-  const loadDashboard = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await getDashboardSummary(quarter, year)
-      setData(result)
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка загрузки данных')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading && !data) {
     return (

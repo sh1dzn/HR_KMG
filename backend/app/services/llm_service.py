@@ -1,6 +1,7 @@
 """
 LLM Service - OpenAI GPT-4 Integration
 """
+import asyncio
 import json
 from typing import Optional, Dict, Any, List
 from openai import OpenAI
@@ -58,7 +59,7 @@ class LLMService:
         if response_format:
             kwargs["response_format"] = response_format
 
-        response = self.client.chat.completions.create(**kwargs)
+        response = await asyncio.to_thread(self.client.chat.completions.create, **kwargs)
 
         return response.choices[0].message.content
 

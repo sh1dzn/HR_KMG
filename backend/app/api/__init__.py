@@ -2,7 +2,7 @@
 API Routes for HR AI Module
 """
 from fastapi import APIRouter
-from app.api import goals, evaluation, generation, dashboard, employees
+from app.api import alerts, goals, evaluation, generation, dashboard, employees, integrations
 
 api_router = APIRouter()
 
@@ -35,4 +35,16 @@ api_router.include_router(
     dashboard.router,
     prefix="/dashboard",
     tags=["Дашборд"]
+)
+
+api_router.include_router(
+    alerts.router,
+    prefix="/alerts",
+    tags=["Алерты"]
+)
+
+api_router.include_router(
+    integrations.router,
+    prefix="/integrations",
+    tags=["Интеграции"]
 )

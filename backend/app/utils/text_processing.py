@@ -27,6 +27,14 @@ def clean_text(text: str) -> str:
     return text
 
 
+def normalize_goal_text(text: str) -> str:
+    """Normalize goal text for duplicate comparison."""
+    cleaned = clean_text(text).lower()
+    cleaned = re.sub(r"[^\w\s%а-яА-Яa-zA-Z0-9]", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
 def extract_keywords(text: str, min_length: int = 3) -> List[str]:
     """
     Extract potential keywords from text

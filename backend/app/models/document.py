@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import relationship
 from enum import Enum
 from app.database import Base
+from app.utils.document_scope import extract_department_scope_tokens
 
 
 def _pg_enum(enum_cls, name: str):
@@ -54,10 +55,11 @@ class Document(Base):
 
     def get_keywords_list(self) -> list:
         """Get keywords as a list"""
+        if isinstance(self.keywords, str):
+            normalized = self.keywords.replace(";", ",")
+            return [keyword.strip() for keyword in normalized.split(",") if keyword.strip()]
         return list(self.keywords or [])
 
     def get_department_scope_list(self) -> list:
         """Get department scope as a list"""
-        if isinstance(self.department_scope, list):
-            return self.department_scope
-        return list(self.department_scope or [])
+        return extract_department_scope_tokens(self.department_scope)
