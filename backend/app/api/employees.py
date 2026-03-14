@@ -2,12 +2,13 @@
 Employees API endpoints
 Список сотрудников
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel
 from app.database import get_db
-from app.models import Employee
+from app.models import Department, Employee, Position
 
 
 class EmployeeShort(BaseModel):
@@ -40,7 +41,16 @@ async def get_employees(
     if department_id:
         query = query.filter(Employee.department_id == department_id)
     if search:
-        query = query.filter(Employee.full_name.ilike(f"%{search}%"))
+        search_term = f"%{search.strip()}%"
+        query = query.join(Position, Employee.position_id == Position.id).join(Department, Employee.department_id == Department.id)
+        query = query.filter(
+            or_(
+                Employee.full_name.ilike(search_term),
+                Employee.employee_code.ilike(search_term),
+                Position.name.ilike(search_term),
+                Department.name.ilike(search_term),
+            )
+        )
 
     query = query.order_by(Employee.full_name)
     employees = query.all()

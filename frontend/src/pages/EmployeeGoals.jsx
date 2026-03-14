@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useDeferredValue, useEffect, useState } from 'react'
 import {
   approveGoal,
   commentGoal,
@@ -16,6 +16,7 @@ import {
   ChevronUpIcon,
   ClockIcon,
   DocumentCheckIcon,
+  MagnifyingGlassIcon,
   PaperAirplaneIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline'
@@ -80,12 +81,14 @@ export default function EmployeeGoals() {
   const [quarter, setQuarter] = useState('')
   const [year, setYear] = useState('')
   const [status, setStatus] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [expandedGoalId, setExpandedGoalId] = useState(null)
   const [workflowByGoal, setWorkflowByGoal] = useState({})
   const [workflowLoadingId, setWorkflowLoadingId] = useState(null)
   const [workflowActionId, setWorkflowActionId] = useState(null)
   const [commentsByGoal, setCommentsByGoal] = useState({})
+  const deferredSearchQuery = useDeferredValue(searchQuery)
 
   useEffect(() => {
     const loadGoals = async () => {
@@ -96,8 +99,20 @@ export default function EmployeeGoals() {
         if (quarter) params.quarter = quarter
         if (year) params.year = parseInt(year)
         if (status) params.status = status
-        const result = await getGoals(params)
-        setGoals(result.goals || [])
+
+        const perPage = 200
+        let page = 1
+        let total = 0
+        let allGoals = []
+
+        do {
+          const result = await getGoals({ ...params, page, per_page: perPage })
+          total = result.total || 0
+          allGoals = [...allGoals, ...(result.goals || [])]
+          page += 1
+        } while (allGoals.length < total && page <= 25)
+
+        setGoals(allGoals)
       } catch (err) {
         setError(err.response?.data?.detail || 'Ошибка загрузки целей')
       } finally {
@@ -196,6 +211,25 @@ export default function EmployeeGoals() {
     return acc
   }, {})
 
+  const normalizedSearchQuery = deferredSearchQuery.trim().toLowerCase()
+  const employeeEntries = Object.values(goalsByEmployee)
+  const filteredEmployeeEntries = employeeEntries.filter((employeeData) => {
+    if (!normalizedSearchQuery) return true
+
+    const searchableText = [
+      employeeData.employee_name,
+      employeeData.department_name,
+      employeeData.position_name,
+      employeeData.manager_name,
+      ...employeeData.goals.map((goal) => [goal.title, goal.metric, goal.goal_type, goal.strategic_link].filter(Boolean).join(' ')),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    return searchableText.includes(normalizedSearchQuery)
+  })
+
   const getScoreColor = (score) => {
     if (!score) return 'text-gray-400'
     if (score >= 0.85) return 'text-green-600'
@@ -213,32 +247,61 @@ export default function EmployeeGoals() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg shadow-xs px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-gray-700">Фильтры:</span>
-          <select className="select-field text-sm" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
-            <option value="">Все кварталы</option>
-            <option value="Q1">Q1</option>
-            <option value="Q2">Q2</option>
-            <option value="Q3">Q3</option>
-            <option value="Q4">Q4</option>
-          </select>
-          <select className="select-field text-sm" value={year} onChange={(e) => setYear(e.target.value)}>
-            <option value="">Все годы</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-          </select>
-          <select className="select-field text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Все статусы</option>
-            <option value="draft">Черновик</option>
-            <option value="active">Активна</option>
-            <option value="submitted">На согласовании</option>
-            <option value="approved">Утверждена</option>
-            <option value="in_progress">В работе</option>
-            <option value="done">Выполнена</option>
-            <option value="cancelled">Отменена</option>
-            <option value="overdue">Просрочена</option>
-            <option value="archived">Архив</option>
-          </select>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.25fr)_repeat(3,minmax(0,180px))]">
+          <div className="min-w-0">
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Поиск сотрудника</label>
+            <div className="relative">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                className="input-field pl-9"
+                placeholder="ФИО, должность, подразделение, руководитель, текст цели"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Квартал</label>
+            <select className="select-field w-full text-sm" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
+              <option value="">Все кварталы</option>
+              <option value="Q1">Q1</option>
+              <option value="Q2">Q2</option>
+              <option value="Q3">Q3</option>
+              <option value="Q4">Q4</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Год</label>
+            <select className="select-field w-full text-sm" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="">Все годы</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">Статус</label>
+            <select className="select-field w-full text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">Все статусы</option>
+              <option value="draft">Черновик</option>
+              <option value="active">Активна</option>
+              <option value="submitted">На согласовании</option>
+              <option value="approved">Утверждена</option>
+              <option value="in_progress">В работе</option>
+              <option value="done">Выполнена</option>
+              <option value="cancelled">Отменена</option>
+              <option value="overdue">Просрочена</option>
+              <option value="archived">Архив</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+            Сотрудников: {filteredEmployeeEntries.length} из {employeeEntries.length}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+            Целей: {goals.length}
+          </span>
         </div>
       </div>
 
@@ -257,7 +320,7 @@ export default function EmployeeGoals() {
         </div>
       ) : (
         <div className="space-y-4">
-          {Object.values(goalsByEmployee).map((employeeData) => (
+          {filteredEmployeeEntries.map((employeeData) => (
             <div key={employeeData.employee_id} className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
               <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
@@ -489,10 +552,10 @@ export default function EmployeeGoals() {
             </div>
           ))}
 
-          {Object.keys(goalsByEmployee).length === 0 && (
+          {filteredEmployeeEntries.length === 0 && (
             <div className="bg-white border border-gray-200 rounded-lg shadow-xs p-12 text-center">
-              <p className="text-sm font-medium text-gray-600">Цели не найдены</p>
-              <p className="text-sm text-gray-400 mt-1">Попробуйте изменить фильтры или сгенерируйте новые цели</p>
+              <p className="text-sm font-medium text-gray-600">Сотрудники или цели не найдены</p>
+              <p className="text-sm text-gray-400 mt-1">Попробуйте изменить поисковый запрос или фильтры</p>
             </div>
           )}
         </div>

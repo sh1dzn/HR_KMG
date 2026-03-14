@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { generateGoals, getFocusAreas, getEmployees, saveAcceptedGeneratedGoals } from '../api/client'
 import { SparklesIcon, DocumentTextIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import EmployeePicker from '../components/EmployeePicker'
 
 const generationFlow = [
   '1. Профиль сотрудника и квартальный фокус',
@@ -205,19 +206,13 @@ export default function GoalGeneration() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Сотрудник</label>
-            <select
-              className="select-field w-full"
+            <EmployeePicker
+              employees={employees}
               value={employeeId}
-              onChange={(e) => setEmployeeId(parseInt(e.target.value))}
-            >
-              {employees.length === 0 && <option value="">Загрузка...</option>}
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.full_name} — {emp.position_name}, {emp.department_name}
-                </option>
-              ))}
-            </select>
+              onChange={setEmployeeId}
+              label="Сотрудник"
+              emptyText={employees.length === 0 ? 'Загрузка сотрудников...' : 'Сотрудники не найдены'}
+            />
           </div>
         </div>
 
