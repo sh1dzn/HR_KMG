@@ -4,6 +4,7 @@ import {
   BellAlertIcon,
   CircleStackIcon,
   ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import {
   exportGoalsToHRSystem,
@@ -36,6 +37,32 @@ export default function Operations() {
   const [loadingIndex, setLoadingIndex] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState(null)
+
+  const downloadExportFile = () => {
+    if (!exportResult) return
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const fileName = `goals-export-${exportResult.target_system}-${exportResult.employee_id}-${timestamp}.json`
+    const fileContent = {
+      batch_id: exportResult.batch_id,
+      target_system: exportResult.target_system,
+      employee_id: exportResult.employee_id,
+      employee_name: exportResult.employee_name,
+      exported_count: exportResult.exported_count,
+      goal_refs: exportResult.goal_refs || [],
+      payload: exportResult.payload || {},
+    }
+
+    const blob = new Blob([JSON.stringify(fileContent, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   useEffect(() => {
     const loadBaseData = async () => {
@@ -275,6 +302,11 @@ export default function Operations() {
                     <div className="break-words text-sm font-semibold text-slate-900">{exportResult.message}</div>
                     <div className="break-all text-xs text-slate-500">Batch ID: {exportResult.batch_id}</div>
                   </div>
+
+                  <button onClick={downloadExportFile} className="btn-primary w-full gap-2 sm:w-auto">
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                    Скачать файл экспорта
+                  </button>
 
                   {exportResult.goal_refs?.length > 0 && (
                     <div className="grid gap-2 sm:grid-cols-2">

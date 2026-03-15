@@ -90,6 +90,13 @@ export default function EmployeeGoals() {
   const [commentsByGoal, setCommentsByGoal] = useState({})
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
+  const normalizeGoal = (goal) => ({
+    ...goal,
+    weight: Number.isFinite(Number(goal?.weight)) ? Number(goal.weight) : 0,
+    smart_score: Number.isFinite(Number(goal?.smart_score)) ? Number(goal.smart_score) : null,
+    alerts: Array.isArray(goal?.alerts) ? goal.alerts : [],
+  })
+
   useEffect(() => {
     const loadGoals = async () => {
       setLoading(true)
@@ -108,7 +115,7 @@ export default function EmployeeGoals() {
         do {
           const result = await getGoals({ ...params, page, per_page: perPage })
           total = result.total || 0
-          allGoals = [...allGoals, ...(result.goals || [])]
+          allGoals = [...allGoals, ...((result.goals || []).map(normalizeGoal))]
           page += 1
         } while (allGoals.length < total && page <= 25)
 
@@ -235,6 +242,12 @@ export default function EmployeeGoals() {
     if (score >= 0.85) return 'text-green-600'
     if (score >= 0.7) return 'text-amber-600'
     return 'text-red-600'
+  }
+
+  const formatPercent = (value, fractionDigits = 0) => {
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return '0'
+    return numeric.toFixed(fractionDigits)
   }
 
   return (
@@ -368,22 +381,22 @@ export default function EmployeeGoals() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                     <span className="text-sm font-semibold text-blue-900">Результат пакетной оценки</span>
                     <span className={`text-lg font-semibold ${getScoreColor(batchResult.average_score)}`}>
-                      {(batchResult.average_score * 100).toFixed(0)}% средний SMART
+                      {formatPercent((Number(batchResult.average_score) || 0) * 100)}% средний SMART
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2 text-sm">
                     <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium ${batchResult.weight_valid ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                      Сумма весов: {batchResult.total_weight.toFixed(0)}%
+                      Сумма весов: {formatPercent(batchResult.total_weight)}%
                     </span>
                     <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium ${batchResult.goals_count_valid ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                       Целей: {batchResult.total_goals}
                     </span>
                   </div>
-                  {batchResult.top_issues.length > 0 && (
+                  {(batchResult.top_issues || []).length > 0 && (
                     <div className="mt-3 pt-3 border-t border-blue-100">
                       <span className="text-sm font-medium text-blue-800">Проблемы:</span>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {batchResult.top_issues.map((issue) => (
+                        {(batchResult.top_issues || []).map((issue) => (
                           <span key={issue} className="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700">
                             {issue}
                           </span>
@@ -448,10 +461,10 @@ export default function EmployeeGoals() {
                           )}
                         </div>
                         <div className="flex-shrink-0 text-right pl-4">
-                          <div className="text-sm text-gray-500 font-medium">Вес: {goal.weight?.toFixed(0) || 0}%</div>
+                          <div className="text-sm text-gray-500 font-medium">Вес: {formatPercent(goal.weight)}%</div>
                           {goal.smart_score !== null && goal.smart_score !== undefined && (
                             <div className={`text-xl font-semibold mt-0.5 ${getScoreColor(goal.smart_score)}`}>
-                              {(goal.smart_score * 100).toFixed(0)}%
+                              {formatPercent(goal.smart_score * 100)}%
                             </div>
                           )}
                           <button
