@@ -107,7 +107,7 @@ export default function EmployeeGoals() {
         if (year) params.year = parseInt(year)
         if (status) params.status = status
 
-        const perPage = 200
+        const perPage = 100
         let page = 1
         let total = 0
         let allGoals = []
