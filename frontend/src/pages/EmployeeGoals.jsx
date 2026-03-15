@@ -108,18 +108,8 @@ export default function EmployeeGoals() {
         if (status) params.status = status
 
         const perPage = 100
-        let page = 1
-        let total = 0
-        let allGoals = []
-
-        do {
-          const result = await getGoals({ ...params, page, per_page: perPage })
-          total = result.total || 0
-          allGoals = [...allGoals, ...((result.goals || []).map(normalizeGoal))]
-          page += 1
-        } while (allGoals.length < total && page <= 25)
-
-        setGoals(allGoals)
+        const result = await getGoals({ ...params, page: 1, per_page: perPage })
+        setGoals((result.goals || []).map(normalizeGoal))
       } catch (err) {
         setError(err.response?.data?.detail || 'Ошибка загрузки целей')
       } finally {
