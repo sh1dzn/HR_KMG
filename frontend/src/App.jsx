@@ -8,6 +8,9 @@ import {
   UserGroupIcon,
   BellAlertIcon,
   Bars3Icon,
+  ComputerDesktopIcon,
+  MoonIcon,
+  SunIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import GoalEvaluation from './pages/GoalEvaluation'
@@ -39,11 +42,73 @@ const pageTitles = {
 function App() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [themeMode, setThemeMode] = useState('system')
+  const [systemTheme, setSystemTheme] = useState('light')
   const currentTitle = pageTitles[location.pathname] || 'HR AI Module'
+  const resolvedTheme = themeMode === 'system' ? systemTheme : themeMode
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const applySystemTheme = () => {
+      setSystemTheme(mq.matches ? 'dark' : 'light')
+    }
+    applySystemTheme()
+
+    const storedMode = localStorage.getItem('kmg-theme-mode')
+    const legacyTheme = localStorage.getItem('kmg-theme')
+    if (storedMode === 'light' || storedMode === 'dark' || storedMode === 'system') {
+      setThemeMode(storedMode)
+    } else if (legacyTheme === 'light' || legacyTheme === 'dark') {
+      setThemeMode(legacyTheme)
+    } else {
+      setThemeMode('system')
+    }
+
+    mq.addEventListener('change', applySystemTheme)
+    return () => mq.removeEventListener('change', applySystemTheme)
+  }, [])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('theme-dark', resolvedTheme === 'dark')
+    localStorage.setItem('kmg-theme-mode', themeMode)
+  }, [themeMode, resolvedTheme])
 
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [location.pathname])
+
+  const ThemeSwitch = ({ compact = false }) => (
+    <div className={`theme-switch ${compact ? 'theme-switch-compact' : ''}`}>
+      <button
+        type="button"
+        onClick={() => setThemeMode('light')}
+        className={`theme-mode-btn ${themeMode === 'light' ? 'theme-mode-btn-active' : ''}`}
+        title="Светлая тема"
+      >
+        <SunIcon className="h-4 w-4" />
+        {!compact && <span>Light</span>}
+      </button>
+      <button
+        type="button"
+        onClick={() => setThemeMode('system')}
+        className={`theme-mode-btn ${themeMode === 'system' ? 'theme-mode-btn-active' : ''}`}
+        title="Системная тема"
+      >
+        <ComputerDesktopIcon className="h-4 w-4" />
+        {!compact && <span>System</span>}
+      </button>
+      <button
+        type="button"
+        onClick={() => setThemeMode('dark')}
+        className={`theme-mode-btn ${themeMode === 'dark' ? 'theme-mode-btn-active' : ''}`}
+        title="Темная тема"
+      >
+        <MoonIcon className="h-4 w-4" />
+        {!compact && <span>Dark</span>}
+      </button>
+    </div>
+  )
 
   return (
     <div className="flex min-h-screen bg-transparent">
@@ -160,6 +225,9 @@ function App() {
                   React • API
                 </div>
               </div>
+              <div className="mt-3 flex justify-end">
+                <ThemeSwitch compact />
+              </div>
             </div>
 
             <div className="hidden lg:block">
@@ -168,8 +236,11 @@ function App() {
                 <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
               </div>
             </div>
-            <div className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 md:hidden lg:block">
-              PostgreSQL • FastAPI • React
+            <div className="hidden items-center gap-3 md:hidden lg:flex">
+              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                PostgreSQL • FastAPI • React
+              </div>
+              <ThemeSwitch />
             </div>
           </div>
         </header>
