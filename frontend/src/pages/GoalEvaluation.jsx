@@ -24,6 +24,11 @@ export default function GoalEvaluation() {
       return
     }
 
+    if (goalText.trim().length < 10) {
+      setError('Текст цели должен содержать минимум 10 символов')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -35,7 +40,14 @@ export default function GoalEvaluation() {
       )
       setEvaluation(result)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка при оценке цели')
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') {
+        setError(detail)
+      } else if (Array.isArray(detail)) {
+        setError(detail.map(e => e.msg || e.message || JSON.stringify(e)).join('; '))
+      } else {
+        setError('Ошибка при оценке цели')
+      }
     } finally {
       setLoading(false)
     }
@@ -58,7 +70,14 @@ export default function GoalEvaluation() {
         reformulated_goal: result.reformulated_goal
       }))
     } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка при переформулировке')
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') {
+        setError(detail)
+      } else if (Array.isArray(detail)) {
+        setError(detail.map(e => e.msg || e.message || JSON.stringify(e)).join('; '))
+      } else {
+        setError('Ошибка при переформулировке')
+      }
     } finally {
       setLoading(false)
     }
