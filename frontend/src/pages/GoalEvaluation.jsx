@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { evaluateGoal, reformulateGoal } from '../api/client'
 import SMARTScoreCard from '../components/SMARTScoreCard'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
 const evaluationSignals = [
   'SMART по 5 критериям',
@@ -10,119 +9,80 @@ const evaluationSignals = [
   'Переформулировка слабой цели',
 ]
 
+const exampleGoals = [
+  'Увеличить объём продаж на 20% к концу Q2 2026',
+  'Улучшить работу отдела',
+  'Внедрить систему автоматизации к 31 марта',
+  'Работать эффективнее',
+]
+
 export default function GoalEvaluation() {
-  const [goalText, setGoalText] = useState('')
-  const [position, setPosition] = useState('')
+  const [goalText,   setGoalText]   = useState('')
+  const [position,   setPosition]   = useState('')
   const [department, setDepartment] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading,    setLoading]    = useState(false)
   const [evaluation, setEvaluation] = useState(null)
-  const [error, setError] = useState(null)
+  const [error,      setError]      = useState(null)
 
   const handleEvaluate = async () => {
-    if (!goalText.trim()) {
-      setError('Введите текст цели')
-      return
-    }
-
-    if (goalText.trim().length < 10) {
-      setError('Текст цели должен содержать минимум 10 символов')
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
+    if (!goalText.trim())                 { setError('Введите текст цели'); return }
+    if (goalText.trim().length < 10)      { setError('Текст цели должен содержать минимум 10 символов'); return }
+    setLoading(true); setError(null)
     try {
-      const result = await evaluateGoal(
-        goalText,
-        position || null,
-        department || null
-      )
-      setEvaluation(result)
+      setEvaluation(await evaluateGoal(goalText, position || null, department || null))
     } catch (err) {
-      const detail = err.response?.data?.detail
-      if (typeof detail === 'string') {
-        setError(detail)
-      } else if (Array.isArray(detail)) {
-        setError(detail.map(e => e.msg || e.message || JSON.stringify(e)).join('; '))
-      } else {
-        setError('Ошибка при оценке цели')
-      }
-    } finally {
-      setLoading(false)
-    }
+      const d = err.response?.data?.detail
+      setError(typeof d === 'string' ? d : Array.isArray(d) ? d.map(e => e.msg || e.message || JSON.stringify(e)).join('; ') : 'Ошибка при оценке цели')
+    } finally { setLoading(false) }
   }
 
   const handleReformulate = async () => {
     if (!goalText.trim()) return
-
-    setLoading(true)
-    setError(null)
-
+    setLoading(true); setError(null)
     try {
-      const result = await reformulateGoal(
-        goalText,
-        position || null,
-        department || null
-      )
-      setEvaluation(prev => ({
-        ...prev,
-        reformulated_goal: result.reformulated_goal
-      }))
+      const r = await reformulateGoal(goalText, position || null, department || null)
+      setEvaluation(prev => ({ ...prev, reformulated_goal: r.reformulated_goal }))
     } catch (err) {
-      const detail = err.response?.data?.detail
-      if (typeof detail === 'string') {
-        setError(detail)
-      } else if (Array.isArray(detail)) {
-        setError(detail.map(e => e.msg || e.message || JSON.stringify(e)).join('; '))
-      } else {
-        setError('Ошибка при переформулировке')
-      }
-    } finally {
-      setLoading(false)
-    }
+      const d = err.response?.data?.detail
+      setError(typeof d === 'string' ? d : Array.isArray(d) ? d.map(e => e.msg || e.message || JSON.stringify(e)).join('; ') : 'Ошибка при переформулировке')
+    } finally { setLoading(false) }
   }
 
-  const exampleGoals = [
-    'Увеличить объём продаж на 20% к концу Q2 2026',
-    'Улучшить работу отдела',
-    'Внедрить систему автоматизации к 31 марта',
-    'Работать эффективнее',
-  ]
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <div className="mx-auto max-w-4xl space-y-6 animate-fade-in">
+
+      {/* Page header */}
       <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">Оценка целей по SMART</h1>
-          <p className="text-sm text-gray-500 leading-relaxed">
-            Экран предназначен для проверки качества формулировки цели,
-            измеримости результата, достижимости и привязки к роли сотрудника.
-            На выходе пользователь получает индекс качества, пояснения и
-            улучшенную редакцию формулировки.
+          <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Оценка целей по SMART</h1>
+          <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+            Проверка качества формулировки цели, измеримости результата, достижимости и привязки к роли сотрудника.
+            На выходе — индекс качества, пояснения и улучшенная редакция формулировки.
           </p>
         </div>
-        <Card className="bg-slate-50/80">
-          <CardHeader className="p-4 pb-0">
-            <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Состав результата</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-2">
-              {evaluationSignals.map((item) => (
-                <span key={item} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl p-4"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+        >
+          <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Состав результата</div>
+          <div className="flex flex-wrap gap-2">
+            {evaluationSignals.map((s) => (
+              <span key={s} className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
+                style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border-primary)' }}
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-6 pt-6">
+      {/* Input card */}
+      <div className="rounded-xl p-6"
+        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+      >
         <div className="mb-5">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Текст цели <span className="text-red-500">*</span>
+          <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Текст цели <span style={{ color: 'var(--border-error)' }}>*</span>
           </label>
           <textarea
             className="input-field"
@@ -133,93 +93,78 @@ export default function GoalEvaluation() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Должность
-              <span className="font-normal text-gray-400 ml-1">(опционально)</span>
+            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Должность <span className="font-normal" style={{ color: 'var(--text-quaternary)' }}>(опционально)</span>
             </label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Менеджер по продажам"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-            />
+            <input type="text" className="input-field" placeholder="Менеджер по продажам" value={position} onChange={(e) => setPosition(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Подразделение
-              <span className="font-normal text-gray-400 ml-1">(опционально)</span>
+            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Подразделение <span className="font-normal" style={{ color: 'var(--text-quaternary)' }}>(опционально)</span>
             </label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Управление продаж"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            />
+            <input type="text" className="input-field" placeholder="Управление продаж" value={department} onChange={(e) => setDepartment(e.target.value)} />
           </div>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-cyan-100 bg-cyan-50/80 px-4 py-3 text-sm text-cyan-900">
-          Наиболее показательный результат получается для целей в формате:
-          ожидаемый результат, метрика оценки и целевой срок.
+        <div className="status-info mb-5 flex items-start gap-3 rounded-xl px-4 py-3">
+          <svg className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <p className="text-sm">
+            Наиболее показательный результат получается для целей в формате: ожидаемый результат, метрика оценки и целевой срок.
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleEvaluate}
-            disabled={loading}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            {loading && (
-              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            )}
-            {loading ? 'Оценка...' : 'Оценить цель'}
+          <button onClick={handleEvaluate} disabled={loading} className="btn-primary">
+            {loading ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Оценка...
+              </>
+            ) : 'Оценить цель'}
           </button>
-
           {evaluation && (
-            <button
-              onClick={handleReformulate}
-              disabled={loading}
-              className="btn-secondary inline-flex items-center gap-2"
-            >
+            <button onClick={handleReformulate} disabled={loading} className="btn-secondary">
               Переформулировать
             </button>
           )}
         </div>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="status-error mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm">
+            <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
             {error}
           </div>
         )}
-        </CardContent>
-      </Card>
+      </div>
 
+      {/* Quick examples */}
       <div>
-        <p className="text-sm font-medium text-gray-500 mb-2">Примеры для быстрого тестирования:</p>
+        <p className="mb-2 text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Примеры для быстрого тестирования:</p>
         <div className="flex flex-wrap gap-2">
-          {exampleGoals.map((goal, i) => (
-            <button
-              key={i}
-              onClick={() => setGoalText(goal)}
-              className="cursor-pointer rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors duration-150 hover:border-cyan-300 hover:text-cyan-700"
+          {exampleGoals.map((g, i) => (
+            <button key={i} onClick={() => setGoalText(g)}
+              className="rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-100"
+              style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.color = 'var(--text-brand-primary)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
             >
-              {goal.length > 40 ? goal.substring(0, 40) + '...' : goal}
+              {g.length > 42 ? g.substring(0, 42) + '…' : g}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Evaluation results */}
-      {evaluation && (
-        <SMARTScoreCard evaluation={evaluation} />
-      )}
+      {/* Results */}
+      {evaluation && <SMARTScoreCard evaluation={evaluation} />}
     </div>
   )
 }

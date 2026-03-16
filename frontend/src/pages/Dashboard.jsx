@@ -1,90 +1,87 @@
 import { useState, useEffect } from 'react'
 import { getDashboardSummary } from '../api/client'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 
-const COLORS = ['#0f766e', '#1d4ed8', '#94a3b8']
+const PIE_COLORS = ['#1570EF', '#17B26A', '#98A2B3']
 
-const CustomTooltipPie = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-xs">
-        <p className="text-sm font-semibold text-gray-900">{payload[0].name}</p>
-        <p className="text-sm text-gray-600">{payload[0].value.toFixed(1)}%</p>
-      </div>
-    )
-  }
-  return null
-}
+const CardShell = ({ children, className = '' }) => (
+  <div className={`rounded-xl ${className}`}
+    style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+  >
+    {children}
+  </div>
+)
 
-const CustomTooltipBar = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-xs">
-        <p className="text-sm font-semibold text-gray-900 mb-1">{label}</p>
-        {payload.map((entry, index) => (
-          <p key={index} className="text-sm text-gray-600">{entry.name}: {entry.value}%</p>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
-
-const renderCustomLabel = ({ cx, cy, midAngle, outerRadius, name, value }) => {
-  const RADIAN = Math.PI / 180
-  const radius = outerRadius + 30
-  const x = cx + radius * Math.cos(-midAngle * RADIAN)
-  const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
+const TooltipPie = ({ active, payload }) => {
+  if (!active || !payload?.length) return null
   return (
-    <text x={x} y={y} fill="#334155" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-medium">
-      {name}: {value.toFixed(0)}%
-    </text>
+    <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 4px 6px -1px rgba(10,13,18,0.10)' }}>
+      <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{payload[0].name}</p>
+      <p style={{ color: 'var(--text-tertiary)' }}>{payload[0].value.toFixed(1)}%</p>
+    </div>
   )
+}
+
+const TooltipBar = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 4px 6px -1px rgba(10,13,18,0.10)' }}>
+      <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{label}</p>
+      {payload.map((e, i) => (
+        <p key={i} style={{ color: 'var(--text-tertiary)' }}>{e.name}: {e.value}%</p>
+      ))}
+    </div>
+  )
+}
+
+const getScoreColor = (score) => {
+  if (score >= 0.85) return 'var(--text-success-primary)'
+  if (score >= 0.7)  return 'var(--text-warning-primary)'
+  return 'var(--fg-error-secondary)'
+}
+const getScoreBadge = (score) => {
+  if (score >= 0.85) return { bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)' }
+  if (score >= 0.7)  return { bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: 'var(--border-warning)' }
+  return { bg: 'var(--bg-error-primary)', color: 'var(--fg-error-secondary)', border: 'var(--border-error-secondary)' }
 }
 
 export default function Dashboard() {
   const [quarter, setQuarter] = useState('Q2')
-  const [year, setYear] = useState(2026)
+  const [year,    setYear]    = useState(2026)
   const [loading, setLoading] = useState(false)
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
-  const [isMobileViewport, setIsMobileViewport] = useState(false)
+  const [data,    setData]    = useState(null)
+  const [error,   setError]   = useState(null)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const loadDashboard = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await getDashboardSummary(quarter, year)
-        setData(result)
-      } catch (err) {
-        setError(err.response?.data?.detail || 'Ошибка загрузки данных')
-      } finally {
-        setLoading(false)
-      }
+    const load = async () => {
+      setLoading(true); setError(null)
+      try { setData(await getDashboardSummary(quarter, year)) }
+      catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки данных') }
+      finally { setLoading(false) }
     }
-
-    loadDashboard()
+    load()
   }, [quarter, year])
 
   useEffect(() => {
-    const updateViewport = () => setIsMobileViewport(window.innerWidth < 640)
-    updateViewport()
-    window.addEventListener('resize', updateViewport)
-    return () => window.removeEventListener('resize', updateViewport)
+    const update = () => setIsMobile(window.innerWidth < 640)
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
   if (loading && !data) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-cyan-700" />
-          <span className="text-sm text-gray-500 font-medium">Загрузка данных...</span>
+          <svg className="h-8 w-8 animate-spin spinner-brand" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Загрузка данных...</span>
         </div>
       </div>
     )
@@ -92,232 +89,208 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <Card className="border-red-200 bg-white">
-        <CardContent className="p-4 pt-4">
-        <div className="flex items-center gap-3 text-red-700">
-          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+      <div className="status-error rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <span className="text-sm font-medium">{error}</span>
+          {error}
         </div>
-        </CardContent>
-      </Card>
+      </div>
     )
   }
 
-  const strategicLinkData = data ? [
-    { name: 'Стратегические', value: data.strategic_goals_percent },
-    { name: 'Функциональные', value: data.functional_goals_percent },
-    { name: 'Операционные', value: data.operational_goals_percent },
+  const pieData = data ? [
+    { name: 'Стратегические',  value: data.strategic_goals_percent },
+    { name: 'Функциональные',  value: data.functional_goals_percent },
+    { name: 'Операционные',    value: data.operational_goals_percent },
   ] : []
 
-  const departmentChartData = data?.departments_stats?.map(dept => ({
-    name: dept.department_name.substring(0, 15),
-    score: (dept.average_smart_score * 100).toFixed(0),
-    goals: dept.total_goals,
-    maturity: (dept.maturity_index * 100).toFixed(0),
+  const barData = data?.departments_stats?.map(d => ({
+    name:     d.department_name.substring(0, 14),
+    score:    +(d.average_smart_score * 100).toFixed(0),
+    maturity: +(d.maturity_index * 100).toFixed(0),
   })) || []
 
-  const getSmartScoreColor = (score) => {
-    if (score >= 0.85) return 'text-green-600'
-    if (score >= 0.7) return 'text-amber-600'
-    return 'text-red-600'
-  }
+  const kpiCards = data ? [
+    { label: 'Подразделений', value: data.total_departments,  icon: '🏢' },
+    { label: 'Сотрудников',   value: data.total_employees,    icon: '👤' },
+    { label: 'Целей',         value: data.total_goals,        icon: '🎯' },
+    { label: 'Средний SMART', value: `${(data.average_smart_score * 100).toFixed(0)}%`, icon: '⭐', accent: true },
+  ] : []
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 animate-fade-in">
+      {/* Page header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Дашборд качества целеполагания</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Квартальная аналитика по качеству формулировок, зрелости
-            подразделений и доле стратегически связанных целей.
+          <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Дашборд качества целеполагания</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            Квартальная аналитика по качеству формулировок, зрелости подразделений и стратегической связке.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:flex">
-          <select className="select-field w-full sm:w-auto" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
-            <option value="Q1">Q1</option>
-            <option value="Q2">Q2</option>
-            <option value="Q3">Q3</option>
-            <option value="Q4">Q4</option>
+        <div className="flex gap-2">
+          <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
+            {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
           </select>
-          <select className="select-field w-full sm:w-auto" value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
+          <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
+            {[2025, 2026].map(y => <option key={y}>{y}</option>)}
           </select>
         </div>
       </div>
 
       {data && (
         <>
+          {/* KPI row */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {kpiCards.map((k) => (
+              <CardShell key={k.label}>
+                <div className="px-5 py-4">
+                  <div className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>{k.label}</div>
+                  <div className="mt-2 text-2xl font-semibold" style={{ color: k.accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
+                    {k.value}
+                  </div>
+                </div>
+              </CardShell>
+            ))}
+          </div>
+
+          {/* Executive summary + Issues */}
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <Card>
-              <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
-                <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Executive Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-5">
-                <div className="text-base font-semibold text-slate-950 sm:text-lg">
-                  В {data.quarter} {data.year} средний индекс качества целей составляет {(data.average_smart_score * 100).toFixed(0)}%.
-                </div>
-                <div className="mt-2 text-sm leading-6 text-slate-600">
+            <CardShell>
+              <div className="px-5 py-4">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Executive Summary</div>
+                <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  В {data.quarter} {data.year} средний индекс качества целей составляет{' '}
+                  <span style={{ color: 'var(--fg-brand-primary)' }}>{(data.average_smart_score * 100).toFixed(0)}%</span>.
+                </p>
+                <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
                   Доля стратегически связанных целей: {data.strategic_goals_percent.toFixed(1)}%.
-                  Метрика показывает, насколько контур целей связан с общими
-                  приоритетами бизнеса и распределением по подразделениям.
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="p-4 pb-0 sm:p-5 sm:pb-0">
-                <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Top Issues</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-5">
-                <div className="flex flex-wrap gap-2">
-                  {data.top_issues.length > 0 ? data.top_issues.map((issue) => (
-                    <span key={issue} className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
-                      {issue}
-                    </span>
-                  )) : (
-                    <span className="text-sm text-slate-500">По эвристической оценке критичных провалов не выявлено.</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  Метрика показывает, насколько контур целей связан с общими приоритетами бизнеса.
+                </p>
+              </div>
+            </CardShell>
+            <CardShell>
+              <div className="px-5 py-4">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Top Issues</div>
+                {data.top_issues.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {data.top_issues.map((issue) => (
+                      <span key={issue} className="badge-error">
+                        {issue}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Критичных провалов не выявлено.</p>
+                )}
+              </div>
+            </CardShell>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
-                <div className="text-xl font-semibold text-gray-900 sm:text-2xl">{data.total_departments}</div>
-                <div className="mt-1 text-sm text-gray-500">Подразделений</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
-                <div className="text-xl font-semibold text-gray-900 sm:text-2xl">{data.total_employees}</div>
-                <div className="mt-1 text-sm text-gray-500">Сотрудников</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
-                <div className="text-xl font-semibold text-gray-900 sm:text-2xl">{data.total_goals}</div>
-                <div className="mt-1 text-sm text-gray-500">Целей</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5">
-                <div className="text-xl font-semibold text-cyan-800 sm:text-2xl">{(data.average_smart_score * 100).toFixed(0)}%</div>
-                <div className="mt-1 text-sm text-gray-500">Средний SMART</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-0">
-                <CardTitle className="text-base">Стратегическая связка целей</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 sm:h-72">
-                  <ResponsiveContainer width="100%" height="100%">
+          {/* Charts */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CardShell>
+              <div className="px-5 py-4 pb-2">
+                <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Стратегическая связка целей</div>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Распределение по типам целей</p>
+              </div>
+              <div className="h-64 px-4 pb-4">
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={strategicLinkData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={isMobileViewport ? 42 : 65}
-                      outerRadius={isMobileViewport ? 64 : 90}
-                      paddingAngle={3}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={isMobileViewport ? false : renderCustomLabel}
-                      strokeWidth={0}
+                    <Pie data={pieData} cx="50%" cy="50%"
+                      innerRadius={isMobile ? 45 : 60} outerRadius={isMobile ? 68 : 88}
+                      paddingAngle={3} dataKey="value" strokeWidth={0}
                     >
-                      {strategicLinkData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
+                      {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip content={<CustomTooltipPie />} />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      formatter={(value) => (<span className="text-xs sm:text-sm text-gray-600">{value}</span>)}
-                      iconType="circle"
-                      iconSize={10}
+                    <Tooltip content={<TooltipPie />} />
+                    <Legend verticalAlign="bottom" height={36}
+                      formatter={(v) => <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{v}</span>}
+                      iconType="circle" iconSize={8}
                     />
                   </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                </ResponsiveContainer>
+              </div>
+            </CardShell>
 
-            <Card>
-              <CardHeader className="pb-0">
-                <CardTitle className="text-base">SMART-индекс по подразделениям</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-72 sm:h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={departmentChartData} layout="vertical" margin={{ left: 0, right: 12 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
-                      <YAxis dataKey="name" type="category" width={84} tick={{ fontSize: 11, fill: '#374151' }} tickLine={false} axisLine={false} />
-                      <Tooltip content={<CustomTooltipBar />} />
-                      <Bar dataKey="score" fill="#0f766e" name="SMART %" radius={[0, 4, 4, 0]} barSize={16} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <CardShell>
+              <div className="px-5 py-4 pb-2">
+                <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>SMART-индекс по подразделениям</div>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Среднее значение за квартал</p>
+              </div>
+              <div className="h-72 px-4 pb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-secondary)" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-quaternary)' }} tickLine={false} axisLine={{ stroke: 'var(--border-secondary)' }} />
+                    <YAxis dataKey="name" type="category" width={88} tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickLine={false} axisLine={false} />
+                    <Tooltip content={<TooltipBar />} />
+                    <Bar dataKey="score" fill="#1570EF" name="SMART %" radius={[0, 4, 4, 0]} barSize={14} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardShell>
           </div>
 
-          <Card className="hidden overflow-hidden md:block">
-            <CardHeader className="border-b border-gray-200 px-6 py-4">
-              <CardTitle className="text-base">Детализация по подразделениям</CardTitle>
-              <p className="mt-1 text-sm text-gray-500">
-                Таблица показывает зрелость целеполагания и основные слабые
-                критерии по каждому подразделению.
+          {/* Department table — desktop */}
+          <div className="hidden rounded-xl overflow-hidden md:block"
+            style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+          >
+            <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Детализация по подразделениям</div>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Зрелость целеполагания и основные слабые критерии по каждому подразделению.
               </p>
-            </CardHeader>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подразделение</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудников</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Целей</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">SMART</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Зрелость</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Слабые критерии</th>
+                  <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    {['Подразделение','Сотруд.','Целей','SMART','Зрелость','Слабые критерии'].map(h => (
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                        style={{ color: 'var(--text-quaternary)', borderBottom: '1px solid var(--border-secondary)' }}
+                      >{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {data.departments_stats.map((dept) => {
-                    const smartPercent = (dept.average_smart_score * 100).toFixed(0)
-                    const maturityPercent = (dept.maturity_index * 100).toFixed(0)
+                    const smart   = (dept.average_smart_score * 100).toFixed(0)
+                    const matPct  = (dept.maturity_index * 100).toFixed(0)
+                    const badge   = getScoreBadge(dept.average_smart_score)
                     return (
-                      <tr key={dept.department_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.department_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">{dept.total_employees}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">{dept.total_goals}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`text-sm font-semibold ${getSmartScoreColor(dept.average_smart_score)}`}>{smartPercent}%</span>
+                      <tr key={dept.department_id} className="transition-colors"
+                        style={{ borderBottom: '1px solid var(--border-secondary)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                      >
+                        <td className="px-6 py-4 font-medium" style={{ color: 'var(--text-primary)' }}>{dept.department_name}</td>
+                        <td className="px-6 py-4 text-center" style={{ color: 'var(--text-secondary)' }}>{dept.total_employees}</td>
+                        <td className="px-6 py-4 text-center" style={{ color: 'var(--text-secondary)' }}>{dept.total_goals}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                            style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}
+                          >
+                            {smart}%
+                          </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4">
                           <div className="flex flex-col items-center gap-1">
-                            <div className="w-full max-w-[120px] bg-gray-200 rounded-lg h-2 overflow-hidden">
-                              <div className="h-2 rounded-lg bg-cyan-700" style={{ width: `${maturityPercent}%` }} />
+                            <div className="h-1.5 w-28 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                              <div className="h-1.5 rounded-full" className="progress-fill-brand" style={{ width: `${matPct}%` }} />
                             </div>
-                            <span className="text-xs text-gray-500 font-medium">{maturityPercent}%</span>
+                            <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{matPct}%</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1.5">
-                            {dept.weak_criteria.map((criteria, i) => (
-                              <span key={i} className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-700 text-xs font-medium rounded-lg">{criteria}</span>
-                            ))}
-                            {dept.weak_criteria.length === 0 && (
-                              <span className="text-green-600 text-sm font-medium">Нет проблем</span>
-                            )}
+                            {dept.weak_criteria.length > 0
+                              ? dept.weak_criteria.map((c, i) => (
+                                <span key={i} className="badge-error">{c}</span>
+                              ))
+                              : <span className="text-xs font-medium" style={{ color: 'var(--text-success-primary)' }}>Нет проблем</span>
+                            }
                           </div>
                         </td>
                       </tr>
@@ -326,53 +299,49 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </div>
 
-          <div className="grid gap-4 md:hidden">
+          {/* Department cards — mobile */}
+          <div className="grid gap-3 md:hidden">
             {data.departments_stats.map((dept) => {
-              const smartPercent = (dept.average_smart_score * 100).toFixed(0)
-              const maturityPercent = (dept.maturity_index * 100).toFixed(0)
+              const smart  = (dept.average_smart_score * 100).toFixed(0)
+              const matPct = (dept.maturity_index * 100).toFixed(0)
+              const badge  = getScoreBadge(dept.average_smart_score)
               return (
-                <Card key={dept.department_id}>
-                  <CardHeader className="p-4 pb-0">
-                    <CardTitle className="text-sm">{dept.department_name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-lg bg-slate-50 px-3 py-2">
-                        <div className="text-xs text-slate-500">Сотрудников</div>
-                        <div className="mt-1 font-semibold text-slate-900">{dept.total_employees}</div>
-                      </div>
-                      <div className="rounded-lg bg-slate-50 px-3 py-2">
-                        <div className="text-xs text-slate-500">Целей</div>
-                        <div className="mt-1 font-semibold text-slate-900">{dept.total_goals}</div>
-                      </div>
-                      <div className="rounded-lg bg-slate-50 px-3 py-2">
-                        <div className="text-xs text-slate-500">SMART</div>
-                        <div className={`mt-1 font-semibold ${getSmartScoreColor(dept.average_smart_score)}`}>{smartPercent}%</div>
-                      </div>
-                      <div className="rounded-lg bg-slate-50 px-3 py-2">
-                        <div className="text-xs text-slate-500">Зрелость</div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-lg bg-slate-200">
-                          <div className="h-2 rounded-lg bg-cyan-700" style={{ width: `${maturityPercent}%` }} />
+                <CardShell key={dept.department_id}>
+                  <div className="px-5 py-4">
+                    <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{dept.department_name}</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {[
+                        { label: 'Сотрудников', value: dept.total_employees },
+                        { label: 'Целей',       value: dept.total_goals },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                          <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{label}</div>
+                          <div className="mt-1 font-semibold" style={{ color: 'var(--text-primary)' }}>{value}</div>
                         </div>
-                        <div className="mt-1 text-xs font-medium text-slate-600">{maturityPercent}%</div>
+                      ))}
+                      <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                        <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>SMART</div>
+                        <div className="mt-1 font-semibold" style={{ color: badge.color }}>{smart}%</div>
+                      </div>
+                      <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                        <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Зрелость</div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                          <div className="h-1.5 rounded-full" className="progress-fill-brand" style={{ width: `${matPct}%` }} />
+                        </div>
+                        <div className="mt-1 text-xs font-medium" style={{ color: 'var(--text-quaternary)' }}>{matPct}%</div>
                       </div>
                     </div>
-                    <div className="mt-4">
-                      <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500">Слабые критерии</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {dept.weak_criteria.length > 0 ? dept.weak_criteria.map((criteria, i) => (
-                          <span key={i} className="inline-flex items-center rounded-lg bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                            {criteria}
-                          </span>
-                        )) : (
-                          <span className="text-sm font-medium text-green-600">Нет проблем</span>
-                        )}
+                    {dept.weak_criteria.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {dept.weak_criteria.map((c, i) => (
+                          <span key={i} className="badge-error">{c}</span>
+                        ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    )}
+                  </div>
+                </CardShell>
               )
             })}
           </div>

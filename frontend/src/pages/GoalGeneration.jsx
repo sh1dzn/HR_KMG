@@ -1,573 +1,499 @@
 import { useState, useEffect } from 'react'
 import { generateGoals, getFocusAreas, getEmployees, saveAcceptedGeneratedGoals } from '../api/client'
-import { SparklesIcon, DocumentTextIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import EmployeePicker from '../components/EmployeePicker'
 
 const generationFlow = [
-  '1. Профиль сотрудника и квартальный фокус',
-  '2. Подбор релевантных ВНД и стратегий',
-  '3. Генерация 3-5 целей в SMART-формате',
-  '4. Каскадирование от руководителя и проверка истории',
+  { step: '1', text: 'Профиль сотрудника и квартальный фокус' },
+  { step: '2', text: 'Подбор релевантных ВНД и стратегий' },
+  { step: '3', text: 'Генерация 3–5 целей в SMART-формате' },
+  { step: '4', text: 'Каскадирование от руководителя' },
 ]
 
-const normalizeGoalText = (text = '') =>
-  text
-    .toLowerCase()
-    .replace(/[^\w\s%а-яА-Яa-zA-Z0-9]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+const normalizeGoalText = (t = '') =>
+  t.toLowerCase().replace(/[^\wа-яА-Яa-zA-Z0-9%\s]/g, ' ').replace(/\s+/g, ' ').trim()
+
+const getScoreStyle = (score) => {
+  if (score >= 0.85) return { bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)' }
+  if (score >= 0.7)  return { bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: 'var(--border-warning)' }
+  return { bg: 'var(--bg-error-primary)', color: 'var(--fg-error-secondary)', border: 'var(--border-error-secondary)' }
+}
+
+const strategicStyle = (link) => {
+  const m = {
+    strategic:   { bg: 'var(--bg-brand-primary)', color: 'var(--text-brand-primary)',  border: 'var(--border-brand-secondary)' },
+    functional:  { bg: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)',    border: 'var(--border-brand-secondary)' },
+    operational: { bg: 'var(--bg-tertiary)',       color: 'var(--text-secondary)',      border: 'var(--border-primary)' },
+  }
+  return m[link] || m.operational
+}
 
 export default function GoalGeneration() {
-  const [employeeId, setEmployeeId] = useState('')
-  const [quarter, setQuarter] = useState('Q2')
-  const [year, setYear] = useState(2026)
+  const [employeeId,         setEmployeeId]         = useState('')
+  const [quarter,            setQuarter]            = useState('Q2')
+  const [year,               setYear]               = useState(2026)
   const [selectedFocusAreas, setSelectedFocusAreas] = useState([])
-  const [count, setCount] = useState(3)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState(null)
-  const [focusAreas, setFocusAreas] = useState([])
-  const [employees, setEmployees] = useState([])
-  const [goalStates, setGoalStates] = useState({})
-  const [saving, setSaving] = useState(false)
-  const [saveSummary, setSaveSummary] = useState(null)
+  const [count,              setCount]              = useState(3)
+  const [loading,            setLoading]            = useState(false)
+  const [result,             setResult]             = useState(null)
+  const [error,              setError]              = useState(null)
+  const [focusAreas,         setFocusAreas]         = useState([])
+  const [employees,          setEmployees]          = useState([])
+  const [goalStates,         setGoalStates]         = useState({})
+  const [saving,             setSaving]             = useState(false)
+  const [saveSummary,        setSaveSummary]        = useState(null)
 
   useEffect(() => {
-    loadFocusAreas()
-    loadEmployees()
+    Promise.all([getFocusAreas(), getEmployees()])
+      .then(([fa, emp]) => {
+        setFocusAreas(fa.focus_areas || [])
+        const list = emp.employees || []
+        setEmployees(list)
+        if (list.length > 0) setEmployeeId(list[0].id)
+      })
+      .catch(console.error)
   }, [])
 
-  const loadEmployees = async () => {
-    try {
-      const data = await getEmployees()
-      setEmployees(data.employees || [])
-      if (data.employees?.length > 0) {
-        setEmployeeId(data.employees[0].id)
-      }
-    } catch (err) {
-      console.error('Failed to load employees:', err)
-    }
-  }
-
-  const loadFocusAreas = async () => {
-    try {
-      const data = await getFocusAreas()
-      setFocusAreas(data.focus_areas || [])
-    } catch (err) {
-      console.error('Failed to load focus areas:', err)
-    }
-  }
-
   const handleGenerate = async () => {
-    setLoading(true)
-    setError(null)
-
+    setLoading(true); setError(null)
     try {
-      const data = await generateGoals(
-        employeeId,
-        quarter,
-        year,
-        selectedFocusAreas.length > 0 ? selectedFocusAreas : null,
-        count
-      )
-      setResult(data)
-      setGoalStates({})
-      setSaveSummary(null)
-      setSaving(false)
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка при генерации целей')
-    } finally {
-      setLoading(false)
-    }
+      const d = await generateGoals(employeeId, quarter, year, selectedFocusAreas.length > 0 ? selectedFocusAreas : null, count)
+      setResult(d); setGoalStates({}); setSaveSummary(null)
+    } catch (e) { setError(e.response?.data?.detail || 'Ошибка при генерации целей') }
+    finally { setLoading(false) }
   }
 
-  const toggleFocusArea = (areaId) => {
-    setSelectedFocusAreas(prev =>
-      prev.includes(areaId)
-        ? prev.filter(id => id !== areaId)
-        : [...prev, areaId]
-    )
-  }
+  const toggleFocus = (name) =>
+    setSelectedFocusAreas(p => p.includes(name) ? p.filter(x => x !== name) : [...p, name])
 
-  const getScoreColor = (score) => {
-    if (score >= 0.85) return 'text-emerald-600'
-    if (score >= 0.7) return 'text-amber-600'
-    return 'text-rose-600'
-  }
+  const toggleGoalState = (idx, state) =>
+    setGoalStates(p => ({ ...p, [idx]: p[idx] === state ? null : state }))
 
-  const getScoreBg = (score) => {
-    if (score >= 0.85) return 'bg-emerald-50 border-emerald-200'
-    if (score >= 0.7) return 'bg-amber-50 border-amber-200'
-    return 'bg-rose-50 border-rose-200'
-  }
-
-  const strategicLinkColor = (link) => {
-    const colors = {
-      strategic: 'bg-purple-50 text-purple-700 border-purple-200',
-      functional: 'bg-primary-50 text-primary-700 border-primary-200',
-      operational: 'bg-gray-100 text-gray-700 border-gray-200'
-    }
-    return colors[link] || colors.operational
-  }
-
-  const toggleGoalState = (index, state) => {
-    setGoalStates(prev => ({
-      ...prev,
-      [index]: prev[index] === state ? null : state
-    }))
-  }
-
-  const acceptedCount = Object.values(goalStates).filter(s => s === 'accepted').length
+  const acceptedCount  = Object.values(goalStates).filter(s => s === 'accepted').length
+  const savedCount     = Object.values(goalStates).filter(s => s === 'saved').length
+  const duplicateCount = Object.values(goalStates).filter(s => s === 'duplicate').length
 
   const handleSaveAccepted = async () => {
     if (acceptedCount === 0) return
-    setSaving(true)
-    setError(null)
-
+    setSaving(true); setError(null)
     try {
       const acceptedGoals = result.generated_goals
-        .map((goal, index) => ({ goal, index }))
-        .filter(({ index }) => goalStates[index] === 'accepted')
-        .map(({ goal }) => goal)
-
-      const saveResult = await saveAcceptedGeneratedGoals({
-        employee_id: employeeId,
-        quarter,
-        year,
+        .map((g, i) => ({ g, i }))
+        .filter(({ i }) => goalStates[i] === 'accepted')
+        .map(({ g }) => g)
+      const sr = await saveAcceptedGeneratedGoals({
+        employee_id: employeeId, quarter, year,
         accepted_goals: acceptedGoals,
         generation_context: result.generation_context || '',
         cascaded_from_manager: result.cascaded_from_manager || false,
         manager_name: result.manager_name || null,
         manager_goals_used: result.manager_goals_used || [],
       })
-      setSaveSummary(saveResult)
-
-      const savedGoalTexts = new Set((saveResult.saved_goal_texts || []).map(normalizeGoalText))
-      const skippedDuplicates = new Set((saveResult.skipped_duplicates || []).map(normalizeGoalText))
-
+      setSaveSummary(sr)
+      const saved = new Set((sr.saved_goal_texts || []).map(normalizeGoalText))
+      const dups  = new Set((sr.skipped_duplicates || []).map(normalizeGoalText))
       setGoalStates(prev => {
-        const updated = { ...prev }
-        result.generated_goals.forEach((goal, index) => {
-          if (updated[index] !== 'accepted') return
-          const normalizedGoal = normalizeGoalText(goal.goal_text)
-          if (savedGoalTexts.has(normalizedGoal)) {
-            updated[index] = 'saved'
-            return
-          }
-          if (skippedDuplicates.has(normalizedGoal)) {
-            updated[index] = 'duplicate'
-          }
+        const u = { ...prev }
+        result.generated_goals.forEach((g, i) => {
+          if (u[i] !== 'accepted') return
+          const n = normalizeGoalText(g.goal_text)
+          if (saved.has(n)) u[i] = 'saved'
+          else if (dups.has(n)) u[i] = 'duplicate'
         })
-        return updated
+        return u
       })
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка при сохранении целей')
-    } finally {
-      setSaving(false)
-    }
+    } catch (e) { setError(e.response?.data?.detail || 'Ошибка при сохранении целей') }
+    finally { setSaving(false) }
   }
 
-  const savedCount = Object.values(goalStates).filter(s => s === 'saved').length
-  const duplicateCount = Object.values(goalStates).filter(s => s === 'duplicate').length
-
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[1.25fr_0.95fr]">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-in">
+
+      {/* Page header */}
+      <div className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Генерация целей</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Экран формирует набор целей по профилю сотрудника, квартальному
-            периоду и выбранным фокус-направлениям. Каждая цель сопровождается
-            обоснованием, источником и предварительной оценкой качества.
+          <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Генерация целей</h1>
+          <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+            Формирует набор целей по профилю сотрудника, квартальному периоду и выбранным фокус-направлениям.
+            Каждая цель сопровождается обоснованием, источником и предварительной оценкой.
           </p>
         </div>
-        <Card className="bg-slate-50/80">
-          <CardHeader className="p-4 pb-0">
-            <CardTitle className="text-xs uppercase tracking-[0.18em] text-slate-500">Процесс подготовки</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              {generationFlow.map((step) => (
-                <div key={step} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                  {step}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-0">
-          <CardTitle className="text-base">Параметры генерации</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-5">
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-          <div className="sm:col-span-2">
-            <EmployeePicker
-              employees={employees}
-              value={employeeId}
-              onChange={setEmployeeId}
-              label="Сотрудник"
-              emptyText={employees.length === 0 ? 'Загрузка сотрудников...' : 'Сотрудники не найдены'}
-            />
+        <div className="rounded-xl p-4"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+        >
+          <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Процесс подготовки</div>
+          <div className="space-y-2">
+            {generationFlow.map(({ step, text }) => (
+              <div key={step} className="flex items-center gap-3">
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                  style={{ backgroundColor: 'var(--bg-brand-solid)' }}
+                >{step}</span>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{text}</span>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      {/* Parameters card */}
+      <div className="rounded-xl p-6"
+        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+      >
+        <div className="mb-5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Параметры генерации</div>
+
+        <div className="mb-5">
+          <EmployeePicker
+            employees={employees}
+            value={employeeId}
+            onChange={setEmployeeId}
+            label="Сотрудник"
+            emptyText={employees.length === 0 ? 'Загрузка...' : 'Не найдено'}
+          />
+        </div>
+
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Квартал</label>
-            <select
-              className="select-field w-full"
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value)}
-            >
-              <option value="Q1">Q1</option>
-              <option value="Q2">Q2</option>
-              <option value="Q3">Q3</option>
-              <option value="Q4">Q4</option>
+            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Квартал</label>
+            <select className="select-field w-full" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
+              {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Год</label>
-            <input
-              type="number"
-              className="input-field"
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value))}
-            />
+            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Год</label>
+            <input type="number" className="input-field" value={year} onChange={(e) => setYear(+e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Количество целей</label>
-            <select
-              className="select-field w-full"
-              value={count}
-              onChange={(e) => setCount(parseInt(e.target.value))}
-            >
-              <option value={3}>3 цели</option>
-              <option value={4}>4 цели</option>
-              <option value={5}>5 целей</option>
+            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Количество целей</label>
+            <select className="select-field w-full" value={count} onChange={(e) => setCount(+e.target.value)}>
+              {[3,4,5].map(n => <option key={n} value={n}>{n} цели</option>)}
             </select>
           </div>
         </div>
 
         {focusAreas.length > 0 && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Фокус-направления квартала
-              <span className="text-gray-400 font-normal ml-1">(опционально)</span>
+          <div className="mb-5">
+            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Фокус-направления <span className="font-normal" style={{ color: 'var(--text-quaternary)' }}>(опционально)</span>
             </label>
             <div className="flex flex-wrap gap-2">
-              {focusAreas.map((area) => (
-                <button
-                  key={area.id}
-                  onClick={() => toggleFocusArea(area.name)}
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
-                    selectedFocusAreas.includes(area.name)
-                      ? 'border-cyan-300 bg-cyan-50 text-cyan-800'
-                      : 'border-gray-200 bg-gray-100 text-gray-600 hover:bg-slate-100'
-                  }`}
-                  title={area.description}
-                >
-                  {area.name}
-                </button>
-              ))}
+              {focusAreas.map((a) => {
+                const active = selectedFocusAreas.includes(a.name)
+                return (
+                  <button key={a.id} onClick={() => toggleFocus(a.name)} title={a.description}
+                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-100 cursor-pointer"
+                    style={{
+                      backgroundColor: active ? 'var(--bg-brand-primary)' : 'var(--bg-secondary)',
+                      color: active ? 'var(--text-brand-primary)' : 'var(--text-secondary)',
+                      border: `1px solid ${active ? 'var(--border-brand-secondary)' : 'var(--border-secondary)'}`,
+                    }}
+                  >
+                    {a.name}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
 
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700">
-          Фокус-направления помогают сузить контекст и получить более предметные
-          цели по текущему квартальному приоритету.
+        <div className="mb-5 flex items-start gap-3 rounded-xl px-4 py-3"
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+        >
+          <svg className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="var(--fg-quaternary)" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            Фокус-направления помогают сузить контекст и получить более предметные цели по текущему квартальному приоритету.
+          </p>
         </div>
 
-        <div className="border-t border-gray-200 pt-5">
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className="btn-primary gap-2 text-sm px-6 py-2.5"
-          >
-            <SparklesIcon className="h-4 w-4" />
-            {loading ? 'Генерация...' : 'Сгенерировать цели'}
+        <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: '20px' }}>
+          <button onClick={handleGenerate} disabled={loading} className="btn-primary">
+            {loading ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Генерация...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                Сгенерировать цели
+              </>
+            )}
           </button>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+          <div className="status-error mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm">
+            <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
             {error}
           </div>
         )}
-        </CardContent>
-      </Card>
+      </div>
 
+      {/* Loading state */}
       {loading && (
-        <Card>
-          <CardContent className="p-10 text-center">
+        <div className="rounded-xl p-10 text-center"
+          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        >
           <div className="inline-flex items-center gap-3">
-            <svg
-              className="h-5 w-5 animate-spin text-cyan-700"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-5 w-5 animate-spin spinner-brand" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
             <div className="text-left">
-              <p className="text-sm font-medium text-gray-900">Генерация целей...</p>
-              <p className="text-sm text-gray-500">Сервис анализирует документы и формирует предложения</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Генерация целей...</p>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Сервис анализирует документы и формирует предложения</p>
             </div>
           </div>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
+      {/* Results */}
       {result && !loading && (
         <div className="space-y-4">
-          <Card>
-            <CardContent className="p-6 pt-6">
-            <div className="flex items-start justify-between">
+          {/* Summary card */}
+          <div className="rounded-xl p-6"
+            style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+          >
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-base font-semibold text-gray-900 mb-1">Сгенерированные цели</h2>
-                <p className="text-sm text-gray-500">
-                  {result.employee_name}
-                  <span className="mx-2 text-gray-300">|</span>
-                  {result.position}
-                  <span className="mx-2 text-gray-300">|</span>
-                  {result.department}
-                </p>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Сгенерированные цели</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  <span>{result.employee_name}</span>
+                  <span style={{ color: 'var(--border-primary)' }}>·</span>
+                  <span>{result.position}</span>
+                  <span style={{ color: 'var(--border-primary)' }}>·</span>
+                  <span>{result.department}</span>
+                </div>
               </div>
-              <div className="text-right flex-shrink-0 ml-4">
-                <span className="inline-block rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-sm font-medium text-cyan-800">
+              <div className="flex-shrink-0 text-right">
+                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold"
+                  className="status-brand"
+                >
                   {result.quarter} {result.year}
                 </span>
-                <div className="text-sm text-gray-500 mt-2">
-                  Сумма весов: <span className="font-semibold text-gray-900">{result.total_suggested_weight.toFixed(0)}%</span>
+                <div className="mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  Сумма весов: <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{result.total_suggested_weight.toFixed(0)}%</span>
                 </div>
               </div>
             </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">MVP-функция</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">Генерация 3-5 целей</div>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Обоснование</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">Источник ВНД + rationale</div>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Контроль</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">SMART + историческая достижимость</div>
-              </div>
+            {/* Meta chips */}
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {[
+                { label: 'MVP-функция',  value: 'Генерация 3–5 целей' },
+                { label: 'Обоснование', value: 'Источник ВНД + rationale' },
+                { label: 'Контроль',    value: 'SMART + историческая достижимость' },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl px-4 py-3"
+                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+                >
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>{label}</div>
+                  <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{value}</div>
+                </div>
+              ))}
             </div>
 
+            {/* Action buttons */}
             {acceptedCount > 0 && (
               <div className="mt-4 flex items-center gap-3">
-                <button
-                  onClick={handleSaveAccepted}
-                  disabled={saving}
-                  className="btn-primary gap-2 text-sm px-5 py-2"
-                >
-                  <CheckIcon className="h-4 w-4" />
-                  {saving ? 'Сохранение...' : `Сохранить принятые цели (${acceptedCount})`}
+                <button onClick={handleSaveAccepted} disabled={saving} className="btn-primary">
+                  {saving ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                      Сохранение...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      Сохранить принятые ({acceptedCount})
+                    </>
+                  )}
                 </button>
               </div>
             )}
 
             {savedCount > 0 && (
-              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              <div className="status-success mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm">
+                <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                 Сохранено {savedCount} {savedCount === 1 ? 'цель' : savedCount < 5 ? 'цели' : 'целей'} в систему как черновик.
               </div>
             )}
 
             {saveSummary?.skipped_duplicates?.length > 0 && (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="status-warning mt-3 flex items-start gap-2 rounded-xl px-4 py-3 text-sm">
+                <svg className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 Пропущено как дубликат: {saveSummary.skipped_duplicates.length}
-                {duplicateCount > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {saveSummary.skipped_duplicates.map((goalText) => (
-                      <span key={goalText} className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-medium text-amber-800">
-                        {goalText}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
             {result.generation_context && (
-              <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
-                <span className="font-semibold">Контекст генерации:</span>{' '}
-                {result.generation_context}
+              <div className="status-brand mt-3 rounded-xl px-4 py-3 text-sm">
+                <span className="font-semibold">Контекст генерации:</span>{' '}{result.generation_context}
               </div>
             )}
 
             {result.cascaded_from_manager && (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <div className="mt-3 rounded-xl px-4 py-3 text-sm"
+                style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)' }}
+              >
                 <span className="font-semibold">Каскадирование:</span>{' '}
                 Цели сформированы с учётом целей руководителя ({result.manager_name}).
                 {result.manager_goals_used?.length > 0 && (
-                  <ul className="mt-2 list-inside list-disc space-y-1 text-slate-600">
-                    {result.manager_goals_used.map((g, i) => (
-                      <li key={i}>{g}</li>
-                    ))}
+                  <ul className="mt-2 space-y-1 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                    {result.manager_goals_used.map((g, i) => <li key={i}>{g}</li>)}
                   </ul>
                 )}
               </div>
             )}
 
-            {result.historical_check && (
-              <div className={`mt-4 p-3 rounded-lg text-sm border ${
-                result.historical_check.completion_rate >= 70
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : result.historical_check.completion_rate >= 40
-                  ? 'bg-amber-50 border-amber-200 text-amber-800'
-                  : result.historical_check.total_past_goals > 0
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : 'bg-gray-50 border-gray-200 text-gray-700'
-              }`}>
-                <span className="font-semibold">Историческая достижимость:</span>{' '}
-                {result.historical_check.assessment}
-                <div className="mt-2 flex flex-wrap gap-4 text-xs font-medium">
-                  <span>Целей в истории: {result.historical_check.total_past_goals}</span>
-                  <span>Выполнено: {result.historical_check.completed_count} ({result.historical_check.completion_rate}%)</span>
-                  {result.historical_check.basis && (
-                    <span>
-                      Основа: {result.historical_check.basis === 'employee_history'
-                        ? 'личная история'
-                        : result.historical_check.basis === 'department_benchmark'
-                        ? 'бенчмарк подразделения'
-                        : 'нет данных'}
-                    </span>
-                  )}
-                  {typeof result.historical_check.employee_completion_rate === 'number' && (
-                    <span>Личная история: {result.historical_check.employee_completion_rate}%</span>
-                  )}
-                  {typeof result.historical_check.department_completion_rate === 'number' && (
-                    <span>Подразделение: {result.historical_check.department_completion_rate}%</span>
-                  )}
-                  {typeof result.historical_check.on_time_completion_rate === 'number' && (
-                    <span>В срок: {result.historical_check.on_time_completion_rate}%</span>
-                  )}
-                  {result.historical_check.avg_smart_score && (
-                    <span>Средний SMART: {(result.historical_check.avg_smart_score * 100).toFixed(0)}%</span>
-                  )}
+            {result.historical_check && (() => {
+              const r = result.historical_check
+              const style = r.completion_rate >= 70
+                ? { bg: 'var(--bg-success-primary)', border: 'var(--border-success)', color: 'var(--text-success-primary)' }
+                : r.completion_rate >= 40
+                ? { bg: 'var(--bg-warning-primary)', border: 'var(--border-warning)', color: 'var(--text-warning-primary)' }
+                : r.total_past_goals > 0
+                ? { bg: 'var(--bg-error-primary)', border: 'var(--border-error-secondary)', color: 'var(--fg-error-secondary)' }
+                : { bg: 'var(--bg-secondary)', border: 'var(--border-secondary)', color: 'var(--text-secondary)' }
+              return (
+                <div className="mt-3 rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: style.bg, border: `1px solid ${style.border}`, color: style.color }}>
+                  <span className="font-semibold">Историческая достижимость:</span>{' '}{r.assessment}
+                  <div className="mt-2 flex flex-wrap gap-4 text-xs font-medium">
+                    <span>Целей в истории: {r.total_past_goals}</span>
+                    <span>Выполнено: {r.completed_count} ({r.completion_rate}%)</span>
+                    {r.on_time_completion_rate != null && <span>В срок: {r.on_time_completion_rate}%</span>}
+                    {r.avg_smart_score && <span>Средний SMART: {(r.avg_smart_score * 100).toFixed(0)}%</span>}
+                  </div>
                 </div>
-              </div>
-            )}
-            </CardContent>
-          </Card>
+              )
+            })()}
+          </div>
 
-          {/* Goal Cards */}
-          {result.generated_goals.map((goal, index) => {
-            const state = goalStates[index]
-            const borderClass = state === 'accepted' ? 'border-emerald-300'
-              : state === 'rejected' ? 'border-rose-300'
-              : state === 'duplicate' ? 'border-amber-300'
-              : state === 'saved' ? 'border-emerald-400'
-              : 'border-gray-200'
+          {/* Goal cards */}
+          {result.generated_goals.map((goal, idx) => {
+            const state = goalStates[idx]
+            const scoreStyle = getScoreStyle(goal.smart_score)
+            const stratStyle = strategicStyle(goal.strategic_link)
+            const borderColor = state === 'accepted' ? 'var(--border-success)' : state === 'rejected' ? 'var(--border-error-secondary)' : state === 'duplicate' ? 'var(--border-warning)' : state === 'saved' ? 'var(--border-success)' : 'var(--border-secondary)'
 
             return (
-            <Card key={index} className={`transition-colors ${borderClass} ${state === 'rejected' ? 'opacity-50' : ''}`}>
-              <CardContent className="p-6 pt-6">
-              <div className="flex items-start justify-between gap-6">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center flex-wrap gap-2 mb-3">
-                    <span className="inline-block rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-sm font-medium text-slate-700">
-                      Цель {index + 1}
-                    </span>
-                    <span className={`inline-block px-2.5 py-0.5 text-sm font-medium rounded-lg border ${strategicLinkColor(goal.strategic_link)}`}>
-                      {goal.strategic_link_russian}
-                    </span>
-                    <span className="inline-block px-2.5 py-0.5 text-sm font-medium bg-gray-50 text-gray-600 rounded-lg border border-gray-200">
-                      {goal.goal_type_russian}
-                    </span>
-                    {state === 'saved' && (
-                      <span className="inline-block px-2.5 py-0.5 text-sm font-medium bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200">
-                        Сохранено
-                      </span>
-                    )}
-                    {state === 'duplicate' && (
-                      <span className="inline-block px-2.5 py-0.5 text-sm font-medium bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
-                        Дубликат
-                      </span>
-                    )}
+              <div key={idx} className="rounded-xl p-6 transition-all"
+                style={{
+                  backgroundColor: 'var(--bg-primary)',
+                  border: `1px solid ${borderColor}`,
+                  boxShadow: '0px 1px 2px rgba(10,13,18,0.05)',
+                  opacity: state === 'rejected' ? 0.5 : 1,
+                }}
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                        style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
+                      >Цель {idx + 1}</span>
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: stratStyle.bg, color: stratStyle.color, border: `1px solid ${stratStyle.border}` }}
+                      >{goal.strategic_link_russian}</span>
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
+                      >{goal.goal_type_russian}</span>
+                      {state === 'saved' && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          className="status-success"
+                        >
+                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          Сохранено
+                        </span>
+                      )}
+                      {state === 'duplicate' && (
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          className="status-warning"
+                        >Дубликат</span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.goal_text}</h3>
+                    <div className="mt-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                      <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Показатель: </span>
+                      {goal.metric}
+                    </div>
                   </div>
-                  <h3 className="text-base font-semibold text-gray-900 leading-snug mb-3">{goal.goal_text}</h3>
-                  <div className="flex items-baseline gap-1.5 text-sm">
-                    <span className="font-medium text-gray-500">Показатель:</span>
-                    <span className="text-gray-700">{goal.metric}</span>
+                  <div className="flex-shrink-0 text-center">
+                    <div className="flex h-20 w-20 flex-col items-center justify-center rounded-xl"
+                      style={{ backgroundColor: scoreStyle.bg, border: `1px solid ${scoreStyle.border}` }}
+                    >
+                      <span className="text-2xl font-semibold leading-none" style={{ color: scoreStyle.color }}>
+                        {(goal.smart_score * 100).toFixed(0)}%
+                      </span>
+                      <span className="mt-1 text-xs font-medium" style={{ color: 'var(--text-quaternary)' }}>SMART</span>
+                    </div>
+                    <div className="mt-2 text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Вес: {goal.suggested_weight.toFixed(0)}%</div>
                   </div>
                 </div>
-                <div className="flex-shrink-0 text-center">
-                  <div className={`inline-flex flex-col items-center justify-center w-20 h-20 rounded-lg border ${getScoreBg(goal.smart_score)}`}>
-                    <span className={`text-2xl font-semibold leading-none ${getScoreColor(goal.smart_score)}`}>
-                      {(goal.smart_score * 100).toFixed(0)}%
-                    </span>
-                    <span className="text-xs text-gray-500 mt-1 font-medium">SMART</span>
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-gray-500">Вес: {goal.suggested_weight.toFixed(0)}%</div>
-                </div>
-              </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  <span className="font-medium text-gray-700">Обоснование:</span>{' '}
+                <div className="mt-4 pt-4 text-sm leading-relaxed" style={{ borderTop: '1px solid var(--border-secondary)', color: 'var(--text-tertiary)' }}>
+                  <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Обоснование: </span>
                   {goal.rationale}
-                </p>
-              </div>
+                </div>
 
-              {goal.source_document && (
-                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mt-0.5">
-                      <DocumentTextIcon className="h-4 w-4 text-gray-500" />
+                {goal.source_document && (
+                  <div className="mt-4 flex items-start gap-3 rounded-xl px-4 py-3"
+                    style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+                  >
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--fg-quaternary)' }}
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                      </svg>
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-700">{goal.source_document.title}</div>
-                      <div className="mt-1 inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                        Источник из ВНД / стратегии
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                      <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{goal.source_document.title}</div>
+                      <div className="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-quaternary)', border: '1px solid var(--border-secondary)' }}
+                      >Источник из ВНД / стратегии</div>
+                      <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
                         {goal.source_document.relevant_fragment.substring(0, 200)}...
                       </p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {state !== 'saved' && state !== 'duplicate' && (
-                <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
-                  <button
-                    onClick={() => toggleGoalState(index, 'accepted')}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
-                      state === 'accepted'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'
-                    }`}
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                    Принять
-                  </button>
-                  <button
-                    onClick={() => toggleGoalState(index, 'rejected')}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
-                      state === 'rejected'
-                        ? 'bg-rose-50 text-rose-700 border-rose-300'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300'
-                    }`}
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                    Отклонить
-                  </button>
-                </div>
-              )}
-              </CardContent>
-            </Card>
-          )})}
+                {state !== 'saved' && state !== 'duplicate' && (
+                  <div className="mt-4 flex items-center gap-2 pt-4" style={{ borderTop: '1px solid var(--border-secondary)' }}>
+                    <button onClick={() => toggleGoalState(idx, 'accepted')}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-100 cursor-pointer"
+                      style={{
+                        backgroundColor: state === 'accepted' ? 'var(--bg-success-primary)' : 'var(--bg-primary)',
+                        color: state === 'accepted' ? 'var(--text-success-primary)' : 'var(--text-secondary)',
+                        border: `1px solid ${state === 'accepted' ? 'var(--border-success)' : 'var(--border-secondary)'}`,
+                      }}
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      Принять
+                    </button>
+                    <button onClick={() => toggleGoalState(idx, 'rejected')}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-100 cursor-pointer"
+                      style={{
+                        backgroundColor: state === 'rejected' ? 'var(--bg-error-primary)' : 'var(--bg-primary)',
+                        color: state === 'rejected' ? 'var(--fg-error-secondary)' : 'var(--text-secondary)',
+                        border: `1px solid ${state === 'rejected' ? 'var(--border-error-secondary)' : 'var(--border-secondary)'}`,
+                      }}
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      Отклонить
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

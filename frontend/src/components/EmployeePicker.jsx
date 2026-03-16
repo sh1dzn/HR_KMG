@@ -1,16 +1,8 @@
 import { useDeferredValue, useState } from 'react'
-import { CheckIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/outline'
 
-const buildEmployeeSearchText = (employee) =>
-  [
-    employee.full_name,
-    employee.position_name,
-    employee.department_name,
-    employee.employee_code,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
+const buildSearch = (emp) =>
+  [emp.full_name, emp.position_name, emp.department_name, emp.employee_code]
+    .filter(Boolean).join(' ').toLowerCase()
 
 export default function EmployeePicker({
   employees = [],
@@ -22,85 +14,101 @@ export default function EmployeePicker({
   className = '',
 }) {
   const [query, setQuery] = useState('')
-  const deferredQuery = useDeferredValue(query)
-  const normalizedQuery = deferredQuery.trim().toLowerCase()
+  const deferred  = useDeferredValue(query)
+  const normalized= deferred.trim().toLowerCase()
 
-  const selectedEmployee = employees.find((employee) => employee.id === value) || null
+  const selected = employees.find((e) => e.id === value) || null
 
-  let filteredEmployees = []
-  if (!normalizedQuery) {
-    if (!selectedEmployee) {
-      filteredEmployees = employees.slice(0, 8)
-    } else {
-      const withoutSelected = employees.filter((employee) => employee.id !== selectedEmployee.id)
-      filteredEmployees = [selectedEmployee, ...withoutSelected.slice(0, 7)]
-    }
+  let list = []
+  if (!normalized) {
+    list = selected
+      ? [selected, ...employees.filter(e => e.id !== selected.id).slice(0, 7)]
+      : employees.slice(0, 8)
   } else {
-    filteredEmployees = employees.filter((employee) => buildEmployeeSearchText(employee).includes(normalizedQuery))
+    list = employees.filter(e => buildSearch(e).includes(normalized))
   }
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-        <div className="relative">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            className="input-field pl-9"
-            placeholder={placeholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+      <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+
+        {/* Search */}
+        <div className="relative mb-3">
+          <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--fg-quaternary)' }}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" className="input-field pl-9" placeholder={placeholder}
+            value={query} onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
-        {selectedEmployee && (
-          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-            <div className="font-medium">{selectedEmployee.full_name}</div>
-            <div className="mt-0.5 text-xs text-emerald-700">
-              {[selectedEmployee.position_name, selectedEmployee.department_name].filter(Boolean).join(' · ')}
+        {/* Selected banner */}
+        {selected && (
+          <div className="status-success mb-3 flex items-center gap-2.5 rounded-lg px-3 py-2">
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+              style={{ backgroundColor: 'var(--fg-success-primary)' }}
+            >
+              {(selected.full_name || '').split(' ').map(w => w[0]).slice(0, 2).join('')}
             </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium" style={{ color: 'var(--text-success-primary)' }}>{selected.full_name}</div>
+              <div className="text-xs" style={{ color: 'var(--text-success-secondary)' }}>
+                {[selected.position_name, selected.department_name].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            <svg className="ml-auto h-4 w-4 flex-shrink-0" style={{ color: 'var(--fg-success-primary)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
           </div>
         )}
 
-        <div className="mt-3 max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white">
-          {filteredEmployees.length > 0 ? (
-            filteredEmployees.map((employee) => {
-              const isSelected = employee.id === value
-
-              return (
-                <button
-                  key={employee.id}
-                  type="button"
-                  onClick={() => onChange(employee.id)}
-                  className={[
-                    'flex w-full items-start gap-3 border-b border-slate-100 px-3 py-3 text-left transition-colors last:border-b-0',
-                    isSelected ? 'bg-emerald-50' : 'hover:bg-slate-50',
-                  ].join(' ')}
+        {/* List */}
+        <div className="max-h-56 overflow-y-auto rounded-lg" style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-primary)' }}>
+          {list.length > 0 ? list.map((emp) => {
+            const isSelected = emp.id === value
+            return (
+              <button key={emp.id} type="button" onClick={() => onChange(emp.id)}
+                className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors last:border-b-0"
+                style={{
+                  borderBottom: '1px solid var(--border-tertiary)',
+                  backgroundColor: isSelected ? 'var(--bg-brand-25)' : undefined,
+                }}
+                onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? 'var(--bg-brand-25)' : '' }}
+              >
+                <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+                  style={{
+                    backgroundColor: isSelected ? 'var(--bg-brand-secondary)' : 'var(--bg-tertiary)',
+                    color: isSelected ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)',
+                  }}
                 >
-                  <div className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${
-                    isSelected ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {isSelected ? <CheckIcon className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
+                  {isSelected
+                    ? <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    : (emp.full_name || 'EM').split(' ').map(w => w[0]).slice(0, 2).join('')
+                  }
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="break-words text-sm font-medium" style={{ color: isSelected ? 'var(--text-brand-primary)' : 'var(--text-primary)' }}>
+                    {emp.full_name}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="break-words text-sm font-medium text-slate-900">{employee.full_name}</div>
-                    <div className="mt-0.5 break-words text-xs text-slate-500">
-                      {[employee.position_name, employee.department_name].filter(Boolean).join(' · ')}
-                    </div>
+                  <div className="mt-0.5 break-words text-xs" style={{ color: 'var(--text-quaternary)' }}>
+                    {[emp.position_name, emp.department_name].filter(Boolean).join(' · ')}
                   </div>
-                </button>
-              )
-            })
-          ) : (
-            <div className="px-3 py-4 text-sm text-slate-500">{emptyText}</div>
+                </div>
+              </button>
+            )
+          }) : (
+            <div className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-quaternary)' }}>{emptyText}</div>
           )}
         </div>
 
-        <div className="mt-2 text-xs text-slate-500">
-          {normalizedQuery
-            ? `Найдено ${filteredEmployees.length} сотрудников`
-            : `Показаны первые ${filteredEmployees.length} сотрудников. Начните ввод для точного поиска.`}
+        <div className="mt-2 text-xs" style={{ color: 'var(--text-quaternary)' }}>
+          {normalized
+            ? `Найдено ${list.length} сотрудников`
+            : `Показаны первые ${list.length}. Начните ввод для поиска.`
+          }
         </div>
       </div>
     </div>

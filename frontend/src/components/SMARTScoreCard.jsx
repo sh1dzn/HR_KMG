@@ -1,261 +1,194 @@
 import { useState } from 'react'
-import {
-  CheckCircleIcon,
-  XCircleIcon,
-  ClipboardDocumentIcon,
-} from '@heroicons/react/24/outline'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 const criteriaNames = {
-  specific: 'S - Конкретность',
-  measurable: 'M - Измеримость',
-  achievable: 'A - Достижимость',
-  relevant: 'R - Релевантность',
-  time_bound: 'T - Ограниченность во времени',
+  specific:   'S — Конкретность',
+  measurable: 'M — Измеримость',
+  achievable: 'A — Достижимость',
+  relevant:   'R — Релевантность',
+  time_bound: 'T — Срок',
 }
 
 const qualityConfig = {
-  high: {
-    text: 'Высокое качество',
-    bg: 'bg-green-50',
-    textColor: 'text-green-700',
-    border: 'border-green-200',
-    dot: 'bg-green-500',
-  },
-  medium: {
-    text: 'Среднее качество',
-    bg: 'bg-amber-50',
-    textColor: 'text-amber-700',
-    border: 'border-amber-200',
-    dot: 'bg-amber-500',
-  },
-  low: {
-    text: 'Требует доработки',
-    bg: 'bg-red-50',
-    textColor: 'text-red-700',
-    border: 'border-red-200',
-    dot: 'bg-red-500',
-  },
+  high:   { label: 'Высокое качество', bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)',         dot: 'var(--fg-success-primary)' },
+  medium: { label: 'Среднее качество', bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: 'var(--border-warning)',         dot: 'var(--fg-warning-primary)' },
+  low:    { label: 'Требует доработки',bg: 'var(--bg-error-primary)',   color: 'var(--fg-error-secondary)',   border: 'var(--border-error-secondary)', dot: 'var(--border-error)' },
 }
 
-const goalTypeLabels = {
-  activity: 'Деятельностная',
-  output: 'Результатная',
-  impact: 'Влияние на бизнес',
-}
+const goalTypeLabels     = { activity: 'Деятельностная', output: 'Результатная', impact: 'Влияние на бизнес' }
+const strategicLinkLabels= { strategic: 'Стратегическая', functional: 'Функциональная', operational: 'Операционная' }
 
-const strategicLinkLabels = {
-  strategic: 'Стратегическая',
-  functional: 'Функциональная',
-  operational: 'Операционная',
-}
-
-/* Score ring */
-function ScoreDisplay({ score }) {
-  const percentage = Math.round(score * 100)
-  const radius = 64
-  const stroke = 8
-  const normalizedRadius = radius - stroke / 2
-  const circumference = 2 * Math.PI * normalizedRadius
-  const offset = circumference - (score * circumference)
-
-  const getColor = () => {
-    if (percentage >= 85) return '#16a34a'
-    if (percentage >= 60) return '#d97706'
-    return '#dc2626'
-  }
+/* ── Score ring ─────────────────────────────────────────────── */
+function ScoreRing({ score }) {
+  const pct = Math.round(score * 100)
+  const R = 56, sw = 7
+  const nr = R - sw / 2
+  const circ = 2 * Math.PI * nr
+  const offset = circ * (1 - score)
+  const color = pct >= 85 ? 'var(--fg-success-primary)' : pct >= 60 ? 'var(--fg-warning-primary)' : 'var(--border-error)'
 
   return (
     <div className="relative inline-flex items-center justify-center">
-      <svg width={radius * 2} height={radius * 2} className="-rotate-90">
-        <circle
-          cx={radius}
-          cy={radius}
-          r={normalizedRadius}
-          fill="none"
-          stroke="#e5e7eb"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx={radius}
-          cy={radius}
-          r={normalizedRadius}
-          fill="none"
-          stroke={getColor()}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-500"
+      <svg width={R * 2} height={R * 2} className="-rotate-90">
+        <circle cx={R} cy={R} r={nr} fill="none" stroke="var(--bg-tertiary)" strokeWidth={sw} />
+        <circle cx={R} cy={R} r={nr} fill="none" stroke={color} strokeWidth={sw}
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-semibold text-gray-900">{percentage}%</span>
-        <span className="text-xs text-gray-500 mt-0.5">SMART-индекс</span>
+        <span className="text-3xl font-semibold leading-none" style={{ color: 'var(--text-primary)' }}>{pct}%</span>
+        <span className="mt-1 text-[11px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-quaternary)' }}>SMART</span>
       </div>
     </div>
   )
 }
 
-/* Criterion card */
+/* ── Criterion card ─────────────────────────────────────────── */
 function CriterionCard({ name, criterion }) {
-  const satisfied = criterion.is_satisfied
-  const percentage = Math.round(criterion.score * 100)
+  const pct = Math.round(criterion.score * 100)
+  const ok  = criterion.is_satisfied
+  const barColor  = ok ? 'var(--fg-success-primary)' : 'var(--border-error)'
+  const iconColor = ok ? 'var(--fg-success-primary)' : 'var(--border-error)'
 
   return (
-    <Card className="rounded-xl bg-white/80">
-      <CardContent className="p-4 pt-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-900">{name}</span>
-        {satisfied ? (
-          <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
-        ) : (
-          <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
-        )}
+    <div className="rounded-xl p-4"
+      style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{name}</span>
+        <svg className="h-5 w-5 flex-shrink-0" style={{ color: iconColor }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {ok
+            ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
+            : <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>
+          }
+        </svg>
       </div>
-      <div className="text-xl font-semibold text-gray-900 mb-2">{percentage}%</div>
-      <div className="w-full bg-gray-100 rounded-lg h-1.5 mb-3">
-        <div
-          className={`h-1.5 rounded-lg transition-all duration-500 ${satisfied ? 'bg-green-500' : 'bg-red-500'}`}
-          style={{ width: `${percentage}%` }}
-        />
+      <div className="mb-2 text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{pct}%</div>
+      <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+        <div className="h-1.5 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
       </div>
       {criterion.comment && (
-        <p className="text-sm text-gray-500 leading-relaxed">{criterion.comment}</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>{criterion.comment}</p>
       )}
-      </CardContent>
-    </Card>
+    </div>
   )
 }
 
-/* Main component */
+/* ── Main export ────────────────────────────────────────────── */
 export default function SMARTScoreCard({ evaluation }) {
   const [copied, setCopied] = useState(false)
-
-  const {
-    smart_evaluation,
-    overall_score,
-    quality_level,
-    goal_type,
-    strategic_link,
-    recommendations,
-    reformulated_goal,
-    goal_text,
-  } = evaluation
-
-  const quality = qualityConfig[quality_level] || qualityConfig.low
+  const { smart_evaluation, overall_score, quality_level, goal_type, strategic_link, recommendations, reformulated_goal, goal_text } = evaluation
+  const q = qualityConfig[quality_level] || qualityConfig.low
 
   const handleCopy = async () => {
     if (!reformulated_goal) return
-    try {
-      await navigator.clipboard.writeText(reformulated_goal)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { /* clipboard API may not be available */ }
+    try { await navigator.clipboard.writeText(reformulated_goal); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* */ }
   }
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <Card>
-        <CardContent className="p-6 pt-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+
+      {/* Main result card */}
+      <div className="rounded-xl p-6"
+        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+      >
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-gray-900">Результат оценки</h2>
+            <div className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Результат оценки</div>
             {goal_text && (
-              <p className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">{goal_text}</p>
+              <p className="mt-1 text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--text-tertiary)' }}>{goal_text}</p>
             )}
           </div>
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border flex-shrink-0 ${quality.bg} ${quality.textColor} ${quality.border}`}>
-            <span className={`w-1.5 h-1.5 rounded-lg ${quality.dot}`} />
-            {quality.text}
+          <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+            style={{ backgroundColor: q.bg, color: q.color, border: `1px solid ${q.border}` }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: q.dot }} />
+            {q.label}
           </span>
         </div>
 
         <div className="flex justify-center py-4 mb-6">
-          <ScoreDisplay score={overall_score} />
+          <ScoreRing score={overall_score} />
         </div>
 
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Критерии SMART</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Критерии SMART</div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(smart_evaluation).map(([key, criterion]) => (
             <CriterionCard key={key} name={criteriaNames[key]} criterion={criterion} />
           ))}
         </div>
-        </CardContent>
-      </Card>
+      </div>
 
+      {/* Classification */}
       {(goal_type || strategic_link) && (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle>Классификация цели</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded-xl p-6"
+          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        >
+          <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Классификация цели</div>
+          <div className="grid gap-3 sm:grid-cols-2">
             {goal_type && (
-              <Card className="rounded-xl bg-slate-50/80 shadow-none">
-                <CardContent className="p-4 pt-4">
-                <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Тип цели</div>
-                <div className="text-sm font-semibold text-gray-900">
+              <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Тип цели</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                   {goal_type.type_russian || goalTypeLabels[goal_type.type] || 'Не определён'}
                 </div>
                 {goal_type.explanation && (
-                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{goal_type.explanation}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>{goal_type.explanation}</p>
                 )}
-                </CardContent>
-              </Card>
+              </div>
             )}
             {strategic_link && (
-              <Card className="rounded-xl bg-slate-50/80 shadow-none">
-                <CardContent className="p-4 pt-4">
-                <div className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">Стратегическая связка</div>
-                <div className="text-sm font-semibold text-gray-900">
+              <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Стратегическая связка</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                   {strategic_link.level_russian || strategicLinkLabels[strategic_link.level] || 'Не определена'}
                 </div>
                 {strategic_link.explanation && (
-                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{strategic_link.explanation}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>{strategic_link.explanation}</p>
                 )}
-                </CardContent>
-              </Card>
+              </div>
             )}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {recommendations && recommendations.length > 0 && (
-        <Card>
-          <CardHeader className="pb-0">
-            <CardTitle>Рекомендации по улучшению</CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Recommendations */}
+      {recommendations?.length > 0 && (
+        <div className="rounded-xl p-6"
+          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        >
+          <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Рекомендации по улучшению</div>
           <ul className="space-y-2.5">
-            {recommendations.map((rec, index) => (
-              <li key={index} className="flex items-start gap-2.5 text-sm text-gray-600 leading-relaxed">
-                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-lg bg-cyan-700" />
+            {recommendations.map((rec, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
+                <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: 'var(--fg-brand-primary)' }} />
                 <span>{rec}</span>
               </li>
             ))}
           </ul>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
+      {/* Reformulated goal */}
       {reformulated_goal && (
-        <Card className="border-emerald-200 bg-emerald-50/90">
-          <CardContent className="p-6 pt-6">
-          <div className="flex items-start justify-between gap-4 mb-2">
-            <h3 className="text-sm font-semibold text-green-800">Улучшенная формулировка</h3>
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 hover:text-green-900 bg-white border border-green-200 px-3 py-1.5 rounded-lg transition-colors duration-150 flex-shrink-0 cursor-pointer"
+        <div className="status-success rounded-xl p-6"
+          style={{ boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        >
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div className="text-sm font-semibold" style={{ color: 'var(--text-success-primary)' }}>Улучшенная формулировка</div>
+            <button onClick={handleCopy}
+              className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-100 cursor-pointer"
+              style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-success-primary)', border: '1px solid var(--border-success)' }}
             >
-              <ClipboardDocumentIcon className="h-4 w-4" />
-              {copied ? 'Скопировано' : 'Скопировать'}
+              {copied ? (
+                <><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> Скопировано</>
+              ) : (
+                <><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Скопировать</>
+              )}
             </button>
           </div>
-          <p className="text-sm text-green-900 font-medium leading-relaxed">{reformulated_goal}</p>
-          </CardContent>
-        </Card>
+          <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-success-secondary)' }}>{reformulated_goal}</p>
+        </div>
       )}
     </div>
   )

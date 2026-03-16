@@ -1,18 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import {
-  HomeIcon,
-  ClipboardDocumentCheckIcon,
-  SparklesIcon,
-  ChartBarIcon,
-  UserGroupIcon,
-  BellAlertIcon,
-  Bars3Icon,
-  ComputerDesktopIcon,
-  MoonIcon,
-  SunIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline'
 import GoalEvaluation from './pages/GoalEvaluation'
 import GoalGeneration from './pages/GoalGeneration'
 import Dashboard from './pages/Dashboard'
@@ -22,12 +9,54 @@ import Home from './pages/Home'
 import KmgLogo from './components/KmgLogo'
 
 const navigation = [
-  { name: 'Главная', href: '/', icon: HomeIcon },
-  { name: 'Оценка целей', href: '/evaluation', icon: ClipboardDocumentCheckIcon },
-  { name: 'Генерация целей', href: '/generation', icon: SparklesIcon },
-  { name: 'Дашборд', href: '/dashboard', icon: ChartBarIcon },
-  { name: 'Сотрудники', href: '/employees', icon: UserGroupIcon },
-  { name: 'Операции', href: '/operations', icon: BellAlertIcon },
+  {
+    name: 'Главная', href: '/',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Оценка целей', href: '/evaluation',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Генерация целей', href: '/generation',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Дашборд', href: '/dashboard',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Сотрудники', href: '/employees',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Операции', href: '/operations',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    ),
+  },
 ]
 
 const pageTitles = {
@@ -37,6 +66,45 @@ const pageTitles = {
   '/dashboard': 'Дашборд',
   '/employees': 'Цели сотрудников',
   '/operations': 'Операции',
+}
+
+function SunIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  )
+}
+function MoonIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  )
+}
+function MonitorIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  )
+}
+function MenuIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  )
+}
+function XIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
 }
 
 function App() {
@@ -49,149 +117,147 @@ function App() {
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const applySystemTheme = () => {
-      setSystemTheme(mq.matches ? 'dark' : 'light')
-    }
+    const applySystemTheme = () => setSystemTheme(mq.matches ? 'dark' : 'light')
     applySystemTheme()
-
     const storedMode = localStorage.getItem('kmg-theme-mode')
-    const legacyTheme = localStorage.getItem('kmg-theme')
     if (storedMode === 'light' || storedMode === 'dark' || storedMode === 'system') {
       setThemeMode(storedMode)
-    } else if (legacyTheme === 'light' || legacyTheme === 'dark') {
-      setThemeMode(legacyTheme)
     } else {
       setThemeMode('system')
     }
-
     mq.addEventListener('change', applySystemTheme)
     return () => mq.removeEventListener('change', applySystemTheme)
   }, [])
 
   useEffect(() => {
-    const root = document.documentElement
-    root.classList.toggle('theme-dark', resolvedTheme === 'dark')
+    document.documentElement.classList.toggle('theme-dark', resolvedTheme === 'dark')
     localStorage.setItem('kmg-theme-mode', themeMode)
   }, [themeMode, resolvedTheme])
 
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
-
-  const cycleThemeMode = () => {
-    const order = ['light', 'system', 'dark']
-    const currentIndex = order.indexOf(themeMode)
-    const nextMode = order[(currentIndex + 1) % order.length]
-    setThemeMode(nextMode)
-  }
+  useEffect(() => { setMobileMenuOpen(false) }, [location.pathname])
 
   const modeMeta = {
-    light: { icon: SunIcon, short: 'L', title: 'Light' },
-    system: { icon: ComputerDesktopIcon, short: 'A', title: 'System' },
-    dark: { icon: MoonIcon, short: 'D', title: 'Dark' },
+    light:  { icon: SunIcon,     short: 'L', label: 'Light' },
+    system: { icon: MonitorIcon, short: 'A', label: 'Auto' },
+    dark:   { icon: MoonIcon,    short: 'D', label: 'Dark' },
+  }
+  const cycleTheme = () => {
+    const order = ['light', 'system', 'dark']
+    setThemeMode(order[(order.indexOf(themeMode) + 1) % order.length])
   }
 
-  const ThemeSwitch = ({ compact = false }) => (
-    compact ? (
-      <button
-        type="button"
-        onClick={cycleThemeMode}
-        className="theme-switch-mobile"
-        title={`Theme: ${modeMeta[themeMode].title}`}
-        aria-label={`Theme mode ${modeMeta[themeMode].title}`}
-      >
-        {(() => {
-          const Icon = modeMeta[themeMode].icon
-          return <Icon className="h-4 w-4" />
-        })()}
-        <span className="theme-switch-mobile-label">{modeMeta[themeMode].short}</span>
-      </button>
-    ) : (
+  const ThemeSwitch = ({ compact = false }) => {
+    if (compact) {
+      return (
+        <button type="button" onClick={cycleTheme} className="theme-switch-mobile" aria-label={`Theme: ${modeMeta[themeMode].label}`}>
+          {(() => { const Icon = modeMeta[themeMode].icon; return <Icon className="h-3.5 w-3.5" /> })()}
+          <span className="theme-switch-mobile-label">{modeMeta[themeMode].short}</span>
+        </button>
+      )
+    }
+    return (
       <div className="theme-switch">
-        <button
-          type="button"
-          onClick={() => setThemeMode('light')}
-          className={`theme-mode-btn ${themeMode === 'light' ? 'theme-mode-btn-active' : ''}`}
-          title="Светлая тема"
-        >
-          <SunIcon className="h-4 w-4" />
-          <span>Light</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setThemeMode('system')}
-          className={`theme-mode-btn ${themeMode === 'system' ? 'theme-mode-btn-active' : ''}`}
-          title="Системная тема"
-        >
-          <ComputerDesktopIcon className="h-4 w-4" />
-          <span>System</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setThemeMode('dark')}
-          className={`theme-mode-btn ${themeMode === 'dark' ? 'theme-mode-btn-active' : ''}`}
-          title="Темная тема"
-        >
-          <MoonIcon className="h-4 w-4" />
-          <span>Dark</span>
-        </button>
+        {['light', 'system', 'dark'].map((mode) => {
+          const { icon: Icon, label } = modeMeta[mode]
+          return (
+            <button key={mode} type="button" onClick={() => setThemeMode(mode)}
+              className={`theme-mode-btn ${themeMode === mode ? 'theme-mode-btn-active' : ''}`}
+              title={label}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{label}</span>
+            </button>
+          )
+        })}
       </div>
     )
-  )
+  }
 
   return (
-    <div className="flex min-h-screen bg-transparent">
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+      {/* Mobile overlay */}
       {mobileMenuOpen && (
         <button
           type="button"
           aria-label="Закрыть меню"
-          className="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 lg:hidden"
+          style={{ backgroundColor: 'rgba(12,17,29,0.48)', backdropFilter: 'blur(2px)' }}
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
+      {/* Sidebar */}
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[88vw] flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-transform duration-200 ease-out lg:w-64',
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[88vw] flex-col transition-transform duration-200 ease-out lg:translate-x-0',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
+        style={{
+          backgroundColor: 'var(--sidebar-bg)',
+          borderRight: '1px solid var(--sidebar-border)',
+        }}
       >
-        <div className="flex h-16 items-center gap-3 border-b border-slate-800 px-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-            <KmgLogo className="h-7 w-7 text-slate-100" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold leading-tight text-white">Performance Goals</div>
-            <div className="text-[11px] leading-tight text-slate-400">КМГ-КУМКОЛЬ</div>
+        {/* Logo area */}
+        <div className="flex h-[64px] flex-shrink-0 items-center justify-between px-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
+          <div className="flex items-center gap-3">
+            <div className="gradient-brand flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ boxShadow: '0px 1px 2px rgba(10,13,18,0.10)' }}
+            >
+              <KmgLogo className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                Performance Goals
+              </div>
+              <div className="text-xs leading-tight truncate" style={{ color: 'var(--text-tertiary)' }}>
+                КМГ-КУМКОЛЬ
+              </div>
+            </div>
           </div>
           <button
             type="button"
-            aria-label="Закрыть меню"
-            className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 lg:hidden"
+            aria-label="Закрыть"
             onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+            style={{ color: 'var(--fg-quaternary)' }}
           >
-            <XMarkIcon className="h-5 w-5" />
+            <XIcon className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.href}
               end={item.href === '/'}
-              className={({ isActive }) =>
-                [
-                  'group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors duration-150',
-                  isActive
-                    ? 'bg-white/10 text-white'
-                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-100',
-                ].join(' ')
+              className={({ isActive }) => [
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear',
+                isActive
+                  ? 'sidebar-nav-active'
+                  : 'sidebar-nav-item',
+              ].join(' ')}
+              style={({ isActive }) => isActive
+                ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
+                : { color: 'var(--sidebar-text)' }
               }
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
+                  e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
+                  e.currentTarget.style.backgroundColor = ''
+                }
+              }}
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={`h-[18px] w-[18px] flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-200'}`} />
+                  <span style={{ color: isActive ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)' }}>
+                    {item.icon}
+                  </span>
                   <span>{item.name}</span>
                 </>
               )}
@@ -199,83 +265,79 @@ function App() {
           ))}
         </nav>
 
-        <div className="border-t border-slate-800 px-4 py-4">
-          <div className="mb-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200">
-            Рабочая база: mock_smart
+        {/* Footer */}
+        <div className="flex-shrink-0 px-3 py-3 space-y-3" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
+          <div className="status-success rounded-lg px-3 py-2 text-xs font-medium">
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary)' }} />
+              База: mock_smart
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-xs font-semibold text-slate-100">
+          <div className="flex items-center gap-3 px-1">
+            <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
               HR
             </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium text-white">HR Admin</div>
-              <div className="text-xs text-slate-400">Администратор платформы</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>HR Admin</div>
+              <div className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>Администратор</div>
             </div>
           </div>
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col lg:pl-64">
-        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur">
-          <div className="px-4 py-3 sm:px-6 lg:flex lg:h-16 lg:items-center lg:justify-between lg:px-8 lg:py-0">
-            <div className="lg:hidden">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    aria-label="Открыть меню"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
-                    onClick={() => setMobileMenuOpen(true)}
-                  >
-                    <Bars3Icon className="h-5 w-5" />
-                  </button>
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
-                      <KmgLogo className="h-5 w-5 text-slate-800" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        KMG Goals
-                      </div>
-                      <div className="truncate text-sm font-semibold text-slate-900">Performance Goals</div>
-                    </div>
-                  </div>
-                </div>
-                <ThemeSwitch compact />
-              </div>
-              <div className="mt-3 flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <h1 className="truncate text-lg font-semibold text-slate-900">{currentTitle}</h1>
-                  <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
-                </div>
-                <div className="flex-shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                  mock_smart
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden lg:block">
+      {/* Main content */}
+      <div className="flex flex-1 flex-col lg:pl-[280px]">
+        {/* Header */}
+        <header
+          className="sticky top-0 z-30"
+          style={{
+            backgroundColor: 'var(--header-bg)',
+            borderBottom: '1px solid var(--header-border)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div className="flex h-[64px] items-center justify-between gap-4 px-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Открыть меню"
+                onClick={() => setMobileMenuOpen(true)}
+                className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
+                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-secondary)', backgroundColor: 'var(--bg-primary)' }}
+              >
+                <MenuIcon className="h-4 w-4" />
+              </button>
               <div>
-                <h1 className="text-base font-semibold text-slate-900">{currentTitle}</h1>
-                <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
+                <h1 className="text-base font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
+                  {currentTitle}
+                </h1>
+                <p className="text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>
+                  Управление качеством целеполагания
+                </p>
               </div>
             </div>
-            <div className="hidden items-center gap-3 md:hidden lg:flex">
-              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                PostgreSQL • FastAPI • React
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)', border: '1px solid var(--border-secondary)' }}
+              >
+                PostgreSQL · FastAPI · React
+              </span>
+              <ThemeSwitch compact />
+              <div className="hidden lg:block">
+                <ThemeSwitch />
               </div>
-              <ThemeSwitch />
             </div>
           </div>
         </header>
 
+        {/* Page content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/"           element={<Home />} />
             <Route path="/evaluation" element={<GoalEvaluation />} />
             <Route path="/generation" element={<GoalGeneration />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/employees" element={<EmployeeGoals />} />
+            <Route path="/dashboard"  element={<Dashboard />} />
+            <Route path="/employees"  element={<EmployeeGoals />} />
             <Route path="/operations" element={<Operations />} />
           </Routes>
         </main>
