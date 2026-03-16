@@ -78,36 +78,65 @@ function App() {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
+  const cycleThemeMode = () => {
+    const order = ['light', 'system', 'dark']
+    const currentIndex = order.indexOf(themeMode)
+    const nextMode = order[(currentIndex + 1) % order.length]
+    setThemeMode(nextMode)
+  }
+
+  const modeMeta = {
+    light: { icon: SunIcon, short: 'L', title: 'Light' },
+    system: { icon: ComputerDesktopIcon, short: 'A', title: 'System' },
+    dark: { icon: MoonIcon, short: 'D', title: 'Dark' },
+  }
+
   const ThemeSwitch = ({ compact = false }) => (
-    <div className={`theme-switch ${compact ? 'theme-switch-compact' : ''}`}>
+    compact ? (
       <button
         type="button"
-        onClick={() => setThemeMode('light')}
-        className={`theme-mode-btn ${themeMode === 'light' ? 'theme-mode-btn-active' : ''}`}
-        title="Светлая тема"
+        onClick={cycleThemeMode}
+        className="theme-switch-mobile"
+        title={`Theme: ${modeMeta[themeMode].title}`}
+        aria-label={`Theme mode ${modeMeta[themeMode].title}`}
       >
-        <SunIcon className="h-4 w-4" />
-        {!compact && <span>Light</span>}
+        {(() => {
+          const Icon = modeMeta[themeMode].icon
+          return <Icon className="h-4 w-4" />
+        })()}
+        <span className="theme-switch-mobile-label">{modeMeta[themeMode].short}</span>
       </button>
-      <button
-        type="button"
-        onClick={() => setThemeMode('system')}
-        className={`theme-mode-btn ${themeMode === 'system' ? 'theme-mode-btn-active' : ''}`}
-        title="Системная тема"
-      >
-        <ComputerDesktopIcon className="h-4 w-4" />
-        {!compact && <span>System</span>}
-      </button>
-      <button
-        type="button"
-        onClick={() => setThemeMode('dark')}
-        className={`theme-mode-btn ${themeMode === 'dark' ? 'theme-mode-btn-active' : ''}`}
-        title="Темная тема"
-      >
-        <MoonIcon className="h-4 w-4" />
-        {!compact && <span>Dark</span>}
-      </button>
-    </div>
+    ) : (
+      <div className="theme-switch">
+        <button
+          type="button"
+          onClick={() => setThemeMode('light')}
+          className={`theme-mode-btn ${themeMode === 'light' ? 'theme-mode-btn-active' : ''}`}
+          title="Светлая тема"
+        >
+          <SunIcon className="h-4 w-4" />
+          <span>Light</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setThemeMode('system')}
+          className={`theme-mode-btn ${themeMode === 'system' ? 'theme-mode-btn-active' : ''}`}
+          title="Системная тема"
+        >
+          <ComputerDesktopIcon className="h-4 w-4" />
+          <span>System</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setThemeMode('dark')}
+          className={`theme-mode-btn ${themeMode === 'dark' ? 'theme-mode-btn-active' : ''}`}
+          title="Темная тема"
+        >
+          <MoonIcon className="h-4 w-4" />
+          <span>Dark</span>
+        </button>
+      </div>
+    )
   )
 
   return (
