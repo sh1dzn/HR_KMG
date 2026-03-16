@@ -241,9 +241,7 @@ function App() {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-                  mock_smart
-                </div>
+                <ThemeSwitch compact />
               </div>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <div className="min-w-0">
@@ -251,11 +249,8 @@ function App() {
                   <div className="text-xs text-slate-500">Модуль управления качеством целеполагания</div>
                 </div>
                 <div className="flex-shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                  React • API
+                  mock_smart
                 </div>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <ThemeSwitch compact />
               </div>
             </div>
 

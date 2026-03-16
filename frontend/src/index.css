@@ -187,6 +187,11 @@
     border-color: rgba(71, 85, 105, 0.72);
   }
 
+  .theme-dark .panel-subtle {
+    background: rgba(15, 23, 42, 0.78);
+    border-color: rgba(71, 85, 105, 0.68);
+  }
+
   .theme-dark .theme-switch-mobile {
     background: rgba(15, 23, 42, 0.85);
     border-color: rgba(71, 85, 105, 0.72);
@@ -313,6 +318,10 @@
 
 .theme-dark .bg-cyan-50 {
   background-color: rgba(8, 145, 178, 0.2) !important;
+}
+
+.theme-dark .bg-cyan-50\/80 {
+  background-color: rgba(8, 145, 178, 0.24) !important;
 }
 
 .theme-dark .bg-sky-50 {
