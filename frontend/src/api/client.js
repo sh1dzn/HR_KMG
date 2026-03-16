@@ -86,7 +86,7 @@ export const getDocumentIndexStatus = async () => {
 }
 
 export const reindexDocuments = async () => {
-  const response = await client.post('/generation/reindex-documents')
+  const response = await client.post('/generation/reindex-documents', null, { timeout: 120000 })
   return response.data
 }
 
