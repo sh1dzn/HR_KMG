@@ -12,11 +12,7 @@ const severityBadge = {
 }
 
 const CardShell = ({ children, className = '' }) => (
-  <div className={`rounded-xl ${className}`}
-    style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
-  >
-    {children}
-  </div>
+  <div className={`card ${className}`}>{children}</div>
 )
 
 export default function Operations() {

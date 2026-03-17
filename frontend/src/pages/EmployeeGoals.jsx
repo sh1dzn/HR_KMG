@@ -153,8 +153,7 @@ export default function EmployeeGoals() {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl p-4"
-        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+      <div className="card p-4"
       >
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,180px))]">
           <div>
@@ -237,8 +236,7 @@ export default function EmployeeGoals() {
       ) : (
         <div className="space-y-4">
           {filtered.map((emp) => (
-            <div key={emp.employee_id} className="overflow-hidden rounded-xl"
-              style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+            <div key={emp.employee_id} className="card overflow-hidden"
             >
               {/* Employee header */}
               <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"

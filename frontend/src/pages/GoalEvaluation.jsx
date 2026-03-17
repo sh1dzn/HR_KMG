@@ -77,8 +77,7 @@ export default function GoalEvaluation() {
       </div>
 
       {/* Input card */}
-      <div className="rounded-xl p-6"
-        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+      <div className="card p-6"
       >
         <div className="mb-5">
           <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>

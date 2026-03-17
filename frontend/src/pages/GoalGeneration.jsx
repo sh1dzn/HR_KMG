@@ -135,8 +135,7 @@ export default function GoalGeneration() {
       </div>
 
       {/* Parameters card */}
-      <div className="rounded-xl p-6"
-        style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+      <div className="card p-6"
       >
         <div className="mb-5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Параметры генерации</div>
 
@@ -238,8 +237,7 @@ export default function GoalGeneration() {
 
       {/* Loading state */}
       {loading && (
-        <div className="rounded-xl p-10 text-center"
-          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        <div className="card p-10 text-center"
         >
           <div className="inline-flex items-center gap-3">
             <svg className="h-5 w-5 animate-spin spinner-brand" viewBox="0 0 24 24" fill="none">
@@ -258,8 +256,7 @@ export default function GoalGeneration() {
       {result && !loading && (
         <div className="space-y-4">
           {/* Summary card */}
-          <div className="rounded-xl p-6"
-            style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+          <div className="card p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>

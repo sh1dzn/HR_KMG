@@ -9,11 +9,7 @@ import {
 const PIE_COLORS = ['#1570EF', '#17B26A', '#98A2B3']
 
 const CardShell = ({ children, className = '' }) => (
-  <div className={`rounded-xl ${className}`}
-    style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
-  >
-    {children}
-  </div>
+  <div className={`card ${className}`}>{children}</div>
 )
 
 const TooltipPie = ({ active, payload }) => {
@@ -266,8 +262,7 @@ export default function Dashboard() {
           )}
 
           {/* Department table — desktop */}
-          <div className="hidden rounded-xl overflow-hidden md:block"
-            style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+          <div className="card hidden overflow-hidden md:block"
           >
             <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
               <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Детализация по подразделениям</div>

@@ -112,7 +112,7 @@ export default function Home() {
     <div className="space-y-6 animate-fade-in">
 
       {/* Hero banner */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}>
+      <div className="card rounded-2xl overflow-hidden">
         <div className="px-6 py-8 sm:px-8 sm:py-10 relative overflow-hidden">
           {/* subtle gradient blob */}
           <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full" style={{ background: 'radial-gradient(circle, rgba(21,112,239,0.08) 0%, transparent 70%)' }} />
@@ -166,8 +166,7 @@ export default function Home() {
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl px-5 py-4 text-center"
-            style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+          <div key={s.label} className="card px-5 py-4 text-center"
           >
             <div className="text-2xl font-semibold" style={{ color: 'var(--fg-brand-primary)' }}>{s.value}</div>
             <div className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
@@ -181,8 +180,7 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {features.map((f) => (
             <Link key={f.name} to={f.href}
-              className="group flex items-start gap-4 rounded-xl p-5 transition-all duration-100"
-              style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+              className="card group flex items-start gap-4 p-5 transition-all duration-100"
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
             >
@@ -201,8 +199,7 @@ export default function Home() {
       {/* Bottom two columns */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Checklist */}
-        <div className="rounded-xl p-5"
-          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        <div className="card p-5"
         >
           <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Функциональный контур</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -220,8 +217,7 @@ export default function Home() {
         </div>
 
         {/* Architecture */}
-        <div className="rounded-xl p-5"
-          style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
+        <div className="card p-5"
         >
           <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Архитектура решения</div>
           <div className="space-y-3">
