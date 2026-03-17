@@ -1,17 +1,10 @@
-# HR AI Module - КМГ-КУМКОЛЬ - https://hr-kmg.silkroadtech.kz/
+# HR AI Module - КМГ-КУМКОЛЬ
 
-AI-модуль для работы с целями сотрудников: SMART-оценка, генерация целей по контексту сотрудника и внутренних документов (RAG), workflow согласования, alert-менеджер и аналитический дашборд по качеству целеполагания.
+> https://hr-kmg.silkroadtech.kz/
 
-Проект адаптирован под хакатонный контур из [hackaton.md](hackaton.md) и работает поверх восстановленного PostgreSQL-дампа `mock_smart`.
+AI-модуль для управления целями сотрудников: семантическая SMART-оценка, RAG-генерация целей по ВНД и стратегии, workflow согласования, Alert Manager и аналитический дашборд с квартальными трендами.
 
-## Что сейчас является источником истины
-
-- Основная база данных: `mock_smart` в PostgreSQL
-- Целевая схема: дамп из `sql/mock_smart 1 .sql`
-- Backend больше не использует старый demo-seed как основной сценарий
-- Frontend умеет работать:
-  - локально через Vite proxy
-  - в production через `VITE_API_BASE_URL`
+Проект адаптирован под хакатонный контур из [hackaton.md](hackaton.md) и работает поверх PostgreSQL-дампа `mock_smart`.
 
 ## Стек
 
@@ -20,56 +13,83 @@ AI-модуль для работы с целями сотрудников: SMAR
 | Frontend | React 18, Vite, Tailwind CSS, Recharts, React Router |
 | Backend | FastAPI, SQLAlchemy, Pydantic |
 | База данных | PostgreSQL 18 |
-| RAG / поиск | ChromaDB |
-| LLM | OpenAI API |
-| Infra | Docker Compose, Caddy, Vercel |
+| RAG / поиск | ChromaDB (гибридный: vector + lexical с RRF-merge) |
+| LLM | OpenAI API (GPT-4o + text-embedding-3-small) |
+| Infra | Docker Compose, Caddy, Vercel, GitHub Actions CI/CD |
 
-## Актуальная архитектура
+## Архитектура
 
 ```text
 Frontend (React/Vite)
   -> /api
 Backend (FastAPI)
-  -> PostgreSQL mock_smart
-  -> ChromaDB
-  -> OpenAI API
+  ├── PostgreSQL mock_smart    — сотрудники, цели, workflow, документы
+  ├── ChromaDB                 — векторный индекс ВНД для RAG
+  └── OpenAI API               — LLM-оценка, генерация, эмбеддинги
+      (fallback: семантические эвристики + лексический поиск)
 ```
 
-Основные модули:
-- `frontend/src/pages/Home.jsx`
-- `frontend/src/pages/GoalEvaluation.jsx`
-- `frontend/src/pages/GoalGeneration.jsx`
-- `frontend/src/pages/Dashboard.jsx`
-- `frontend/src/pages/EmployeeGoals.jsx`
-- `frontend/src/pages/Operations.jsx`
-- `backend/app/api/*.py`
+### Middleware pipeline
+
+Каждый запрос проходит через:
+1. **CORS** — whitelist: `hr-kmg.silkroadtech.kz`, `localhost:5173/3000`
+2. **RequestIdMiddleware** — `X-Request-ID` в каждом запросе/ответе
+3. **RequestLoggingMiddleware** — structured log: метод, путь, статус, время
+4. **Global Exception Handler** — 500 → JSON с `request_id`
 
 ## Что умеет система
 
-- SMART-оценка одной цели
+### Оценка целей (SMART)
+- Семантическая оценка по 5 критериям (конкретность, измеримость, достижимость, релевантность, срок)
+- Анализ на основе бизнес-ключевых слов, конкретных глаголов, наличия объектов и метрик
 - Переформулировка слабой формулировки
-- Пакетная оценка целей сотрудника
+- Пакетная оценка целей сотрудника за квартал
+- Определение типа цели: activity / output / impact
+- Определение стратегической связки: strategic / functional / operational
+
+### Генерация целей (RAG)
+- Гибридный поиск ВНД: vector (cosine similarity) + lexical с Reciprocal Rank Fusion
 - Генерация 3-5 целей по сотруднику, кварталу и фокус-направлениям
-- Показ источника из документов и обоснования генерации
-- Историческая достижимость (личная история сотрудника / бенчмарк подразделения)
-- Workflow согласования цели: `submit`, `approve`, `reject`, `comment` + история событий/ревью
-- Alert Manager по качеству и портфелю целей
-- Дашборд зрелости целеполагания по подразделениям
-- Просмотр и фильтрация целей сотрудников
-- Mock-интеграции экспорта целей (`1c`, `sap`, `oracle`)
-- Операционная страница: статус индекса ВНД, ручная переиндексация, экспорт в файл
-- Темы интерфейса: `Light`, `Dark`, `System`
+- Каскадирование от целей руководителя
+- Показ источника (документ + фрагмент + обоснование)
+- Историческая достижимость (личная история / бенчмарк подразделения)
+- Дедупликация с существующими целями
+
+### Workflow согласования
+- Жизненный цикл: `draft` → `submitted` → `approved` / `rejected` → ...
+- Действия: `submit`, `approve`, `reject`, `comment`
+- Полный аудит-трейл: GoalEvent + GoalReview
+
+### Alert Manager
+- Алерты по SMART-индексу, стратегической связке, метрикам, срокам
+- Портфельные алерты: сумма весов, количество целей, стагнация согласования
+- Пагинация (page/per_page/total_pages)
+
+### Аналитика и дашборд
+- 5-факторный индекс зрелости (SMART, стратегия, тип, веса, количество)
+- Квартальные тренды: LineChart с динамикой SMART и стратегических целей
+- Детализация по подразделениям: SMART-индекс, зрелость, слабые критерии
+- Executive Summary + Top Issues
+
+### Интеграции
+- Mock-экспорт целей в 1C:ЗУП, SAP SuccessFactors, Oracle HCM
+- Каждая система формирует payload в своём формате
+- Скачиваемый файл экспорта на фронтенде
+
+### UI
+- 6 страниц: Home, Evaluation, Generation, Dashboard, EmployeeGoals, Operations
+- Темы: Light / Dark / System
+- Мобильная адаптация (sidebar → overlay, таблицы → карточки)
 
 ## Требования
 
 - Docker + Docker Compose
-- Node.js 18+
-- npm 9+
-- Python 3.11+ только если хочешь запускать backend без Docker
+- Node.js 18+ / npm 9+ (для локального запуска frontend)
+- Python 3.11+ (только если backend без Docker)
 - PostgreSQL dump `sql/mock_smart 1 .sql`
-- `OPENAI_API_KEY` для полноценных LLM-сценариев
+- `OPENAI_API_KEY` для LLM-сценариев (без него работает fallback)
 
-## Быстрый старт через Docker Compose
+## Быстрый старт
 
 ### 1. Клонирование
 
@@ -78,9 +98,7 @@ git clone https://github.com/sh1dzn/HR_KMG.git
 cd HR_KMG
 ```
 
-### 2. Создай `.env`
-
-Пример:
+### 2. Создать `.env`
 
 ```env
 POSTGRES_USER=hr_user
@@ -90,7 +108,7 @@ POSTGRES_PORT=5433
 
 DATABASE_URL=postgresql://hr_user:change_me@127.0.0.1:5433/mock_smart
 
-OPENAI_API_KEY=
+OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
@@ -102,50 +120,48 @@ APP_NAME=HR AI Module
 APP_VERSION=1.0.0
 ```
 
-### 3. Подними PostgreSQL и backend
+### 3. Поднять PostgreSQL и backend
 
 ```bash
 docker compose up -d db backend
 ```
 
-### 4. Восстанови дамп в `mock_smart`
-
-Файл `sql/mock_smart 1 .sql` является custom dump PostgreSQL. Его нужно восстанавливать через `pg_restore`.
-
-Пример через Docker:
+### 4. Восстановить дамп
 
 ```bash
 docker run --rm \
   --network host \
   -v "$PWD/sql:/sql" \
-  -e PGPASSWORD="$POSTGRES_PASSWORD" \
+  -e PGPASSWORD=change_me \
   postgres:18-alpine \
-  sh -lc 'pg_restore -h 127.0.0.1 -p 5433 -U "$POSTGRES_USER" -d "$POSTGRES_DB" "/sql/mock_smart 1 .sql"'
+  sh -lc 'pg_restore -h 127.0.0.1 -p 5433 -U hr_user -d mock_smart "/sql/mock_smart 1 .sql"'
 ```
 
-Если база уже заполнена, сначала очисти или создай новый volume/контейнер PostgreSQL.
-
-### 5. Проверка backend
+### 5. Проверить backend
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:8000/health | python3 -m json.tool
 ```
 
 Ожидаемый ответ:
 
 ```json
-{"status":"healthy","service":"HR AI Module","version":"1.0.0"}
+{
+    "status": "healthy",
+    "service": "HR AI Module",
+    "version": "1.0.0",
+    "checks": {
+        "database": "ok",
+        "openai_configured": true,
+        "chroma_chunks": 288
+    }
+}
 ```
 
-Swagger:
+Swagger UI: http://127.0.0.1:8000/docs
+ReDoc: http://127.0.0.1:8000/redoc
 
-```text
-http://127.0.0.1:8000/docs
-```
-
-## Локальный запуск frontend
-
-### Dev-режим
+### 6. Запустить frontend
 
 ```bash
 cd frontend
@@ -153,96 +169,79 @@ npm install
 npm run dev
 ```
 
-По умолчанию Vite поднимается на:
+Откроется на http://localhost:5173
 
-```text
-http://localhost:5173
-```
+## API-справка
 
-Если `VITE_API_BASE_URL` не задан, frontend использует локальный `/api` через Vite proxy.
+### Служебные
 
-### Production build
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/` | Метаинформация сервиса |
+| GET | `/health` | Health check (PostgreSQL + OpenAI + ChromaDB) |
 
-```bash
-cd frontend
-npm run build
-```
+### Сотрудники
 
-## Локальный запуск backend без Docker
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/employees/` | Список сотрудников с поиском |
 
-Если нужен запуск напрямую:
+### Цели (CRUD + Workflow)
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-cd backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/goals/` | Список целей с фильтрацией и пагинацией |
+| GET | `/api/goals/{id}` | Одна цель с SMART-оценкой и алертами |
+| POST | `/api/goals/` | Создать цель |
+| PUT | `/api/goals/{id}` | Обновить цель |
+| DELETE | `/api/goals/{id}` | Удалить цель |
+| GET | `/api/goals/{id}/workflow` | История событий и ревью |
+| POST | `/api/goals/{id}/submit` | Отправить на согласование |
+| POST | `/api/goals/{id}/approve` | Утвердить |
+| POST | `/api/goals/{id}/reject` | Вернуть на доработку |
+| POST | `/api/goals/{id}/comment` | Добавить комментарий |
 
-Важно:
-- backend не должен создавать старую demo-схему
-- схема должна уже существовать в PostgreSQL после восстановления дампа
+### Оценка целей (SMART)
 
-## Frontend на Vercel
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/api/evaluation/evaluate` | Оценка одной цели |
+| POST | `/api/evaluation/evaluate-batch` | Пакетная оценка по сотруднику |
+| POST | `/api/evaluation/reformulate` | Переформулировка цели |
 
-### Настройки проекта
+### Генерация целей (RAG)
 
-- Root Directory: `frontend`
-- Framework Preset: `Vite`
-- Build Command: `npm run build`
-- Output Directory: `dist`
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/api/generation/generate` | Сгенерировать цели (без сохранения) |
+| POST | `/api/generation/generate-and-save` | Сгенерировать и сохранить |
+| POST | `/api/generation/save-accepted` | Сохранить принятые цели |
+| GET | `/api/generation/documents` | Список доступных ВНД |
+| GET | `/api/generation/index-status` | Статус ChromaDB индекса |
+| POST | `/api/generation/reindex-documents` | Переиндексация ВНД |
+| GET | `/api/generation/focus-areas` | Типовые фокус-направления |
 
-### Переменные окружения Vercel
+### Аналитика и дашборд
 
-```env
-VITE_API_BASE_URL=https://hr-ai.sh7dzn.me/api
-```
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/dashboard/summary` | Сводка по организации |
+| GET | `/api/dashboard/department/{id}` | Статистика подразделения |
+| GET | `/api/dashboard/trends` | Тренды по кварталам (LineChart) |
+| GET | `/api/dashboard/employees/{id}/goals-summary` | Портфель целей сотрудника |
 
-Для SPA-routing добавлен:
+### Алерты
 
-- `frontend/vercel.json`
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/alerts/summary` | Алерты с пагинацией (`page`, `per_page`) |
 
-Он нужен, чтобы при прямом переходе на `/dashboard`, `/evaluation` и другие маршруты не было `404`.
+### Интеграции
 
-## Backend через Caddy
-
-Текущий публичный backend:
-
-```text
-https://hr-ai.sh7dzn.me
-```
-
-Полезные URL:
-
-- health: `https://hr-ai.sh7dzn.me/health`
-- docs: `https://hr-ai.sh7dzn.me/docs`
-- api base: `https://hr-ai.sh7dzn.me/api`
-
-## Автодеплой backend
-
-Добавлен GitHub Actions workflow:
-
-- [.github/workflows/deploy-backend.yml](.github/workflows/deploy-backend.yml)
-
-И серверный скрипт:
-
-- [deploy/redeploy_backend.sh](deploy/redeploy_backend.sh)
-
-Что делает workflow:
-- срабатывает на push в `main`
-- если изменились `backend/**`, `docker-compose.yml` или deploy workflow
-- подключается по SSH к серверу
-- делает `git pull --ff-only`
-- выполняет `docker compose up -d --build backend`
-
-Нужные GitHub Secrets:
-
-- `DEPLOY_HOST`
-- `DEPLOY_PORT`
-- `DEPLOY_USER`
-- `DEPLOY_SSH_KEY`
-- `DEPLOY_PATH`
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/integrations/systems` | Доступные HR-системы |
+| POST | `/api/integrations/export-goals` | Mock-экспорт целей |
 
 ## Структура проекта
 
@@ -250,106 +249,116 @@ https://hr-ai.sh7dzn.me
 HR_KMG/
 ├── backend/
 │   ├── app/
-│   │   ├── api/
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   └── main.py
+│   │   ├── api/              # FastAPI routers (goals, evaluation, generation, dashboard, alerts, employees, integrations)
+│   │   ├── models/           # SQLAlchemy ORM (Goal, Employee, Department, Document, GoalEvent, GoalReview)
+│   │   ├── schemas/          # Pydantic request/response models
+│   │   ├── services/         # Бизнес-логика (smart_evaluator, goal_generator, rag_service, alert_service, llm_service)
+│   │   ├── utils/            # Утилиты (smart_heuristics, text_processing, document_scope, goal_context)
+│   │   ├── config.py         # Настройки из .env
+│   │   ├── database.py       # SQLAlchemy engine/session
+│   │   ├── middleware.py      # RequestId + Logging middleware
+│   │   └── main.py           # FastAPI app, CORS, health check
+│   ├── tests/                # Тесты (pytest)
+│   │   ├── conftest.py
+│   │   └── test_smart_heuristics.py
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── api/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── .env.example
+│   │   ├── api/client.js     # Axios API-клиент (все эндпоинты)
+│   │   ├── components/       # UI-компоненты (SMARTScoreCard, EmployeePicker, KmgLogo)
+│   │   ├── pages/            # 6 страниц (Home, GoalEvaluation, GoalGeneration, Dashboard, EmployeeGoals, Operations)
+│   │   ├── App.jsx           # Роутинг, навигация, тема
+│   │   └── main.jsx          # Entry point
 │   ├── Dockerfile
 │   ├── package.json
-│   ├── vercel.json
+│   ├── vercel.json           # SPA fallback для Vercel
 │   └── vite.config.js
 ├── deploy/
 │   └── redeploy_backend.sh
 ├── sql/
-│   └── mock_smart 1 .sql
+│   └── mock_smart 1 .sql     # PostgreSQL custom dump
+├── .github/workflows/
+│   └── deploy-backend.yml    # CI/CD автодеплой
 ├── docker-compose.yml
 ├── hackaton.md
 └── README.md
 ```
 
-## Полезные команды
-
-Проверка backend:
+## Тестирование
 
 ```bash
-curl -s http://127.0.0.1:8000/health
+cd backend
+python3 -m pytest tests/ -v
 ```
 
-Проверка сотрудников:
+Тесты покрывают:
+- Семантическую SMART-оценку (хорошие / слабые / средние цели)
+- Отдельные критерии (specific, measurable, achievable, relevant, time_bound)
+- Влияние полей metric и deadline на оценку
+- Edge cases (пустая строка, повторяющийся текст, английские цели)
 
-```bash
-curl -s http://127.0.0.1:8000/api/employees/
-```
+## Деплой
 
-Проверка дашборда:
+### Frontend — Vercel
 
-```bash
-curl -s "http://127.0.0.1:8000/api/dashboard/summary?quarter=Q2&year=2026"
-```
+| Параметр | Значение |
+|----------|----------|
+| Root Directory | `frontend` |
+| Framework Preset | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Environment | `VITE_API_BASE_URL=https://hr-ai.sh7dzn.me/api` |
 
-Проверка статуса индекса ВНД (RAG):
+### Backend — Docker + Caddy
 
-```bash
-curl -s http://127.0.0.1:8000/api/generation/index-status
-```
+Публичный backend: https://hr-ai.sh7dzn.me
 
-Проверка алертов:
+- health: `https://hr-ai.sh7dzn.me/health`
+- docs: `https://hr-ai.sh7dzn.me/docs`
+- api: `https://hr-ai.sh7dzn.me/api`
 
-```bash
-curl -s "http://127.0.0.1:8000/api/alerts/summary?quarter=Q2&year=2026"
-```
+### CI/CD
 
-Проверка систем интеграции:
+GitHub Actions workflow (`.github/workflows/deploy-backend.yml`):
+- Триггер: push в `main` с изменениями в `backend/**` или `docker-compose.yml`
+- SSH на сервер → `git pull --ff-only` → `docker compose up -d --build backend`
+- Secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`
 
-```bash
-curl -s http://127.0.0.1:8000/api/integrations/systems
-```
+## Fallback-режим (без OpenAI)
 
-Проверка workflow по цели:
+Система полностью работает без `OPENAI_API_KEY`:
 
-```bash
-curl -s http://127.0.0.1:8000/api/goals/<goal_id>/workflow
-```
+| Компонент | С OpenAI | Без OpenAI |
+|-----------|----------|------------|
+| SMART-оценка | GPT-4 + переформулировка | Семантические эвристики (keyword-based) |
+| RAG-поиск | Гибридный (vector + lexical, RRF) | Только лексический поиск |
+| Генерация целей | LLM по контексту ВНД | Fallback: цели из заголовков документов |
+| Эмбеддинги | text-embedding-3-small | Не используются |
 
-Пересборка только backend:
+## Данные в дампе
 
-```bash
-docker compose up -d --build backend
-```
-
-## Что устарело
-
-Ниже перечислено то, на что больше не надо ориентироваться:
-
-- старая SQLite/demo-конфигурация
-- `hr_goals` как основная рабочая БД
-- обязательный запуск `python -m app.seed_data` для свежей установки
-- старые цифры про `58 сотрудников` и `120+ целей`
-- локальный frontend по умолчанию на `3000` в dev-режиме
+| Таблица | Записей | Описание |
+|---------|---------|----------|
+| departments | 8 | Организационная структура |
+| positions | 25 | Должности с грейдами |
+| employees | 450 | Сотрудники с иерархией |
+| documents | 160 | ВНД, стратегии, KPI-фреймворки |
+| goals | 9 000 | Цели сотрудников |
+| goal_events | 30 789 | Аудит-трейл целей |
+| goal_reviews | 4 305 | Ревью руководителей |
+| kpi_catalog | 13 | Справочник KPI |
+| kpi_timeseries | 2 112 | Динамика KPI по подразделениям |
+| projects | 34 | Проекты |
+| employee_projects | 886 | Привязка сотрудников к проектам |
 
 ## Известные замечания
 
-- для LLM-функций нужен рабочий `OPENAI_API_KEY`
-- без OpenAI часть сценариев работает через fallback (эвристика + lexical search), а не через полноценный LLM/vector pipeline
-- в `GET /api/goals` параметр `per_page` ограничен `<= 100`
-- интеграции `1c/sap/oracle` сейчас реализованы как mock-экспорт, без полноценного внешнего auth/sync
-- production build frontend сейчас собирается, но основной JS bundle крупный; позже можно сделать code splitting
+- Для LLM-функций нужен рабочий `OPENAI_API_KEY`
+- В `GET /api/goals` параметр `per_page` ограничен `<= 100`
+- Интеграции `1c/sap/oracle` реализованы как mock-экспорт
+- Production JS bundle крупный (~730 KB); можно добавить code splitting
 
 ## Дата актуализации
 
-README актуализирован под состояние проекта на 16 марта 2026 года.
+README актуализирован под состояние проекта на 17 марта 2026 года.
