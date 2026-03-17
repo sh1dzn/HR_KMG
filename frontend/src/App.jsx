@@ -323,9 +323,6 @@ function App() {
                 PostgreSQL · FastAPI · React
               </span>
               <ThemeSwitch compact />
-              <div className="hidden lg:block">
-                <ThemeSwitch />
-              </div>
             </div>
           </div>
         </header>
