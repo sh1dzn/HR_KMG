@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { getDashboardSummary } from '../api/client'
+import { getDashboardSummary, getDashboardTrends } from '../api/client'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  LineChart, Line,
 } from 'recharts'
 
 const PIE_COLORS = ['#1570EF', '#17B26A', '#98A2B3']
@@ -37,11 +38,6 @@ const TooltipBar = ({ active, payload, label }) => {
   )
 }
 
-const getScoreColor = (score) => {
-  if (score >= 0.85) return 'var(--text-success-primary)'
-  if (score >= 0.7)  return 'var(--text-warning-primary)'
-  return 'var(--fg-error-secondary)'
-}
 const getScoreBadge = (score) => {
   if (score >= 0.85) return { bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)' }
   if (score >= 0.7)  return { bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: 'var(--border-warning)' }
@@ -53,14 +49,21 @@ export default function Dashboard() {
   const [year,    setYear]    = useState(2026)
   const [loading, setLoading] = useState(false)
   const [data,    setData]    = useState(null)
+  const [trends,  setTrends]  = useState(null)
   const [error,   setError]   = useState(null)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     const load = async () => {
       setLoading(true); setError(null)
-      try { setData(await getDashboardSummary(quarter, year)) }
-      catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки данных') }
+      try {
+        const [summary, trendData] = await Promise.all([
+          getDashboardSummary(quarter, year),
+          getDashboardTrends(year),
+        ])
+        setData(summary)
+        setTrends(trendData)
+      } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки данных') }
       finally { setLoading(false) }
     }
     load()
@@ -112,11 +115,17 @@ export default function Dashboard() {
     maturity: +(d.maturity_index * 100).toFixed(0),
   })) || []
 
+  const trendData = trends?.trends?.map(t => ({
+    label: t.label,
+    smart: +(t.average_smart_score * 100).toFixed(0),
+    strategic: +t.strategic_percent.toFixed(0),
+  })) || []
+
   const kpiCards = data ? [
-    { label: 'Подразделений', value: data.total_departments,  icon: '🏢' },
-    { label: 'Сотрудников',   value: data.total_employees,    icon: '👤' },
-    { label: 'Целей',         value: data.total_goals,        icon: '🎯' },
-    { label: 'Средний SMART', value: `${(data.average_smart_score * 100).toFixed(0)}%`, icon: '⭐', accent: true },
+    { label: 'Подразделений', value: data.total_departments },
+    { label: 'Сотрудников',   value: data.total_employees },
+    { label: 'Целей',         value: data.total_goals },
+    { label: 'Средний SMART', value: `${(data.average_smart_score * 100).toFixed(0)}%`, accent: true },
   ] : []
 
   return (
@@ -233,6 +242,29 @@ export default function Dashboard() {
             </CardShell>
           </div>
 
+          {/* Trend Chart */}
+          {trendData.length > 1 && (
+            <CardShell>
+              <div className="px-5 py-4 pb-2">
+                <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Динамика качества целеполагания</div>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Тренд SMART-индекса и доли стратегических целей по кварталам</p>
+              </div>
+              <div className="h-72 px-4 pb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-secondary)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-quaternary)' }} />
+                    <Tooltip content={<TooltipBar />} />
+                    <Legend formatter={(v) => <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{v}</span>} />
+                    <Line type="monotone" dataKey="smart" name="SMART %" stroke="#1570EF" strokeWidth={2} dot={{ fill: '#1570EF', r: 4 }} />
+                    <Line type="monotone" dataKey="strategic" name="Стратегические %" stroke="#17B26A" strokeWidth={2} dot={{ fill: '#17B26A', r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardShell>
+          )}
+
           {/* Department table — desktop */}
           <div className="hidden rounded-xl overflow-hidden md:block"
             style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 1px 2px rgba(10,13,18,0.05)' }}
@@ -278,7 +310,7 @@ export default function Dashboard() {
                         <td className="px-6 py-4">
                           <div className="flex flex-col items-center gap-1">
                             <div className="h-1.5 w-28 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                              <div className="h-1.5 rounded-full" className="progress-fill-brand" style={{ width: `${matPct}%` }} />
+                              <div className="h-1.5 rounded-full progress-fill-brand" style={{ width: `${matPct}%` }} />
                             </div>
                             <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{matPct}%</span>
                           </div>
@@ -328,7 +360,7 @@ export default function Dashboard() {
                       <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
                         <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Зрелость</div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                          <div className="h-1.5 rounded-full" className="progress-fill-brand" style={{ width: `${matPct}%` }} />
+                          <div className="h-1.5 rounded-full progress-fill-brand" style={{ width: `${matPct}%` }} />
                         </div>
                         <div className="mt-1 text-xs font-medium" style={{ color: 'var(--text-quaternary)' }}>{matPct}%</div>
                       </div>

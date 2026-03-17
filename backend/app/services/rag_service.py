@@ -281,11 +281,12 @@ class RAGService:
                 title_hits = sum(1 for term in query_terms if term in title)
                 keyword_hits = sum(1 for term in query_terms if term in keywords)
                 content_hits = sum(1 for term in query_terms if term in content[:4000])
-                raw_score = title_hits * 2 + keyword_hits * 1.5 + content_hits
+                raw_score = title_hits * 3.0 + keyword_hits * 2.0 + content_hits * 1.0
                 if raw_score <= 0:
                     continue
 
-                relevance_score = round(min(raw_score / max(len(query_terms) * 2, 1), 1.0), 2)
+                max_possible = max(len(query_terms) * 3.0, 1)
+                relevance_score = round(min(raw_score / max_possible, 1.0), 2)
                 results.append(
                     {
                         "content": (document.content or "")[:1200],
@@ -308,6 +309,34 @@ class RAGService:
         finally:
             db.close()
 
+    def _rrf_merge(self, vector_results: List[Dict], lexical_results: List[Dict], n_results: int, k: int = 60) -> List[Dict]:
+        """Merge vector and lexical results using Reciprocal Rank Fusion."""
+        scores: Dict[str, float] = {}
+        by_doc_id: Dict[str, Dict] = {}
+
+        for rank, result in enumerate(vector_results):
+            doc_id = str(result.get("metadata", {}).get("doc_id", f"v_{rank}"))
+            scores[doc_id] = scores.get(doc_id, 0) + 1 / (k + rank + 1)
+            if doc_id not in by_doc_id or result.get("relevance_score", 0) > by_doc_id[doc_id].get("relevance_score", 0):
+                by_doc_id[doc_id] = {**result, "search_method": "vector"}
+
+        for rank, result in enumerate(lexical_results):
+            doc_id = str(result.get("metadata", {}).get("doc_id", f"l_{rank}"))
+            scores[doc_id] = scores.get(doc_id, 0) + 1 / (k + rank + 1)
+            if doc_id not in by_doc_id:
+                by_doc_id[doc_id] = {**result, "search_method": "lexical"}
+            elif by_doc_id[doc_id].get("search_method") == "vector":
+                by_doc_id[doc_id]["search_method"] = "hybrid"
+
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n_results]
+        merged = []
+        for doc_id, rrf_score in ranked:
+            entry = by_doc_id.get(doc_id)
+            if entry:
+                entry["rrf_score"] = round(rrf_score, 4)
+                merged.append(entry)
+        return merged
+
     async def search(
         self,
         query: str,
@@ -316,23 +345,25 @@ class RAGService:
         doc_type: Optional[str] = None
     ) -> List[Dict]:
         """
-        Search for relevant documents
+        Hybrid search: vector + lexical with RRF merge.
+        Falls back to lexical-only when OpenAI is unavailable.
         """
         if not settings.OPENAI_API_KEY:
-            return await asyncio.to_thread(self._lexical_search, query, n_results, department, doc_type)
+            results = await asyncio.to_thread(self._lexical_search, query, n_results, department, doc_type)
+            for r in results:
+                r["search_method"] = "lexical"
+            return results
 
         await asyncio.to_thread(self.ensure_collection_populated)
 
+        vector_results = []
         try:
-            # Get query embedding
             query_embedding = await asyncio.to_thread(self.llm.get_embedding, query)
 
-            # Build where filter
             where_filter = None
             if doc_type:
                 where_filter = {"doc_type": doc_type}
 
-            # Query collection
             candidate_count = max(n_results * 3, 10) if department else n_results
             results = await asyncio.to_thread(
                 self.collection.query,
@@ -342,28 +373,32 @@ class RAGService:
                 include=["documents", "metadatas", "distances"],
             )
 
-            # Format results
-            formatted_results = []
             if results["documents"] and results["documents"][0]:
                 for i, doc in enumerate(results["documents"][0]):
                     metadata = results["metadatas"][0][i] if results["metadatas"] else {}
                     if not self._department_matches(metadata, department):
                         continue
-                    formatted_results.append({
+                    vector_results.append({
                         "content": doc,
                         "metadata": metadata,
                         "distance": results["distances"][0][i] if results["distances"] else 0,
-                        "relevance_score": 1 - (results["distances"][0][i] if results["distances"] else 0)
+                        "relevance_score": 1 - (results["distances"][0][i] if results["distances"] else 0),
+                        "search_method": "vector",
                     })
-                    if len(formatted_results) >= n_results:
-                        break
-
-            if formatted_results:
-                return formatted_results
         except Exception:
             pass
 
-        return await asyncio.to_thread(self._lexical_search, query, n_results, department, doc_type)
+        lexical_results = await asyncio.to_thread(
+            self._lexical_search, query, n_results * 2, department, doc_type
+        )
+        for r in lexical_results:
+            r["search_method"] = "lexical"
+
+        if vector_results and lexical_results:
+            return self._rrf_merge(vector_results, lexical_results, n_results)
+        if vector_results:
+            return vector_results[:n_results]
+        return lexical_results[:n_results]
 
     async def search_for_goal_generation(
         self,

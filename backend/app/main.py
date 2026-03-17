@@ -56,9 +56,16 @@ app = FastAPI(
 )
 
 # CORS middleware
+ALLOWED_ORIGINS = [
+    "https://hr-kmg.silkroadtech.kz",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В продакшене указать конкретные домены
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

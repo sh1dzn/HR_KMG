@@ -273,8 +273,7 @@ export default function GoalGeneration() {
                 </div>
               </div>
               <div className="flex-shrink-0 text-right">
-                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold"
-                  className="status-brand"
+                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold status-brand"
                 >
                   {result.quarter} {result.year}
                 </span>
@@ -405,16 +404,14 @@ export default function GoalGeneration() {
                         style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
                       >{goal.goal_type_russian}</span>
                       {state === 'saved' && (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                          className="status-success"
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium status-success"
                         >
                           <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                           Сохранено
                         </span>
                       )}
                       {state === 'duplicate' && (
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                          className="status-warning"
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium status-warning"
                         >Дубликат</span>
                       )}
                     </div>

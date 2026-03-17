@@ -51,10 +51,26 @@ def _department_stats(
         if goals and (total / len(goals)) < settings.SMART_THRESHOLD_MEDIUM:
             weak_criteria.append(names[key])
 
+    # 5-factor maturity model
+    smart_factor = avg_score
+    strategic_factor = (link_counts["strategic"] / len(goals)) if goals else 0
+    type_factor = ((type_counts["output"] + type_counts["impact"]) / len(goals)) if goals else 0
+
+    total_weight = sum(float(goal.weight or 0) for goal in goals)
+    weight_factor = max(0, 1 - abs(total_weight - 100) / 100) if goals else 0
+
+    employee_goal_counts: dict[int, int] = {}
+    for goal in goals:
+        employee_goal_counts[goal.employee_id] = employee_goal_counts.get(goal.employee_id, 0) + 1
+    valid_count = sum(1 for c in employee_goal_counts.values() if 3 <= c <= 5)
+    count_factor = (valid_count / len(employee_goal_counts)) if employee_goal_counts else 0
+
     maturity = round(
-        avg_score * 0.5
-        + (link_counts["strategic"] / len(goals) if goals else 0) * 0.25
-        + ((type_counts["output"] + type_counts["impact"]) / len(goals) if goals else 0) * 0.25,
+        smart_factor * 0.30
+        + strategic_factor * 0.20
+        + type_factor * 0.20
+        + weight_factor * 0.15
+        + count_factor * 0.15,
         2,
     )
 
@@ -172,6 +188,59 @@ async def get_department_stats(
         )
 
     return _department_stats(department, goals, employees, generation_metadata)
+
+
+@router.get("/trends")
+async def get_dashboard_trends(
+    year: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Тренды качества целеполагания по кварталам.
+    Возвращает агрегированные метрики за каждый квартал.
+    """
+    goals_query = db.query(Goal)
+    if year:
+        goals_query = goals_query.filter(Goal.year == year)
+    all_goals = goals_query.all()
+
+    buckets: dict[tuple, list[Goal]] = {}
+    for goal in all_goals:
+        q = goal.quarter.value if hasattr(goal.quarter, "value") else goal.quarter
+        y = goal.year
+        key = (y, q)
+        buckets.setdefault(key, []).append(goal)
+
+    generation_metadata = load_generation_metadata(db, [g.goal_id for g in all_goals])
+
+    trends = []
+    for (y, q), goals in sorted(buckets.items()):
+        scores = []
+        strategic_count = 0
+        output_impact_count = 0
+        for goal in goals:
+            h = evaluate_goal_heuristically(goal.goal_text, goal.metric, goal.deadline, goal.priority)
+            scores.append(h["overall_score"])
+            meta = generation_metadata.get(str(goal.goal_id))
+            link = strategic_link_for_goal(goal, meta)
+            gtype = goal_type_for_goal(goal, meta)
+            if link == "strategic":
+                strategic_count += 1
+            if gtype in ("output", "impact"):
+                output_impact_count += 1
+
+        avg_score = round(sum(scores) / len(scores), 2) if scores else 0
+        trends.append({
+            "year": y,
+            "quarter": q,
+            "label": f"{q} {y}",
+            "total_goals": len(goals),
+            "average_smart_score": avg_score,
+            "strategic_percent": round(strategic_count / len(goals) * 100, 1) if goals else 0,
+            "output_impact_percent": round(output_impact_count / len(goals) * 100, 1) if goals else 0,
+        })
+
+    return {"trends": trends}
 
 
 @router.get("/employees/{employee_id}/goals-summary")

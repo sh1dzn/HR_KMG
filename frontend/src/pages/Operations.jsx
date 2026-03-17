@@ -146,8 +146,7 @@ export default function Operations() {
         <CardShell>
           <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg"
-                className="icon-box-warning"
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg icon-box-warning"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -201,8 +200,7 @@ export default function Operations() {
               })}
 
               {!loadingAlerts && !(alertsSummary?.alerts || []).length && (
-                <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm"
-                  className="status-success"
+                <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm status-success"
                 >
                   <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="20 6 9 17 4 12"/>
@@ -220,8 +218,7 @@ export default function Operations() {
           <CardShell>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg"
-                  className="icon-box-brand"
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg icon-box-brand"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
@@ -260,8 +257,7 @@ export default function Operations() {
           <CardShell>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg"
-                  className="icon-box-gray"
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg icon-box-gray"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>

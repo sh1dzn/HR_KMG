@@ -235,6 +235,8 @@ class AlertService:
         year: int | None = None,
         department_id: int | None = None,
         employee_id: int | None = None,
+        page: int = 1,
+        per_page: int = 50,
     ) -> AlertsSummaryResponse:
         alerts = self.get_alerts(
             db,
@@ -245,15 +247,21 @@ class AlertService:
         )
         severity_counter = Counter(alert.severity for alert in alerts)
         type_counter = Counter(alert.alert_type for alert in alerts)
+        total_pages = max(1, -(-len(alerts) // per_page))
+        start = (page - 1) * per_page
+        paginated = alerts[start:start + per_page]
         return AlertsSummaryResponse(
             total_alerts=len(alerts),
             high_severity=severity_counter.get("high", 0),
             medium_severity=severity_counter.get("medium", 0),
             low_severity=severity_counter.get("low", 0),
             alerts_by_type=dict(type_counter),
-            alerts=alerts[:50],
+            alerts=paginated,
             quarter=quarter,
             year=year,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
         )
 
 

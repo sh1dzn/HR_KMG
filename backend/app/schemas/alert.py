@@ -34,3 +34,6 @@ class AlertsSummaryResponse(BaseModel):
     alerts: List[AlertItem]
     quarter: Optional[str] = None
     year: Optional[int] = None
+    page: int = 1
+    per_page: int = 50
+    total_pages: int = 1

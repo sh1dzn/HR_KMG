@@ -166,6 +166,13 @@ export const getEmployeeGoalsSummary = async (employeeId, quarter = null, year =
   return response.data
 }
 
+export const getDashboardTrends = async (year = null) => {
+  const params = {}
+  if (year) params.year = year
+  const response = await client.get('/dashboard/trends', { params })
+  return response.data
+}
+
 // Alerts API
 export const getAlertsSummary = async (params = {}) => {
   const response = await client.get('/alerts/summary', { params })

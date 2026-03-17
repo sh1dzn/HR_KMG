@@ -246,8 +246,7 @@ export default function EmployeeGoals() {
               >
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
-                      className="gradient-brand"
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white gradient-brand"
                     >
                       {(emp.employee_name || 'EM').split(' ').map(w => w[0]).slice(0, 2).join('')}
                     </div>
@@ -329,13 +328,11 @@ export default function EmployeeGoals() {
                             >{goal.goal_type}</span>
                           )}
                           {goal.strategic_link && (
-                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                              className="badge-brand"
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium badge-brand"
                             >{goal.strategic_link}</span>
                           )}
                           {goal.external_ref && (
-                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                              className="badge-success"
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium badge-success"
                             >exported</span>
                           )}
                         </div>
