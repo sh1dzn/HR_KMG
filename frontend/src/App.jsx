@@ -177,6 +177,7 @@ function XIcon({ className }) {
 function App() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('kmg-sidebar-collapsed') === 'true')
   const [themeMode, setThemeMode] = useState('system')
   const [sidebarStats, setSidebarStats] = useState({})
   const [systemTheme, setSystemTheme] = useState('light')
@@ -203,6 +204,13 @@ function App() {
   }, [themeMode, resolvedTheme])
 
   useEffect(() => { setMobileMenuOpen(false) }, [location.pathname])
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      localStorage.setItem('kmg-sidebar-collapsed', !prev)
+      return !prev
+    })
+  }
 
   useEffect(() => {
     getDashboardSummary('Q2', 2026).then(d => {
@@ -263,8 +271,10 @@ function App() {
       {/* Sidebar */}
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[88vw] flex-col transition-transform duration-200 ease-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex max-w-[88vw] flex-col transition-all duration-200 ease-out lg:translate-x-0',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
+          sidebarCollapsed ? 'lg:w-[68px]' : 'lg:w-[280px]',
+          'w-[280px]',
         ].join(' ')}
         style={{
           backgroundColor: 'var(--sidebar-bg)',
@@ -272,22 +282,41 @@ function App() {
         }}
       >
         {/* Logo area */}
-        <div className="flex h-[64px] flex-shrink-0 items-center justify-between px-4" style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
+        <div className={`flex h-[64px] flex-shrink-0 items-center ${sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'}`} style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
           <div className="flex items-center gap-3">
             <div className="gradient-brand flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
               style={{ boxShadow: '0px 1px 2px rgba(10,13,18,0.10)' }}
             >
               <KmgLogo className="h-5 w-5 text-white" />
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
-                Performance Goals
+            {!sidebarCollapsed && (
+              <div className="min-w-0">
+                <div className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                  Performance Goals
+                </div>
+                <div className="text-xs leading-tight truncate" style={{ color: 'var(--text-tertiary)' }}>
+                  КМГ-КУМКОЛЬ
+                </div>
               </div>
-              <div className="text-xs leading-tight truncate" style={{ color: 'var(--text-tertiary)' }}>
-                КМГ-КУМКОЛЬ
-              </div>
-            </div>
+            )}
           </div>
+          {/* Collapse toggle — desktop */}
+          {!sidebarCollapsed && (
+            <button
+              type="button"
+              aria-label="Свернуть"
+              onClick={toggleSidebar}
+              className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              style={{ color: 'var(--fg-quaternary)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+              </svg>
+            </button>
+          )}
+          {/* Close — mobile */}
           <button
             type="button"
             aria-label="Закрыть"
@@ -317,7 +346,7 @@ function App() {
                   to={item.href}
                   end={item.href === '/' || hasFilters}
                   className={({ isActive }) => [
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear',
+                    `flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors duration-100 ease-linear ${sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'}`,
                     (isActive || (hasFilters && isOnPage)) ? 'sidebar-nav-active' : 'sidebar-nav-item',
                   ].join(' ')}
                   style={({ isActive }) => (isActive || (hasFilters && isOnPage))
@@ -342,13 +371,17 @@ function App() {
                         <span style={{ color: active ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)' }}>
                           <Icon />
                         </span>
-                        <span className="flex-1">{item.name}</span>
-                        {badgeValue != null && (
-                          <span className="rounded-full px-2 py-0.5 text-xs font-medium"
-                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
-                          >
-                            {badgeValue}
-                          </span>
+                        {!sidebarCollapsed && (
+                          <>
+                            <span className="flex-1">{item.name}</span>
+                            {badgeValue != null && (
+                              <span className="rounded-full px-2 py-0.5 text-xs font-medium"
+                                style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                              >
+                                {badgeValue}
+                              </span>
+                            )}
+                          </>
                         )}
                       </>
                     )
@@ -356,7 +389,7 @@ function App() {
                 </NavLink>
 
                 {/* Status filter sub-items */}
-                {hasFilters && isOnPage && (
+                {hasFilters && isOnPage && !sidebarCollapsed && (
                   <div className="ml-8 mt-1 space-y-0.5">
                     {item.filters.map((f) => {
                       const currentUrl = location.pathname + location.search
@@ -387,27 +420,54 @@ function App() {
         </nav>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-3 py-3 space-y-3" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
-          <div className="status-success rounded-lg px-3 py-2 text-xs font-medium">
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary)' }} />
-              База: mock_smart
+        <div className={`flex-shrink-0 py-3 space-y-3 ${sidebarCollapsed ? 'px-2' : 'px-3'}`} style={{ borderTop: '1px solid var(--sidebar-border)' }}>
+          {/* Expand button when collapsed */}
+          {sidebarCollapsed && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="hidden lg:flex w-full items-center justify-center h-9 rounded-lg transition-colors"
+              style={{ color: 'var(--fg-quaternary)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+              title="Развернуть"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+              </svg>
+            </button>
+          )}
+          {!sidebarCollapsed && (
+            <>
+              <div className="status-success rounded-lg px-3 py-2 text-xs font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary)' }} />
+                  База: mock_smart
+                </div>
+              </div>
+              <div className="flex items-center gap-3 px-1">
+                <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
+                  HR
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>HR Admin</div>
+                  <div className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>Администратор</div>
+                </div>
+              </div>
+            </>
+          )}
+          {sidebarCollapsed && (
+            <div className="flex justify-center">
+              <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
+                HR
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 px-1">
-            <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
-              HR
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>HR Admin</div>
-              <div className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>Администратор</div>
-            </div>
-          </div>
+          )}
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-[280px]">
+      <div className={`flex flex-1 flex-col transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[280px]'}`}>
         {/* Header */}
         <header
           className="sticky top-0 z-30"

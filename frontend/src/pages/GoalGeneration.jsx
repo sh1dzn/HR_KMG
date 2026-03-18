@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react'
-import { generateGoals, getFocusAreas, getEmployees, saveAcceptedGeneratedGoals } from '../api/client'
+import { generateGoals, getFocusAreas, getEmployees, getGoals, saveAcceptedGeneratedGoals } from '../api/client'
 import EmployeePicker from '../components/EmployeePicker'
 import AIThinking from '../components/AIThinking'
-
-const generationFlow = [
-  { step: '1', text: 'Профиль сотрудника и квартальный фокус' },
-  { step: '2', text: 'Подбор релевантных ВНД и стратегий' },
-  { step: '3', text: 'Генерация 3–5 целей в SMART-формате' },
-  { step: '4', text: 'Каскадирование от руководителя' },
-]
 
 const normalizeGoalText = (t = '') =>
   t.toLowerCase().replace(/[^\wа-яА-Яa-zA-Z0-9%\s]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -43,6 +36,12 @@ export default function GoalGeneration() {
   const [saving,             setSaving]             = useState(false)
   const [saveSummary,        setSaveSummary]        = useState(null)
 
+  // Cascade state
+  const [managerInfo,        setManagerInfo]        = useState(null) // { id, name }
+  const [managerGoals,       setManagerGoals]       = useState([])
+  const [selectedManagerGoals, setSelectedManagerGoals] = useState(new Set())
+  const [cascadeLoading,     setCascadeLoading]     = useState(false)
+
   useEffect(() => {
     Promise.all([getFocusAreas(), getEmployees()])
       .then(([fa, emp]) => {
@@ -54,10 +53,51 @@ export default function GoalGeneration() {
       .catch(console.error)
   }, [])
 
+  // Load manager goals when employee changes
+  useEffect(() => {
+    if (!employeeId) { setManagerInfo(null); setManagerGoals([]); return }
+    const loadManager = async () => {
+      setCascadeLoading(true)
+      setManagerInfo(null); setManagerGoals([]); setSelectedManagerGoals(new Set())
+      try {
+        // Get one goal to find manager
+        const r = await getGoals({ employee_id: employeeId, page: 1, per_page: 1 })
+        const goal = r.goals?.[0]
+        if (!goal?.manager_id || !goal?.manager_name) { setCascadeLoading(false); return }
+        setManagerInfo({ id: goal.manager_id, name: goal.manager_name })
+        // Load manager goals for the selected period
+        const mg = await getGoals({ employee_id: goal.manager_id, quarter, year, page: 1, per_page: 20 })
+        setManagerGoals(mg.goals || [])
+      } catch { /* ignore */ }
+      finally { setCascadeLoading(false) }
+    }
+    loadManager()
+  }, [employeeId, quarter, year])
+
+  const toggleManagerGoal = (goalId) => {
+    setSelectedManagerGoals(prev => {
+      const next = new Set(prev)
+      next.has(goalId) ? next.delete(goalId) : next.add(goalId)
+      return next
+    })
+  }
+
+  const selectAllManagerGoals = () => {
+    if (selectedManagerGoals.size === managerGoals.length) {
+      setSelectedManagerGoals(new Set())
+    } else {
+      setSelectedManagerGoals(new Set(managerGoals.map(g => g.id)))
+    }
+  }
+
   const handleGenerate = async () => {
     setLoading(true); setError(null)
     try {
-      const d = await generateGoals(employeeId, quarter, year, selectedFocusAreas.length > 0 ? selectedFocusAreas : null, count)
+      // Pass selected manager goals as text for cascading
+      const managerGoalTexts = selectedManagerGoals.size > 0
+        ? managerGoals.filter(g => selectedManagerGoals.has(g.id)).map(g => g.title)
+        : null
+      const d = await generateGoals(employeeId, quarter, year, selectedFocusAreas.length > 0 ? selectedFocusAreas : null, count, managerGoalTexts)
       setResult(d); setGoalStates({}); setSaveSummary(null)
     } catch (e) { setError(e.response?.data?.detail || 'Ошибка при генерации целей') }
     finally { setLoading(false) }
@@ -71,7 +111,6 @@ export default function GoalGeneration() {
 
   const acceptedCount  = Object.values(goalStates).filter(s => s === 'accepted').length
   const savedCount     = Object.values(goalStates).filter(s => s === 'saved').length
-  const duplicateCount = Object.values(goalStates).filter(s => s === 'duplicate').length
 
   const handleSaveAccepted = async () => {
     if (acceptedCount === 0) return
@@ -106,38 +145,21 @@ export default function GoalGeneration() {
     finally { setSaving(false) }
   }
 
+  const selectedEmp = employees.find(e => e.id === employeeId)
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-in">
 
       {/* Page header */}
-      <div className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
-        <div>
-          <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Генерация целей</h1>
-          <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
-            Формирует набор целей по профилю сотрудника, квартальному периоду и выбранным фокус-направлениям.
-            Каждая цель сопровождается обоснованием, источником и предварительной оценкой.
-          </p>
-        </div>
-        <div className="rounded-xl p-4"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
-        >
-          <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Процесс подготовки</div>
-          <div className="space-y-2">
-            {generationFlow.map(({ step, text }) => (
-              <div key={step} className="flex items-center gap-3">
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
-                  style={{ backgroundColor: 'var(--bg-brand-solid)' }}
-                >{step}</span>
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div>
+        <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Генерация целей</h1>
+        <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+          Формирует цели на основе профиля сотрудника, ВНД и целей руководителя.
+        </p>
       </div>
 
       {/* Parameters card */}
-      <div className="card p-6"
-      >
+      <div className="card p-6">
         <div className="mb-5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Параметры генерации</div>
 
         <div className="mb-5">
@@ -193,19 +215,125 @@ export default function GoalGeneration() {
             </div>
           </div>
         )}
+      </div>
 
-        <div className="mb-5 flex items-start gap-3 rounded-xl px-4 py-3"
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
-        >
-          <svg className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="var(--fg-quaternary)" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            Фокус-направления помогают сузить контекст и получить более предметные цели по текущему квартальному приоритету.
-          </p>
+      {/* Cascade panel */}
+      <div className="card overflow-hidden">
+        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg"
+              style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)' }}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Каскадирование целей</div>
+              <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                {managerInfo ? `Руководитель: ${managerInfo.name}` : 'Выберите сотрудника для загрузки целей руководителя'}
+              </div>
+            </div>
+          </div>
+          {managerGoals.length > 0 && (
+            <button onClick={selectAllManagerGoals}
+              className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
+              style={{ color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
+            >
+              {selectedManagerGoals.size === managerGoals.length ? 'Снять все' : 'Выбрать все'}
+            </button>
+          )}
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border-secondary)', paddingTop: '20px' }}>
+        <div className="px-6 py-4">
+          {cascadeLoading ? (
+            <div className="flex items-center gap-2 py-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+              <svg className="h-4 w-4 animate-spin spinner-brand" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Загрузка целей руководителя...
+            </div>
+          ) : !managerInfo ? (
+            <div className="flex items-center gap-2 py-2 text-sm" style={{ color: 'var(--text-quaternary)' }}>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Руководитель не найден — цели будут сгенерированы без каскадирования
+            </div>
+          ) : managerGoals.length === 0 ? (
+            <div className="flex items-center gap-2 py-2 text-sm" style={{ color: 'var(--text-quaternary)' }}>
+              У руководителя нет целей за {quarter} {year}
+            </div>
+          ) : (
+            <>
+              {/* Cascade tree visual */}
+              <div className="flex items-center gap-2 mb-4 text-xs" style={{ color: 'var(--text-quaternary)' }}>
+                <span className="font-medium" style={{ color: 'var(--text-tertiary)' }}>{managerInfo.name}</span>
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 6 15 12 9 18"/></svg>
+                <span className="font-medium" style={{ color: 'var(--text-brand-primary)' }}>{selectedEmp?.full_name || 'Сотрудник'}</span>
+                {selectedManagerGoals.size > 0 && (
+                  <span className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)' }}
+                  >
+                    {selectedManagerGoals.size} выбрано
+                  </span>
+                )}
+              </div>
+
+              {/* Manager goals list */}
+              <div className="space-y-2">
+                {managerGoals.map((g) => {
+                  const isSelected = selectedManagerGoals.has(g.id)
+                  const sc = g.smart_score
+                  return (
+                    <label key={g.id}
+                      className="flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-all"
+                      style={{
+                        border: `1.5px solid ${isSelected ? 'var(--fg-brand-primary)' : 'var(--border-secondary)'}`,
+                        backgroundColor: isSelected ? 'var(--bg-brand-primary)' : '',
+                      }}
+                    >
+                      <input type="checkbox" checked={isSelected} onChange={() => toggleManagerGoal(g.id)}
+                        className="mt-0.5 h-4 w-4 rounded flex-shrink-0"
+                        style={{ accentColor: 'var(--fg-brand-primary)' }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>{g.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span className="text-xs rounded-full px-2 py-0.5"
+                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                          >{g.status}</span>
+                          {g.goal_type && (
+                            <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{g.goal_type}</span>
+                          )}
+                          {g.strategic_link && (
+                            <span className="text-xs rounded-full px-2 py-0.5 badge-brand">{g.strategic_link}</span>
+                          )}
+                        </div>
+                      </div>
+                      {sc != null && (
+                        <span className="text-sm font-semibold flex-shrink-0" style={getScoreStyle(sc).color ? { color: getScoreStyle(sc).color } : {}}>
+                          {(sc * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </label>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Generate button */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between">
+          <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            {selectedManagerGoals.size > 0
+              ? `Каскадирование от ${selectedManagerGoals.size} целей руководителя`
+              : 'Генерация без каскадирования'}
+          </div>
           <button onClick={handleGenerate} disabled={loading} className="btn-primary">
             {loading ? (
               <>
@@ -243,8 +371,7 @@ export default function GoalGeneration() {
       {result && !loading && (
         <div className="space-y-4">
           {/* Summary card */}
-          <div className="card p-6"
-          >
+          <div className="card p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Сгенерированные цели</div>
@@ -257,8 +384,7 @@ export default function GoalGeneration() {
                 </div>
               </div>
               <div className="flex-shrink-0 text-right">
-                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold status-brand"
-                >
+                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold status-brand">
                   {result.quarter} {result.year}
                 </span>
                 <div className="mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
@@ -267,21 +393,32 @@ export default function GoalGeneration() {
               </div>
             </div>
 
-            {/* Meta chips */}
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {[
-                { label: 'MVP-функция',  value: 'Генерация 3–5 целей' },
-                { label: 'Обоснование', value: 'Источник ВНД + rationale' },
-                { label: 'Контроль',    value: 'SMART + историческая достижимость' },
-              ].map(({ label, value }) => (
-                <div key={label} className="rounded-xl px-4 py-3"
-                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
-                >
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>{label}</div>
-                  <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{value}</div>
+            {/* Cascade info */}
+            {result.cascaded_from_manager && (
+              <div className="mt-4 rounded-lg px-4 py-3 flex items-start gap-3"
+                style={{ backgroundColor: 'var(--bg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
+              >
+                <svg className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--fg-brand-primary)' }}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                </svg>
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-brand-primary)' }}>
+                    Каскадировано от {result.manager_name}
+                  </div>
+                  {result.manager_goals_used?.length > 0 && (
+                    <ul className="mt-1.5 space-y-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                      {result.manager_goals_used.map((g, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-brand-primary)' }} />
+                          {g.length > 100 ? g.substring(0, 100) + '...' : g}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
             {/* Action buttons */}
             {acceptedCount > 0 && (
@@ -305,7 +442,7 @@ export default function GoalGeneration() {
             {savedCount > 0 && (
               <div className="status-success mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm">
                 <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                Сохранено {savedCount} {savedCount === 1 ? 'цель' : savedCount < 5 ? 'цели' : 'целей'} в систему как черновик.
+                Сохранено {savedCount} {savedCount === 1 ? 'цель' : savedCount < 5 ? 'цели' : 'целей'} как черновик.
               </div>
             )}
 
@@ -313,26 +450,6 @@ export default function GoalGeneration() {
               <div className="status-warning mt-3 flex items-start gap-2 rounded-xl px-4 py-3 text-sm">
                 <svg className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 Пропущено как дубликат: {saveSummary.skipped_duplicates.length}
-              </div>
-            )}
-
-            {result.generation_context && (
-              <div className="status-brand mt-3 rounded-xl px-4 py-3 text-sm">
-                <span className="font-semibold">Контекст генерации:</span>{' '}{result.generation_context}
-              </div>
-            )}
-
-            {result.cascaded_from_manager && (
-              <div className="mt-3 rounded-xl px-4 py-3 text-sm"
-                style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)' }}
-              >
-                <span className="font-semibold">Каскадирование:</span>{' '}
-                Цели сформированы с учётом целей руководителя ({result.manager_name}).
-                {result.manager_goals_used?.length > 0 && (
-                  <ul className="mt-2 space-y-1 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
-                    {result.manager_goals_used.map((g, i) => <li key={i}>{g}</li>)}
-                  </ul>
-                )}
               </div>
             )}
 
@@ -347,7 +464,7 @@ export default function GoalGeneration() {
                 : { bg: 'var(--bg-secondary)', border: 'var(--border-secondary)', color: 'var(--text-secondary)' }
               return (
                 <div className="mt-3 rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: style.bg, border: `1px solid ${style.border}`, color: style.color }}>
-                  <span className="font-semibold">Историческая достижимость:</span>{' '}{r.assessment}
+                  <span className="font-semibold">Историческая достижимость:</span> {r.assessment}
                   <div className="mt-2 flex flex-wrap gap-4 text-xs font-medium">
                     <span>Целей в истории: {r.total_past_goals}</span>
                     <span>Выполнено: {r.completed_count} ({r.completion_rate}%)</span>
@@ -388,15 +505,13 @@ export default function GoalGeneration() {
                         style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
                       >{goal.goal_type_russian}</span>
                       {state === 'saved' && (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium status-success"
-                        >
+                        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium status-success">
                           <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                           Сохранено
                         </span>
                       )}
                       {state === 'duplicate' && (
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium status-warning"
-                        >Дубликат</span>
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium status-warning">Дубликат</span>
                       )}
                     </div>
                     <h3 className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.goal_text}</h3>
@@ -406,10 +521,10 @@ export default function GoalGeneration() {
                     </div>
                   </div>
                   <div className="flex-shrink-0 text-center">
-                    <div className="flex h-20 w-20 flex-col items-center justify-center rounded-xl"
+                    <div className="flex h-16 w-16 sm:h-20 sm:w-20 flex-col items-center justify-center rounded-xl"
                       style={{ backgroundColor: scoreStyle.bg, border: `1px solid ${scoreStyle.border}` }}
                     >
-                      <span className="text-2xl font-semibold leading-none" style={{ color: scoreStyle.color }}>
+                      <span className="text-xl sm:text-2xl font-semibold leading-none" style={{ color: scoreStyle.color }}>
                         {(goal.smart_score * 100).toFixed(0)}%
                       </span>
                       <span className="mt-1 text-xs font-medium" style={{ color: 'var(--text-quaternary)' }}>SMART</span>
@@ -436,10 +551,7 @@ export default function GoalGeneration() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{goal.source_document.title}</div>
-                      <div className="mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-quaternary)', border: '1px solid var(--border-secondary)' }}
-                      >Источник из ВНД / стратегии</div>
-                      <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
+                      <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>
                         {goal.source_document.relevant_fragment.substring(0, 200)}...
                       </p>
                     </div>

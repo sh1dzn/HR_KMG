@@ -14,7 +14,7 @@ const client = axios.create({
 })
 
 // Helper to get selected model from settings
-const VALID_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini']
+const VALID_MODELS = ['gpt-5-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini']
 const getSelectedModel = () => {
   try {
     const s = JSON.parse(localStorage.getItem('kmg-settings') || '{}')
@@ -61,13 +61,14 @@ export const getEmployees = async (params = {}) => {
 }
 
 // Goal Generation API
-export const generateGoals = async (employeeId, quarter, year, focusAreas = null, count = 3) => {
+export const generateGoals = async (employeeId, quarter, year, focusAreas = null, count = 3, managerGoals = null) => {
   const response = await client.post('/generation/generate', {
     employee_id: employeeId,
     quarter,
     year,
     focus_areas: focusAreas,
     count,
+    manager_goals: managerGoals,
     model: getSelectedModel(),
   })
   return response.data
