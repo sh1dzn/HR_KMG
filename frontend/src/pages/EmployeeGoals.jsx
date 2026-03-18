@@ -99,7 +99,7 @@ export default function EmployeeGoals() {
         if (quarter) params.quarter = quarter
         if (year)    params.year    = +year
         if (status)  params.status  = status
-        const r = await getGoals({ ...params, page: 1, per_page: 200 })
+        const r = await getGoals({ ...params, page: 1, per_page: 100 })
         setGoals((r.goals || []).map(normalize))
       } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки целей') }
       finally { setLoading(false) }
