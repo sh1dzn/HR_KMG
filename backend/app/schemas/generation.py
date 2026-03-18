@@ -23,6 +23,7 @@ class GenerationRequest(BaseModel):
     focus_areas: Optional[List[str]] = Field(None, description="Фокус-направления (цифровизация, снижение затрат и т.д.)")
     manager_goals: Optional[List[str]] = Field(None, description="Цели руководителя для каскадирования")
     count: int = Field(default=3, ge=1, le=5, description="Количество целей для генерации")
+    model: Optional[str] = Field(None, description="Модель OpenAI (gpt-4o, gpt-4o-mini, gpt-5-mini и т.д.)")
 
 
 class GeneratedGoal(BaseModel):

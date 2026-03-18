@@ -299,7 +299,8 @@ async def generate_goals(
         year=request.year,
         focus_areas=request.focus_areas,
         manager_goals=manager_goals,
-        count=request.count
+        count=request.count,
+        model=request.model
     )
 
     response.cascaded_from_manager = cascaded_from_manager

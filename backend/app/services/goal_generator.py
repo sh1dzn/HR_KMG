@@ -95,7 +95,8 @@ class GoalGenerator:
         year: int,
         focus_areas: Optional[List[str]] = None,
         manager_goals: Optional[List[str]] = None,
-        count: int = 3
+        count: int = 3,
+        model: Optional[str] = None
     ) -> GenerationResponse:
         """
         Generate goals for an employee
@@ -160,7 +161,8 @@ class GoalGenerator:
             result = await self.llm.complete_json(
                 prompt=prompt,
                 system_prompt=self.SYSTEM_PROMPT,
-                temperature=0.4
+                temperature=0.4,
+                model=model
             )
         except Exception:
             result = self._build_fallback_generation(

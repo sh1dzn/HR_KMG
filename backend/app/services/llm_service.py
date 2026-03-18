@@ -27,7 +27,8 @@ class LLMService:
         system_prompt: Optional[str] = None,
         temperature: float = 0.3,
         max_tokens: int = 2000,
-        response_format: Optional[Dict] = None
+        response_format: Optional[Dict] = None,
+        model: Optional[str] = None
     ) -> str:
         """
         Generate completion from GPT-4
@@ -50,7 +51,7 @@ class LLMService:
         messages.append({"role": "user", "content": prompt})
 
         kwargs = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens
@@ -67,7 +68,8 @@ class LLMService:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.2
+        temperature: float = 0.2,
+        model: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate JSON response from GPT-4
@@ -84,7 +86,8 @@ class LLMService:
             prompt=prompt,
             system_prompt=system_prompt,
             temperature=temperature,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            model=model
         )
 
         return json.loads(response)

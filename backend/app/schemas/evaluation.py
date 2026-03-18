@@ -43,6 +43,7 @@ class EvaluationRequest(BaseModel):
     position: Optional[str] = Field(None, description="Должность сотрудника")
     department: Optional[str] = Field(None, description="Подразделение")
     context: Optional[str] = Field(None, description="Дополнительный контекст")
+    model: Optional[str] = Field(None, description="Модель OpenAI (gpt-4o, gpt-4o-mini, gpt-5-mini и т.д.)")
 
 
 class EvaluationResponse(BaseModel):
@@ -62,6 +63,7 @@ class BatchEvaluationRequest(BaseModel):
     employee_id: int = Field(..., description="ID сотрудника")
     quarter: Optional[str] = Field(None, description="Квартал")
     year: Optional[int] = Field(None, description="Год")
+    model: Optional[str] = Field(None, description="Модель OpenAI")
 
 
 class GoalEvaluationSummary(BaseModel):

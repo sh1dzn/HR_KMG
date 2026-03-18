@@ -43,7 +43,8 @@ async def evaluate_goal(request: EvaluationRequest):
         goal_text=request.goal_text,
         position=request.position,
         department=request.department,
-        context=request.context
+        context=request.context,
+        model=request.model
     )
 
     return evaluation
@@ -183,7 +184,8 @@ async def reformulate_goal(request: EvaluationRequest):
         goal_text=request.goal_text,
         position=request.position,
         department=request.department,
-        context=request.context
+        context=request.context,
+        model=request.model
     )
 
     return {

@@ -97,7 +97,8 @@ T - Time-bound (Ограниченность во времени): Указан 
         goal_text: str,
         position: Optional[str] = None,
         department: Optional[str] = None,
-        context: Optional[str] = None
+        context: Optional[str] = None,
+        model: Optional[str] = None
     ) -> EvaluationResponse:
         """
         Evaluate a single goal using SMART methodology
@@ -132,7 +133,8 @@ T - Time-bound (Ограниченность во времени): Указан 
             result = await self.llm.complete_json(
                 prompt=prompt,
                 system_prompt=self.SYSTEM_PROMPT,
-                temperature=0.2
+                temperature=0.2,
+                model=model
             )
 
             # Parse SMART evaluation

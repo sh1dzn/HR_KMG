@@ -13,12 +13,21 @@ const client = axios.create({
   },
 })
 
+// Helper to get selected model from settings
+const getSelectedModel = () => {
+  try {
+    const s = JSON.parse(localStorage.getItem('kmg-settings') || '{}')
+    return s.openaiModel || null
+  } catch { return null }
+}
+
 // Goal Evaluation API
 export const evaluateGoal = async (goalText, position = null, department = null) => {
   const response = await client.post('/evaluation/evaluate', {
     goal_text: goalText,
     position,
     department,
+    model: getSelectedModel(),
   })
   return response.data
 }
@@ -28,6 +37,7 @@ export const evaluateBatch = async (employeeId, quarter = null, year = null) => 
     employee_id: employeeId,
     quarter,
     year,
+    model: getSelectedModel(),
   })
   return response.data
 }
@@ -37,6 +47,7 @@ export const reformulateGoal = async (goalText, position = null, department = nu
     goal_text: goalText,
     position,
     department,
+    model: getSelectedModel(),
   })
   return response.data
 }
@@ -55,6 +66,7 @@ export const generateGoals = async (employeeId, quarter, year, focusAreas = null
     year,
     focus_areas: focusAreas,
     count,
+    model: getSelectedModel(),
   })
   return response.data
 }
@@ -66,6 +78,7 @@ export const generateAndSaveGoals = async (employeeId, quarter, year, focusAreas
     year,
     focus_areas: focusAreas,
     count,
+    model: getSelectedModel(),
   })
   return response.data
 }
