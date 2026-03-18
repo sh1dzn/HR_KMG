@@ -299,7 +299,7 @@ export default function Dashboard() {
                 <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Стратегическая связка целей</div>
                 <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Распределение по типам целей</p>
               </div>
-              <div className="px-4 pb-4" style={{ height: 240 }}>
+              <div className="px-4 pb-4" style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart margin={{ left: 0, right: 0, top: 0, bottom: 0 }}>
                     <Legend
@@ -318,8 +318,8 @@ export default function Dashboard() {
                       dataKey="value"
                       nameKey="name"
                       fill="currentColor"
-                      innerRadius={isMobile ? 40 : 60}
-                      outerRadius={isMobile ? 80 : 120}
+                      innerRadius={isMobile ? 30 : 45}
+                      outerRadius={isMobile ? 60 : 90}
                     />
                   </PieChart>
                 </ResponsiveContainer>

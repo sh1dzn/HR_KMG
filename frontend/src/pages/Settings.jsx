@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'kmg-settings'
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '') || '/api'
 
 const defaultSettings = {
   openaiModel: 'gpt-4o',
@@ -77,12 +78,18 @@ function Toggle({ checked, onChange }) {
 export default function Settings() {
   const [settings, setSettings] = useState(defaultSettings)
   const [saved, setSaved] = useState(false)
+  const [serverInfo, setServerInfo] = useState(null)
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) setSettings({ ...defaultSettings, ...JSON.parse(stored) })
     } catch {}
+    // Load server health info
+    fetch(API_BASE.replace('/api', '') + '/health')
+      .then(r => r.json())
+      .then(d => setServerInfo(d))
+      .catch(() => {})
   }, [])
 
   const update = (key, value) => {
@@ -110,7 +117,7 @@ export default function Settings() {
       </div>
 
       {/* AI Model */}
-      <SettingsSection title="AI Модель" description="Выберите модель OpenAI для оценки и генерации целей">
+      <SettingsSection title="AI Модель" description="Предпочтительная модель OpenAI для оценки и генерации целей">
         <FieldRow label="Модель" description="Влияет на качество и скорость оценки">
           <div className="space-y-2">
             {modelOptions.map((m) => (
@@ -198,7 +205,7 @@ export default function Settings() {
       </SettingsSection>
 
       {/* API Info */}
-      <SettingsSection title="API и система" description="Информация о подключении">
+      <SettingsSection title="API и система" description="Информация о подключении к серверу">
         <FieldRow label="API Endpoint">
           <div className="flex items-center gap-2">
             <code className="text-sm px-3 py-1.5 rounded-lg"
@@ -206,19 +213,60 @@ export default function Settings() {
             >
               {window.location.origin}/api
             </code>
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
-              style={{ backgroundColor: 'var(--bg-success-primary, #ECFDF3)', color: 'var(--text-success-primary, #039855)' }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary, #039855)' }} />
-              Подключено
-            </span>
+            {serverInfo ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: 'var(--bg-success-primary, #ECFDF3)', color: 'var(--text-success-primary, #039855)' }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary, #039855)' }} />
+                Подключено
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+              >
+                Проверка...
+              </span>
+            )}
           </div>
         </FieldRow>
 
         <div style={{ height: '1px', backgroundColor: 'var(--border-secondary)' }} />
 
-        <FieldRow label="Версия">
-          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>1.0.0</span>
+        <FieldRow label="Сервер">
+          <div className="space-y-1.5">
+            {serverInfo ? (
+              <>
+                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{serverInfo.service} v{serverInfo.version}</div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{
+                      backgroundColor: serverInfo.checks?.openai_configured ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
+                      color: serverInfo.checks?.openai_configured ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
+                    }}
+                  >
+                    OpenAI: {serverInfo.checks?.openai_configured ? 'настроен' : 'не настроен'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{
+                      backgroundColor: serverInfo.checks?.database === 'ok' ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
+                      color: serverInfo.checks?.database === 'ok' ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
+                    }}
+                  >
+                    БД: {serverInfo.checks?.database === 'ok' ? 'ок' : 'ошибка'}
+                  </span>
+                  {serverInfo.checks?.chroma_chunks != null && (
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                    >
+                      ChromaDB: {serverInfo.checks.chroma_chunks} чанков
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <span className="text-sm" style={{ color: 'var(--text-quaternary)' }}>Загрузка...</span>
+            )}
+          </div>
         </FieldRow>
       </SettingsSection>
 

@@ -88,12 +88,21 @@ export default function Operations() {
         </p>
       </div>
 
-      {/* KPI row */}
+      {/* Metrics row */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* Period picker */}
         <CardShell>
-          <div className="px-5 py-4">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Период</div>
+          <div className="px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Период</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <select className="select-field w-full" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
                 {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
@@ -105,23 +114,39 @@ export default function Operations() {
 
         {/* Alerts count */}
         <CardShell>
-          <div className="px-5 py-4">
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Всего алертов</div>
-            <div className="mt-2 text-3xl font-semibold" style={{ color: alertsSummary?.total_alerts > 0 ? 'var(--text-warning-primary)' : 'var(--text-primary)' }}>
+          <div className="px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Всего алертов</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+              </div>
+            </div>
+            <div className="text-3xl font-semibold tracking-tight" style={{ color: alertsSummary?.total_alerts > 0 ? 'var(--text-warning-primary)' : 'var(--text-primary)' }}>
               {alertsSummary?.total_alerts ?? '—'}
             </div>
-            <div className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>Уведомлений по качеству и согласованию</div>
           </div>
         </CardShell>
 
         {/* Index count */}
         <CardShell>
-          <div className="px-5 py-4">
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Индекс ВНД</div>
-            <div className="mt-2 text-3xl font-semibold" style={{ color: 'var(--fg-brand-primary)' }}>
+          <div className="px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Индекс ВНД</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+              </div>
+            </div>
+            <div className="text-3xl font-semibold tracking-tight" style={{ color: 'var(--fg-brand-primary)' }}>
               {indexStatus?.indexed_chunks ?? '—'}
             </div>
-            <div className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>Чанков в поисковом индексе</div>
           </div>
         </CardShell>
       </div>

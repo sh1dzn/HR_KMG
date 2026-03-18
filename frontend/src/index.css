@@ -42,7 +42,7 @@
     --bg-tertiary:        #F2F4F7;
     --bg-quaternary:      #EAECF0;
     --bg-disabled:        #F2F4F7;
-    --bg-overlay:         #0C111D;
+    --bg-overlay:         #070A12;
     --bg-brand-primary:   #EFF8FF;
     --bg-brand-secondary: #D1E9FF;
     --bg-brand-solid:     #1570EF;
@@ -116,13 +116,13 @@
     --fg-warning-primary: #FEC84B;
     --fg-error-primary:   #FDA29B;
 
-    --bg-primary:         #0C111D;
-    --bg-primary-alt:     #161B26;
-    --bg-secondary:       #161B26;
-    --bg-tertiary:        #1F242F;
-    --bg-quaternary:      #333741;
+    --bg-primary:         #070A12;
+    --bg-primary-alt:     #0C111D;
+    --bg-secondary:       #0F1420;
+    --bg-tertiary:        #1A1F2E;
+    --bg-quaternary:      #2A2F3D;
     --bg-disabled:        #1F242F;
-    --bg-overlay:         #0C111D;
+    --bg-overlay:         #070A12;
     --bg-brand-primary:   #102A56;
     --bg-brand-secondary: #194185;
     --bg-brand-solid:     #1570EF;
@@ -132,14 +132,14 @@
     --bg-success-primary: #053321;
     --bg-success-secondary:#074D31;
 
-    --sidebar-bg: #0C111D;
-    --sidebar-border: #1F242F;
+    --sidebar-bg: #070A12;
+    --sidebar-border: #1A1F2E;
     --sidebar-text: #94969C;
     --sidebar-text-active: #F5F5F6;
     --sidebar-item-active: #102A56;
-    --sidebar-item-hover: #161B26;
-    --header-bg: rgba(12,17,29,0.92);
-    --header-border: #1F242F;
+    --sidebar-item-hover: #0F1420;
+    --header-bg: rgba(7,10,18,0.92);
+    --header-border: #1A1F2E;
 
     --border-success:          #085D3A;
     --border-warning:          #7A2E0E;
@@ -149,11 +149,11 @@
     --bg-brand-25:             #102A56;
     --fg-error-secondary:      #FDA29B;
     --text-success-secondary:  #75E0A7;
-    --surface-dark:            #0C111D;
-    --surface-dark-border:     #161B26;
+    --surface-dark:            #070A12;
+    --surface-dark-border:     #0F1420;
     --surface-dark-text:       #F5F5F6;
     --surface-dark-muted:      #94969C;
-    --code-bg:                 #0C111D;
+    --code-bg:                 #070A12;
     --code-text:               #94969C;
     color-scheme: dark;
   }
