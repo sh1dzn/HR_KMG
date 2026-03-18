@@ -88,10 +88,21 @@ export default function AIThinking({ mode = 'generate' }) {
             >
               <svg className="h-7 w-7 animate-pulse" style={{ color: 'var(--fg-brand-primary)' }}
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5v1h2a3 3 0 0 1 3 3v1a2 2 0 0 1-2 2h-1v2a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3v-2H7a2 2 0 0 1-2-2v-1a3 3 0 0 1 3-3h2v-1A4.5 4.5 0 0 1 8 6a4 4 0 0 1 4-4z"/>
-                <circle cx="9" cy="13" r="0.5" fill="currentColor"/>
-                <circle cx="15" cy="13" r="0.5" fill="currentColor"/>
-                <path d="M10 16.5c0 .8.9 1.5 2 1.5s2-.7 2-1.5"/>
+                {/* Antenna */}
+                <line x1="12" y1="2" x2="12" y2="5"/>
+                <circle cx="12" cy="2" r="1" fill="currentColor" stroke="none"/>
+                {/* Head */}
+                <rect x="4" y="5" width="16" height="11" rx="3"/>
+                {/* Eyes */}
+                <circle cx="9" cy="10.5" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="15" cy="10.5" r="1.5" fill="currentColor" stroke="none"/>
+                {/* Mouth */}
+                <line x1="9" y1="13.5" x2="15" y2="13.5"/>
+                {/* Body */}
+                <rect x="7" y="17" width="10" height="5" rx="1.5"/>
+                {/* Arms */}
+                <line x1="4" y1="18" x2="2" y2="20"/>
+                <line x1="20" y1="18" x2="22" y2="20"/>
               </svg>
             </div>
           </div>
