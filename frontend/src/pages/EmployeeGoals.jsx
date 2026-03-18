@@ -5,6 +5,7 @@ import {
   getDashboardSummary, getEmployees, getEmployeeGoalsSummary, getGoals,
   getGoalWorkflow, rejectGoal, submitGoal,
 } from '../api/client'
+import GoalModal from '../components/GoalModal'
 
 /* ── Status config ─────────────────────────────────────── */
 const statusConfig = {
@@ -77,6 +78,7 @@ export default function EmployeeGoals() {
   const [workflowLoadingId,setWorkflowLoadingId] = useState(null)
   const [workflowActionId, setWorkflowActionId]= useState(null)
   const [commentsByGoal,   setCommentsByGoal]  = useState({})
+  const [modalGoal,        setModalGoal]       = useState(null)
 
   /* ── Load departments once ───────────────────────────────── */
   useEffect(() => {
@@ -229,7 +231,10 @@ export default function EmployeeGoals() {
         <div className="flex items-start gap-3 px-4 py-3">
           <span className="h-2 w-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: sc.dot }} title={sc.label} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.title}</p>
+            <p className="text-sm font-medium leading-snug cursor-pointer hover:underline"
+              style={{ color: 'var(--text-primary)' }}
+              onClick={(e) => { e.stopPropagation(); setModalGoal(goal) }}
+            >{goal.title}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="text-xs rounded-full px-2 py-0.5"
                 style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
@@ -489,7 +494,10 @@ export default function EmployeeGoals() {
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.title}</p>
+                        <p className="text-sm font-medium leading-snug cursor-pointer hover:underline"
+                          style={{ color: 'var(--text-primary)' }}
+                          onClick={() => setModalGoal(goal)}
+                        >{goal.title}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{goal.employee_name}</span>
                           {goal.department_name && (
@@ -745,6 +753,22 @@ export default function EmployeeGoals() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Goal detail modal */}
+      {modalGoal && (
+        <GoalModal
+          goal={modalGoal}
+          onClose={() => setModalGoal(null)}
+          onUpdate={() => {
+            // Refresh current view
+            if (statusFilter) {
+              const params = { status: statusFilter, page, per_page: ROWS_PER_PAGE }
+              if (deptFilter) params.department_id = deptFilter
+              getGoals(params).then(r => { setFilteredGoals(r.goals || []); setTotalFilteredGoals(r.total || 0) }).catch(() => {})
+            }
+          }}
+        />
       )}
     </div>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGoals, approveGoal, rejectGoal, commentGoal, getGoalWorkflow } from '../api/client'
+import GoalModal from '../components/GoalModal'
 
 const ROWS_PER_PAGE = 15
 
@@ -79,6 +80,7 @@ export default function Approvals() {
   const [comments, setComments] = useState({})
   const [selected, setSelected] = useState(new Set())
   const [batchLoading, setBatchLoading] = useState(false)
+  const [modalGoal, setModalGoal] = useState(null)
 
   const loadGoals = async () => {
     setLoading(true); setError(null)
@@ -259,7 +261,10 @@ export default function Approvals() {
 
                   {/* Content */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.title}</p>
+                    <p className="text-sm font-medium leading-snug cursor-pointer hover:underline"
+                      style={{ color: 'var(--text-primary)' }}
+                      onClick={(e) => { e.stopPropagation(); setModalGoal(goal) }}
+                    >{goal.title}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                       <span>{goal.employee_name}</span>
                       <span>·</span>
@@ -457,6 +462,10 @@ export default function Approvals() {
             </div>
           )}
         </div>
+      )}
+
+      {modalGoal && (
+        <GoalModal goal={modalGoal} onClose={() => setModalGoal(null)} onUpdate={loadGoals} />
       )}
     </div>
   )
