@@ -99,8 +99,22 @@ export default function EmployeeGoals() {
         if (quarter) params.quarter = quarter
         if (year)    params.year    = +year
         if (status)  params.status  = status
-        const r = await getGoals({ ...params, page: 1, per_page: 100 })
-        setGoals((r.goals || []).map(normalize))
+        // Fetch first page to get total count
+        const first = await getGoals({ ...params, page: 1, per_page: 100 })
+        let allGoals = first.goals || []
+        const total = first.total || 0
+        const totalPages = Math.ceil(total / 100)
+        // Fetch remaining pages in parallel
+        if (totalPages > 1) {
+          const pages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2)
+          const results = await Promise.all(
+            pages.map(p => getGoals({ ...params, page: p, per_page: 100 }))
+          )
+          for (const r of results) {
+            allGoals = allGoals.concat(r.goals || [])
+          }
+        }
+        setGoals(allGoals.map(normalize))
       } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки целей') }
       finally { setLoading(false) }
     }
