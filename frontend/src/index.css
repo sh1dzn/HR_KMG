@@ -101,9 +101,9 @@
     --text-warning-primary: #FEC84B;
     --text-success-primary: #75E0A7;
 
-    --border-primary:   #333741;
-    --border-secondary: #171C28;
-    --border-tertiary:  #0F1420;
+    --border-primary:   #2A2A2A;
+    --border-secondary: #1A1A1A;
+    --border-tertiary:  #111111;
     --border-brand:     #1570EF;
     --border-error:     #F04438;
 
@@ -116,13 +116,13 @@
     --fg-warning-primary: #FEC84B;
     --fg-error-primary:   #FDA29B;
 
-    --bg-primary:         #030507;
-    --bg-primary-alt:     #070A10;
-    --bg-secondary:       #0A0E16;
-    --bg-tertiary:        #141822;
-    --bg-quaternary:      #1E2330;
-    --bg-disabled:        #141822;
-    --bg-overlay:         #030507;
+    --bg-primary:         #050505;
+    --bg-primary-alt:     #0A0A0A;
+    --bg-secondary:       #0E0E0E;
+    --bg-tertiary:        #181818;
+    --bg-quaternary:      #222222;
+    --bg-disabled:        #181818;
+    --bg-overlay:         #050505;
     --bg-brand-primary:   #102A56;
     --bg-brand-secondary: #194185;
     --bg-brand-solid:     #1570EF;
@@ -132,14 +132,14 @@
     --bg-success-primary: #053321;
     --bg-success-secondary:#074D31;
 
-    --sidebar-bg: #030507;
-    --sidebar-border: #141822;
+    --sidebar-bg: #050505;
+    --sidebar-border: #1A1A1A;
     --sidebar-text: #94969C;
     --sidebar-text-active: #F5F5F6;
     --sidebar-item-active: #0D1A3A;
-    --sidebar-item-hover: #0A0E16;
-    --header-bg: rgba(3,5,7,0.94);
-    --header-border: #141822;
+    --sidebar-item-hover: #111111;
+    --header-bg: rgba(5,5,5,0.94);
+    --header-border: #1A1A1A;
 
     --border-success:          #085D3A;
     --border-warning:          #7A2E0E;
@@ -149,11 +149,11 @@
     --bg-brand-25:             #102A56;
     --fg-error-secondary:      #FDA29B;
     --text-success-secondary:  #75E0A7;
-    --surface-dark:            #030507;
-    --surface-dark-border:     #0A0E16;
+    --surface-dark:            #050505;
+    --surface-dark-border:     #111111;
     --surface-dark-text:       #F5F5F6;
     --surface-dark-muted:      #94969C;
-    --code-bg:                 #030507;
+    --code-bg:                 #050505;
     --code-text:               #94969C;
     color-scheme: dark;
   }
