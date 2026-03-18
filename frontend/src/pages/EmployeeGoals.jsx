@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import {
   approveGoal, commentGoal, evaluateBatch,
-  getEmployees, getEmployeeGoalsSummary, getGoals,
+  getDashboardSummary, getEmployees, getEmployeeGoalsSummary, getGoals,
   getGoalWorkflow, rejectGoal, submitGoal,
 } from '../api/client'
 
@@ -60,6 +60,7 @@ export default function EmployeeGoals() {
   const [page,             setPage]            = useState(1)
   const [searchQuery,      setSearchQuery]     = useState('')
   const [deptFilter,       setDeptFilter]      = useState('')
+  const [allDepartments,   setAllDepartments]  = useState([]) // { id, name }
 
   // Expanded employee
   const [expandedId,       setExpandedId]      = useState(null)
@@ -77,8 +78,15 @@ export default function EmployeeGoals() {
   const [workflowActionId, setWorkflowActionId]= useState(null)
   const [commentsByGoal,   setCommentsByGoal]  = useState({})
 
+  /* ── Load departments once ───────────────────────────────── */
+  useEffect(() => {
+    getDashboardSummary('Q2', 2026).then(d => {
+      setAllDepartments((d.departments_stats || []).map(ds => ({ id: ds.department_id, name: ds.department_name })))
+    }).catch(() => {})
+  }, [])
+
   /* ── Reset page on filter change ───────────────────────── */
-  useEffect(() => { setPage(1); setExpandedId(null) }, [statusFilter])
+  useEffect(() => { setPage(1); setExpandedId(null); setDeptFilter('') }, [statusFilter])
 
   /* ── Load data ─────────────────────────────────────────── */
   useEffect(() => {
@@ -86,8 +94,10 @@ export default function EmployeeGoals() {
       setLoading(true); setError(null)
       try {
         if (statusFilter) {
-          // Load goals by status
-          const r = await getGoals({ status: statusFilter, page, per_page: ROWS_PER_PAGE })
+          // Load goals by status + optional department
+          const params = { status: statusFilter, page, per_page: ROWS_PER_PAGE }
+          if (deptFilter) params.department_id = deptFilter
+          const r = await getGoals(params)
           setFilteredGoals(r.goals || [])
           setTotalFilteredGoals(r.total || 0)
         } else {
@@ -100,7 +110,7 @@ export default function EmployeeGoals() {
       finally { setLoading(false) }
     }
     load()
-  }, [page, statusFilter])
+  }, [page, statusFilter, deptFilter])
 
   const totalItems = statusFilter ? totalFilteredGoals : totalEmployees
   const totalPages = Math.max(1, Math.ceil(totalItems / ROWS_PER_PAGE))
@@ -418,12 +428,15 @@ export default function EmployeeGoals() {
               value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          {departments.length > 1 && (
+          {(statusFilter ? allDepartments.length > 0 : departments.length > 1) && (
             <select className="select-field sm:w-64"
-              value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}
+              value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setPage(1) }}
             >
               <option value="">Все подразделения</option>
-              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              {statusFilter
+                ? allDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)
+                : departments.map(d => <option key={d} value={d}>{d}</option>)
+              }
             </select>
           )}
         </div>
