@@ -115,11 +115,6 @@ const navigation = [
     name: 'Настройки', href: '/settings',
     icon: SettingsIcon,
   },
-  {
-    name: 'Поддержка', href: '/support',
-    icon: ChatIcon,
-    badge: { label: 'Online', color: 'success' },
-  },
 ]
 
 const pageTitles = {
@@ -130,7 +125,6 @@ const pageTitles = {
   '/employees': 'Сотрудники',
   '/operations': 'Операции',
   '/settings': 'Настройки',
-  '/support': 'Поддержка',
 }
 
 function SunIcon({ className }) {
