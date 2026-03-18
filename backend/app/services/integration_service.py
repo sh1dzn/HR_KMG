@@ -88,17 +88,32 @@ class IntegrationService:
             goal_refs=goal_refs,
         )
 
-    def _serialize_goal(self, goal: Goal) -> dict:
-        return {
-            "goal_id": str(goal.goal_id),
-            "title": goal.goal_text,
-            "metric": goal.metric,
-            "deadline": goal.deadline.isoformat() if goal.deadline else None,
-            "weight": float(goal.weight or 0),
-            "status": goal.status.value if hasattr(goal.status, "value") else goal.status,
-            "quarter": goal.quarter.value if hasattr(goal.quarter, "value") else goal.quarter,
-            "year": goal.year,
-        }
+    # 1С status mapping
+    _1C_STATUS = {
+        "draft": "Черновик", "active": "Активна", "submitted": "НаСогласовании",
+        "approved": "Утверждена", "in_progress": "ВРаботе", "done": "Выполнена",
+        "cancelled": "Отменена", "overdue": "Просрочена", "archived": "Архив",
+    }
+
+    # SAP status mapping (Goal Management module codes)
+    _SAP_STATUS = {
+        "draft": "NOT_STARTED", "active": "NOT_STARTED", "submitted": "ON_TRACK",
+        "approved": "ON_TRACK", "in_progress": "ON_TRACK", "done": "COMPLETED",
+        "cancelled": "CANCELLED", "overdue": "BEHIND", "archived": "COMPLETED",
+    }
+
+    # Oracle HCM status mapping
+    _ORACLE_STATUS = {
+        "draft": "DRAFT", "active": "ACTIVE", "submitted": "PENDING_APPROVAL",
+        "approved": "APPROVED", "in_progress": "IN_PROGRESS", "done": "COMPLETED",
+        "cancelled": "CANCELED", "overdue": "AT_RISK", "archived": "ARCHIVED",
+    }
+
+    def _goal_status_str(self, goal: Goal) -> str:
+        return goal.status.value if hasattr(goal.status, "value") else str(goal.status)
+
+    def _goal_quarter_str(self, goal: Goal) -> str:
+        return goal.quarter.value if hasattr(goal.quarter, "value") else str(goal.quarter or "")
 
     def _build_payload(
         self,
@@ -108,66 +123,145 @@ class IntegrationService:
         batch_id: str,
         timestamp: str,
     ) -> dict:
-        base_goals = [self._serialize_goal(goal) for goal in goals]
-
         if system_code == "1c":
-            return {
-                "batch_id": batch_id,
-                "exported_at": timestamp,
-                "employee": {
-                    "id": employee.id,
-                    "employee_code": employee.employee_code,
-                    "full_name": employee.full_name,
-                },
-                "goals": [
-                    {
-                        "Цель": goal["title"],
-                        "Метрика": goal["metric"],
-                        "Срок": goal["deadline"],
-                        "Вес": goal["weight"],
-                        "Статус": goal["status"],
-                    }
-                    for goal in base_goals
-                ],
-            }
-
+            return self._build_1c_payload(employee, goals, batch_id, timestamp)
         if system_code == "sap":
-            return {
-                "batchId": batch_id,
-                "exportedAt": timestamp,
-                "worker": {
-                    "personIdExternal": employee.employee_code or str(employee.id),
-                    "fullName": employee.full_name,
-                },
-                "performanceGoals": [
-                    {
-                        "goalId": goal["goal_id"],
-                        "description": goal["title"],
-                        "metric": goal["metric"],
-                        "dueDate": goal["deadline"],
-                        "weight": goal["weight"],
-                        "status": goal["status"],
-                    }
-                    for goal in base_goals
-                ],
-            }
+            return self._build_sap_payload(employee, goals, batch_id, timestamp)
+        return self._build_oracle_payload(employee, goals, batch_id, timestamp)
 
+    def _build_1c_payload(self, employee, goals, batch_id, timestamp) -> dict:
+        """1С:ЗУП 8.3 — Регистр сведений «ЦелиСотрудников»"""
+        dept_name = employee.department.name if employee.department else ""
+        position_name = employee.position.name if employee.position else ""
         return {
-            "exportBatchId": batch_id,
-            "timestamp": timestamp,
-            "workerNumber": employee.employee_code or str(employee.id),
-            "workerName": employee.full_name,
-            "goals": [
+            "ТипОбмена": "ЦелиСотрудников",
+            "ВерсияФормата": "1.2",
+            "ДатаВыгрузки": timestamp,
+            "ИдентификаторПакета": batch_id,
+            "Организация": "ТОО «КМГ-Кумколь»",
+            "Сотрудник": {
+                "Код": employee.employee_code or str(employee.id),
+                "ФИО": employee.full_name,
+                "Подразделение": dept_name,
+                "Должность": position_name,
+                "ТабельныйНомер": employee.employee_code or f"TAB-{employee.id:05d}",
+            },
+            "ПериодОценки": {
+                "Квартал": self._goal_quarter_str(goals[0]) if goals else "",
+                "Год": goals[0].year if goals else None,
+            },
+            "Цели": [
                 {
-                    "goalIdentifier": goal["goal_id"],
-                    "goalName": goal["title"],
-                    "measure": goal["metric"],
-                    "targetDate": goal["deadline"],
-                    "allocationPercent": goal["weight"],
-                    "lifecycleStatus": goal["status"],
+                    "УникальныйИдентификатор": str(goal.goal_id),
+                    "Наименование": goal.goal_text,
+                    "Показатель": goal.metric or "",
+                    "СрокИсполнения": goal.deadline.strftime("%d.%m.%Y") if goal.deadline else "",
+                    "ВесЦели": float(goal.weight or 0),
+                    "Статус": self._1C_STATUS.get(self._goal_status_str(goal), "Черновик"),
+                    "ТипЦели": getattr(goal, 'goal_type', None) or "impact",
+                    "СтратегическаяСвязка": getattr(goal, 'strategic_link', None) or "",
+                    "ОценкаSMART": round(float(getattr(goal, 'smart_score', None) or 0), 2),
+                    "ВнешняяСсылка": goal.external_ref or "",
                 }
-                for goal in base_goals
+                for goal in goals
             ],
+            "ИтогоВесЦелей": round(sum(float(g.weight or 0) for g in goals), 2),
+            "КоличествоЦелей": len(goals),
+        }
+
+    def _build_sap_payload(self, employee, goals, batch_id, timestamp) -> dict:
+        """SAP SuccessFactors — Goal Plan API v2 (OData)"""
+        dept_name = employee.department.name if employee.department else ""
+        position_name = employee.position.name if employee.position else ""
+        return {
+            "__metadata": {
+                "uri": f"GoalPlan('{batch_id}')",
+                "type": "SFOData.GoalPlan",
+            },
+            "goalPlanId": batch_id,
+            "goalPlanName": f"KPI Goals {self._goal_quarter_str(goals[0]) if goals else ''} {goals[0].year if goals else ''}",
+            "goalPlanType": "Performance",
+            "createdDateTime": timestamp,
+            "userId": employee.employee_code or str(employee.id),
+            "worker": {
+                "personIdExternal": employee.employee_code or str(employee.id),
+                "displayName": employee.full_name,
+                "department": dept_name,
+                "jobTitle": position_name,
+                "managerId": str(employee.manager_id) if employee.manager_id else None,
+            },
+            "goals": {
+                "results": [
+                    {
+                        "__metadata": {
+                            "uri": f"Goal('{goal.goal_id}')",
+                            "type": "SFOData.Goal",
+                        },
+                        "goalId": str(goal.goal_id),
+                        "name": goal.goal_text,
+                        "description": goal.goal_text,
+                        "metric": goal.metric or "",
+                        "start": goals[0].deadline.strftime("%Y-%m-%dT00:00:00") if goals[0].deadline else None,
+                        "due": goal.deadline.strftime("%Y-%m-%dT00:00:00") if goal.deadline else None,
+                        "weight": float(goal.weight or 0),
+                        "state": self._SAP_STATUS.get(self._goal_status_str(goal), "NOT_STARTED"),
+                        "category": getattr(goal, 'goal_type', None) or "impact",
+                        "strategicAlignment": getattr(goal, 'strategic_link', None) or "",
+                        "smartScore": round(float(getattr(goal, 'smart_score', None) or 0), 4),
+                        "lastModifiedDateTime": goal.updated_at.isoformat() if goal.updated_at else timestamp,
+                    }
+                    for goal in goals
+                ]
+            },
+            "totalWeight": round(sum(float(g.weight or 0) for g in goals), 2),
+        }
+
+    def _build_oracle_payload(self, employee, goals, batch_id, timestamp) -> dict:
+        """Oracle HCM Cloud — Performance Goals REST API v2"""
+        dept_name = employee.department.name if employee.department else ""
+        position_name = employee.position.name if employee.position else ""
+        return {
+            "BatchExportId": batch_id,
+            "ExportTimestamp": timestamp,
+            "ExportSource": "HR-AI-Module",
+            "ExportVersion": "2.0",
+            "Worker": {
+                "PersonNumber": employee.employee_code or str(employee.id),
+                "DisplayName": employee.full_name,
+                "DepartmentName": dept_name,
+                "JobName": position_name,
+                "ManagerPersonNumber": str(employee.manager_id) if employee.manager_id else None,
+                "AssignmentStatusType": "ACTIVE",
+            },
+            "ReviewPeriod": {
+                "PeriodName": f"{self._goal_quarter_str(goals[0]) if goals else ''} {goals[0].year if goals else ''}",
+                "PeriodStartDate": f"{goals[0].year}-01-01" if goals else None,
+                "PeriodEndDate": f"{goals[0].year}-12-31" if goals else None,
+                "ReviewType": "GOAL_SETTING",
+            },
+            "PerformanceGoals": [
+                {
+                    "GoalId": str(goal.goal_id),
+                    "GoalName": goal.goal_text,
+                    "GoalDescription": "",
+                    "MeasurementName": goal.metric or "",
+                    "TargetCompletionDate": goal.deadline.isoformat() if goal.deadline else None,
+                    "Weightage": float(goal.weight or 0),
+                    "GoalStatusCode": self._ORACLE_STATUS.get(self._goal_status_str(goal), "DRAFT"),
+                    "GoalCategoryCode": (getattr(goal, 'goal_type', None) or "IMPACT").upper(),
+                    "StrategicAlignmentCode": (getattr(goal, 'strategic_link', None) or "").upper(),
+                    "SmartScore": round(float(getattr(goal, 'smart_score', None) or 0), 4),
+                    "LastUpdateDate": goal.updated_at.isoformat() if goal.updated_at else timestamp,
+                    "CreationDate": goal.created_at.isoformat() if goal.created_at else timestamp,
+                    "ExternalReferenceId": goal.external_ref or "",
+                }
+                for goal in goals
+            ],
+            "Summary": {
+                "TotalGoals": len(goals),
+                "TotalWeight": round(sum(float(g.weight or 0) for g in goals), 2),
+                "AverageSmartScore": round(sum(float(getattr(g, 'smart_score', None) or 0) for g in goals) / max(len(goals), 1), 4),
+            },
         }
 
 
