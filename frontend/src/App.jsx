@@ -101,6 +101,14 @@ const navigation = [
     icon: UsersIcon,
     href: '/employees',
     badgeKey: 'employees',
+    filters: [
+      { label: 'Все',              href: '/employees' },
+      { label: 'Черновики',        href: '/employees?status=draft',       dot: 'var(--fg-quaternary)' },
+      { label: 'На согласовании',  href: '/employees?status=submitted',   dot: 'var(--text-warning-primary)' },
+      { label: 'Утверждённые',     href: '/employees?status=approved',    dot: 'var(--fg-success-primary)' },
+      { label: 'В работе',         href: '/employees?status=in_progress', dot: 'var(--fg-brand-primary)' },
+      { label: 'Выполненные',      href: '/employees?status=done',        dot: 'var(--fg-success-primary)' },
+    ],
   },
   { divider: true },
   {
@@ -300,60 +308,80 @@ function App() {
 
             const Icon = item.icon
             const badgeValue = item.badgeKey ? sidebarStats[item.badgeKey] : null
+            const hasFilters = item.filters && item.filters.length > 0
+            const isOnPage = location.pathname === item.href?.split('?')[0]
 
             return (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                end={item.href === '/'}
-                className={({ isActive }) => [
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear',
-                  isActive ? 'sidebar-nav-active' : 'sidebar-nav-item',
-                ].join(' ')}
-                style={({ isActive }) => isActive
-                  ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
-                  : { color: 'var(--sidebar-text)' }
-                }
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
-                    e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
+              <div key={item.name}>
+                <NavLink
+                  to={item.href}
+                  end={item.href === '/' || hasFilters}
+                  className={({ isActive }) => [
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear',
+                    (isActive || (hasFilters && isOnPage)) ? 'sidebar-nav-active' : 'sidebar-nav-item',
+                  ].join(' ')}
+                  style={({ isActive }) => (isActive || (hasFilters && isOnPage))
+                    ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
+                    : { color: 'var(--sidebar-text)' }
                   }
-                }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
-                    e.currentTarget.style.backgroundColor = ''
-                  }
-                }}
-              >
-                {({ isActive }) => (
-                  <>
-                    <span style={{ color: isActive ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)' }}>
-                      <Icon />
-                    </span>
-                    <span className="flex-1">{item.name}</span>
-                    {badgeValue != null && (
-                      <span className="rounded-full px-2 py-0.5 text-xs font-medium"
-                        style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
-                      >
-                        {badgeValue}
-                      </span>
-                    )}
-                    {item.badge && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        style={{
-                          backgroundColor: item.badge.color === 'success' ? 'var(--bg-success-secondary, #ECFDF3)' : 'var(--bg-tertiary)',
-                          color: item.badge.color === 'success' ? 'var(--fg-success-primary, #039855)' : 'var(--text-quaternary)',
-                        }}
-                      >
-                        {item.badge.color === 'success' && (
-                          <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary, #039855)' }} />
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
+                      e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
+                      e.currentTarget.style.backgroundColor = ''
+                    }
+                  }}
+                >
+                  {({ isActive }) => {
+                    const active = isActive || (hasFilters && isOnPage)
+                    return (
+                      <>
+                        <span style={{ color: active ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)' }}>
+                          <Icon />
+                        </span>
+                        <span className="flex-1">{item.name}</span>
+                        {badgeValue != null && (
+                          <span className="rounded-full px-2 py-0.5 text-xs font-medium"
+                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                          >
+                            {badgeValue}
+                          </span>
                         )}
-                        {item.badge.label}
-                      </span>
-                    )}
-                  </>
+                      </>
+                    )
+                  }}
+                </NavLink>
+
+                {/* Status filter sub-items */}
+                {hasFilters && isOnPage && (
+                  <div className="ml-8 mt-1 space-y-0.5">
+                    {item.filters.map((f) => {
+                      const currentUrl = location.pathname + location.search
+                      const isFilterActive = currentUrl === f.href || (f.href === item.href && currentUrl === item.href)
+                      return (
+                        <NavLink
+                          key={f.href}
+                          to={f.href}
+                          className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors duration-100"
+                          style={{
+                            backgroundColor: isFilterActive ? 'var(--sidebar-item-active)' : '',
+                            color: isFilterActive ? 'var(--text-brand-primary)' : 'var(--sidebar-text)',
+                            fontWeight: isFilterActive ? 500 : 400,
+                          }}
+                          onMouseEnter={(e) => { if (!isFilterActive) e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)' }}
+                          onMouseLeave={(e) => { if (!isFilterActive) e.currentTarget.style.backgroundColor = '' }}
+                        >
+                          {f.dot && <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: f.dot }} />}
+                          {f.label}
+                        </NavLink>
+                      )
+                    })}
+                  </div>
                 )}
-              </NavLink>
+              </div>
             )
           })}
         </nav>

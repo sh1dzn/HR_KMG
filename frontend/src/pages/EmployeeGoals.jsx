@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import {
   approveGoal, commentGoal, evaluateBatch,
-  getEmployees, getEmployeeGoalsSummary,
+  getEmployees, getEmployeeGoalsSummary, getGoals,
   getGoalWorkflow, rejectGoal, submitGoal,
 } from '../api/client'
 
@@ -40,9 +41,20 @@ const fmt = (v, d = 0) => {
 
 const ROWS_PER_PAGE = 20
 
+const statusLabels = {
+  draft: 'Черновики', submitted: 'На согласовании', approved: 'Утверждённые',
+  in_progress: 'В работе', done: 'Выполненные', cancelled: 'Отменённые',
+  overdue: 'Просроченные', archived: 'Архив', active: 'Активные',
+}
+
 export default function EmployeeGoals() {
+  const [searchParams] = useSearchParams()
+  const statusFilter = searchParams.get('status') || ''
+
   const [employees,        setEmployees]       = useState([])
   const [totalEmployees,   setTotalEmployees]  = useState(0)
+  const [filteredGoals,    setFilteredGoals]   = useState([])
+  const [totalFilteredGoals, setTotalFilteredGoals] = useState(0)
   const [loading,          setLoading]         = useState(false)
   const [error,            setError]           = useState(null)
   const [page,             setPage]            = useState(1)
@@ -65,21 +77,33 @@ export default function EmployeeGoals() {
   const [workflowActionId, setWorkflowActionId]= useState(null)
   const [commentsByGoal,   setCommentsByGoal]  = useState({})
 
-  /* ── Load employees ────────────────────────────────────── */
+  /* ── Reset page on filter change ───────────────────────── */
+  useEffect(() => { setPage(1); setExpandedId(null) }, [statusFilter])
+
+  /* ── Load data ─────────────────────────────────────────── */
   useEffect(() => {
     const load = async () => {
       setLoading(true); setError(null)
       try {
-        const r = await getEmployees({ page, per_page: ROWS_PER_PAGE })
-        setEmployees(r.employees || [])
-        setTotalEmployees(r.total || 0)
-      } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки сотрудников') }
+        if (statusFilter) {
+          // Load goals by status
+          const r = await getGoals({ status: statusFilter, page, per_page: ROWS_PER_PAGE })
+          setFilteredGoals(r.goals || [])
+          setTotalFilteredGoals(r.total || 0)
+        } else {
+          // Load employees
+          const r = await getEmployees({ page, per_page: ROWS_PER_PAGE })
+          setEmployees(r.employees || [])
+          setTotalEmployees(r.total || 0)
+        }
+      } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки данных') }
       finally { setLoading(false) }
     }
     load()
-  }, [page])
+  }, [page, statusFilter])
 
-  const totalPages = Math.max(1, Math.ceil(totalEmployees / ROWS_PER_PAGE))
+  const totalItems = statusFilter ? totalFilteredGoals : totalEmployees
+  const totalPages = Math.max(1, Math.ceil(totalItems / ROWS_PER_PAGE))
 
   /* ── Departments list for filter ───────────────────────── */
   const departments = useMemo(() => {
@@ -408,15 +432,80 @@ export default function EmployeeGoals() {
         <div className="space-y-0">
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Сотрудники</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {statusFilter ? (statusLabels[statusFilter] || statusFilter) : 'Сотрудники'}
+            </h2>
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
               style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
             >
-              {totalEmployees}
+              {totalItems}
             </span>
           </div>
 
-          {/* Employee list */}
+          {/* Filtered goals view (when status filter is active) */}
+          {statusFilter ? (
+            <div className="space-y-2">
+              {filteredGoals.map((goal) => {
+                const sc = statusConfig[goal.status] || statusConfig.draft
+                const initials = (goal.employee_name || '??').split(' ').map(w => w[0]).slice(0, 2).join('')
+                return (
+                  <div key={goal.id} className="card overflow-hidden">
+                    <div className="flex items-start gap-4 px-5 py-3.5">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white gradient-brand mt-0.5">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.title}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{goal.employee_name}</span>
+                          {goal.department_name && (
+                            <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>· {goal.department_name}</span>
+                          )}
+                          {goal.goal_type && (
+                            <span className="text-xs rounded-full px-2 py-0.5"
+                              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                            >{goal.goal_type}</span>
+                          )}
+                          {goal.strategic_link && (
+                            <span className="text-xs rounded-full px-2 py-0.5 badge-brand">{goal.strategic_link}</span>
+                          )}
+                        </div>
+                        {goal.metric && (
+                          <p className="mt-1 text-xs" style={{ color: 'var(--text-quaternary)' }}>{goal.metric}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Вес {fmt(goal.weight)}%</div>
+                          {goal.smart_score != null && (
+                            <div className="text-sm font-semibold mt-0.5" style={getScoreStyle(goal.smart_score)}>
+                              {fmt(goal.smart_score * 100)}%
+                            </div>
+                          )}
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs"
+                          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: sc.dot }} />
+                          {sc.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {filteredGoals.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-xl p-12 text-center"
+                  style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}
+                >
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Целей со статусом «{statusLabels[statusFilter] || statusFilter}» не найдено
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+          /* Employee list */
           <div className="space-y-2">
             {filtered.map((emp) => {
               const isOpen = expandedId === emp.id
@@ -492,6 +581,7 @@ export default function EmployeeGoals() {
               </div>
             )}
           </div>
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (
