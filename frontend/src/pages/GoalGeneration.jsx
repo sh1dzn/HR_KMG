@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { generateGoals, getFocusAreas, getEmployees, saveAcceptedGeneratedGoals } from '../api/client'
 import EmployeePicker from '../components/EmployeePicker'
+import AIThinking from '../components/AIThinking'
 
 const generationFlow = [
   { step: '1', text: 'Профиль сотрудника и квартальный фокус' },
@@ -236,21 +237,7 @@ export default function GoalGeneration() {
       </div>
 
       {/* Loading state */}
-      {loading && (
-        <div className="card p-10 text-center"
-        >
-          <div className="inline-flex items-center gap-3">
-            <svg className="h-5 w-5 animate-spin spinner-brand" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <div className="text-left">
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Генерация целей...</p>
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Сервис анализирует документы и формирует предложения</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {loading && <AIThinking mode="generate" />}
 
       {/* Results */}
       {result && !loading && (

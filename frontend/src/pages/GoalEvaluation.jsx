@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { evaluateGoal, reformulateGoal } from '../api/client'
 import SMARTScoreCard from '../components/SMARTScoreCard'
+import AIThinking from '../components/AIThinking'
 
 const evaluationSignals = [
   'SMART по 5 критериям',
@@ -162,8 +163,11 @@ export default function GoalEvaluation() {
         </div>
       </div>
 
+      {/* Loading state */}
+      {loading && <AIThinking mode="evaluate" />}
+
       {/* Results */}
-      {evaluation && <SMARTScoreCard evaluation={evaluation} />}
+      {evaluation && !loading && <SMARTScoreCard evaluation={evaluation} />}
     </div>
   )
 }
