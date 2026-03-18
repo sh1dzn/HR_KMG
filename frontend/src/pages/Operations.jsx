@@ -104,7 +104,7 @@ export default function Operations() {
       </div>
 
       {/* Metrics row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         {[
           {
             label: 'Всего алертов',
@@ -215,7 +215,7 @@ export default function Operations() {
           </div>
         </div>
 
-        {/* Desktop table */}
+        {/* Alert list */}
         {(() => {
           const allAlerts = alertsSummary?.alerts || []
           const filteredAlerts = sevFilter ? allAlerts.filter(a => a.severity === sevFilter) : allAlerts
@@ -225,7 +225,8 @@ export default function Operations() {
 
           return (
             <>
-              <div className="overflow-x-auto">
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
@@ -272,6 +273,40 @@ export default function Operations() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden">
+                {pagedAlerts.map((alert) => {
+                  const s = severityBadge[alert.severity] || severityBadge.low
+                  return (
+                    <div key={alert.id} className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                      <div className="flex items-start gap-3">
+                        <span className="h-2 w-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: s.dot }} />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{alert.title}</div>
+                          <div className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{alert.message}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-quaternary)' }}>
+                            <span>{alert.employee_name}</span>
+                            {alert.department_name && <span>· {alert.department_name}</span>}
+                          </div>
+                          {alert.recommended_action && (
+                            <div className="mt-2 text-xs rounded-lg px-3 py-2"
+                              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-tertiary)' }}
+                            >
+                              {alert.recommended_action}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {pagedAlerts.length === 0 && (
+                  <div className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                    {loadingAlerts ? 'Загрузка алертов...' : 'Алертов не найдено'}
+                  </div>
+                )}
               </div>
 
               {/* Pagination */}
