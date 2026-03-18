@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getGoalWorkflow, approveGoal, rejectGoal, submitGoal, commentGoal } from '../api/client'
+import { getGoal, getGoalWorkflow, approveGoal, rejectGoal, submitGoal, commentGoal } from '../api/client'
 
 const statusConfig = {
   draft: { label: 'Черновик', dot: 'var(--fg-quaternary)' },
@@ -24,20 +24,24 @@ const getScoreStyle = (s) => {
 }
 const fmt = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n.toFixed(d) : '0' }
 
-export default function GoalModal({ goal, onClose, onUpdate }) {
+export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
+  const [goal, setGoal] = useState(initialGoal)
   const [wf, setWf] = useState(null)
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
   useEffect(() => {
-    if (!goal) return
+    if (!initialGoal?.id) return
     setLoading(true)
-    getGoalWorkflow(goal.id)
-      .then(data => setWf(data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [goal?.id])
+    Promise.all([
+      getGoal(initialGoal.id).catch(() => initialGoal),
+      getGoalWorkflow(initialGoal.id).catch(() => null),
+    ]).then(([fullGoal, wfData]) => {
+      setGoal(fullGoal)
+      setWf(wfData)
+    }).finally(() => setLoading(false))
+  }, [initialGoal?.id])
 
   // Close on Escape
   useEffect(() => {
@@ -65,7 +69,11 @@ export default function GoalModal({ goal, onClose, onUpdate }) {
       if (action === 'comment') await commentGoal(goal.id, payload)
       setComment('')
       // Refresh
-      const data = await getGoalWorkflow(goal.id)
+      const [fullGoal, data] = await Promise.all([
+        getGoal(goal.id).catch(() => goal),
+        getGoalWorkflow(goal.id).catch(() => wf),
+      ])
+      setGoal(fullGoal)
       setWf(data)
       if (onUpdate) onUpdate()
     } catch {}
@@ -80,13 +88,18 @@ export default function GoalModal({ goal, onClose, onUpdate }) {
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 pt-[10vh] sm:pt-[12vh] overflow-y-auto">
-        <div className="w-full max-w-2xl rounded-2xl shadow-2xl animate-fade-in"
+      <div className="fixed inset-0 z-[70] flex items-end sm:items-start justify-center sm:p-4 sm:pt-[8vh] overflow-y-auto">
+        <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl animate-fade-in max-h-[92vh] sm:max-h-[85vh] overflow-y-auto"
           style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Drag handle on mobile */}
+          <div className="sm:hidden flex justify-center pt-2 pb-1">
+            <div className="h-1 w-10 rounded-full" style={{ backgroundColor: 'var(--border-secondary)' }} />
+          </div>
+
           {/* Header */}
-          <div className="flex items-start justify-between gap-4 px-6 py-5" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+          <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -119,7 +132,7 @@ export default function GoalModal({ goal, onClose, onUpdate }) {
           </div>
 
           {/* Pipeline */}
-          <div className="px-6 py-4 flex justify-center" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="px-4 py-3 sm:px-6 sm:py-4 flex justify-center overflow-x-auto" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
             <div className="flex items-center gap-1.5">
               {statusFlow.map((step, i) => {
                 const isPast = i < currentIdx
@@ -146,12 +159,14 @@ export default function GoalModal({ goal, onClose, onUpdate }) {
           </div>
 
           {/* Body */}
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-4 py-4 sm:px-6 sm:py-5 space-y-4">
             {/* Info grid */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {[
                 { label: 'Сотрудник', value: goal.employee_name },
+                { label: 'Должность', value: goal.position_name },
                 { label: 'Подразделение', value: goal.department_name },
+                { label: 'Руководитель', value: goal.manager_name },
                 { label: 'Вес', value: `${fmt(goal.weight)}%` },
                 { label: 'SMART', value: goal.smart_score != null ? `${fmt(goal.smart_score * 100)}%` : '—', style: getScoreStyle(goal.smart_score) },
               ].map(d => (
@@ -180,7 +195,7 @@ export default function GoalModal({ goal, onClose, onUpdate }) {
             {goal.smart_details && (
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-quaternary)' }}>SMART-оценка</div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                   {['specific', 'measurable', 'achievable', 'relevant', 'time_bound'].map(key => {
                     const d = goal.smart_details?.[key]
                     if (!d) return null
