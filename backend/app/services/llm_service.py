@@ -8,6 +8,13 @@ from openai import OpenAI
 from app.config import settings
 
 
+ALLOWED_MODELS = {
+    'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo',
+    'gpt-4o-2024-08-06', 'gpt-4o-2024-11-20', 'gpt-4o-mini-2024-07-18',
+    'o1', 'o1-mini', 'o1-preview', 'o3-mini',
+}
+
+
 class LLMService:
     """Service for interacting with OpenAI GPT-4"""
 
@@ -50,8 +57,13 @@ class LLMService:
 
         messages.append({"role": "user", "content": prompt})
 
+        # Validate model — use requested if allowed, otherwise fallback to default
+        use_model = self.model
+        if model and model in ALLOWED_MODELS:
+            use_model = model
+
         kwargs = {
-            "model": model or self.model,
+            "model": use_model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens

@@ -70,24 +70,24 @@ const MetricCard = ({ label, value, change, changeLabel, icon: MetricIcon, accen
   const isPositive = change >= 0
   return (
     <CardShell>
-      <div className="px-5 py-5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{label}</span>
+      <div className="px-4 py-4 sm:px-5 sm:py-5">
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <span className="text-xs sm:text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{label}</span>
           {MetricIcon && (
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg"
+            <div className="hidden sm:flex h-10 w-10 items-center justify-center rounded-lg"
               style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
             >
               <MetricIcon />
             </div>
           )}
         </div>
-        <div className="flex items-end gap-4">
-          <span className="text-3xl font-semibold tracking-tight" style={{ color: accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
+        <div className="flex items-end gap-2 sm:gap-4 flex-wrap">
+          <span className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
             {value}
           </span>
           {change != null && (
-            <div className="flex items-center gap-1 mb-1">
-              <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium"
+            <div className="flex items-center gap-1 mb-0.5 sm:mb-1">
+              <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium"
                 style={{
                   backgroundColor: isPositive ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
                   color: isPositive ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
@@ -97,7 +97,7 @@ const MetricCard = ({ label, value, change, changeLabel, icon: MetricIcon, accen
                 {Math.abs(change)}%
               </span>
               {changeLabel && (
-                <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{changeLabel}</span>
+                <span className="text-[10px] sm:text-xs hidden sm:inline" style={{ color: 'var(--text-quaternary)' }}>{changeLabel}</span>
               )}
             </div>
           )}
