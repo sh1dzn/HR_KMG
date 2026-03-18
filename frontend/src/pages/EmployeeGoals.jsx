@@ -101,8 +101,10 @@ export default function EmployeeGoals() {
           setFilteredGoals(r.goals || [])
           setTotalFilteredGoals(r.total || 0)
         } else {
-          // Load employees
-          const r = await getEmployees({ page, per_page: ROWS_PER_PAGE })
+          // Load employees + optional department
+          const params = { page, per_page: ROWS_PER_PAGE }
+          if (deptFilter) params.department_id = deptFilter
+          const r = await getEmployees(params)
           setEmployees(r.employees || [])
           setTotalEmployees(r.total || 0)
         }
@@ -428,15 +430,12 @@ export default function EmployeeGoals() {
               value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          {(statusFilter ? allDepartments.length > 0 : departments.length > 1) && (
+          {allDepartments.length > 0 && (
             <select className="select-field sm:w-64"
               value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setPage(1) }}
             >
               <option value="">Все подразделения</option>
-              {statusFilter
-                ? allDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)
-                : departments.map(d => <option key={d} value={d}>{d}</option>)
-              }
+              {allDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           )}
         </div>
