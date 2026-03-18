@@ -7,8 +7,9 @@ import EmployeeGoals from './pages/EmployeeGoals'
 import Operations from './pages/Operations'
 import Home from './pages/Home'
 import Settings from './pages/Settings'
+import Approvals from './pages/Approvals'
 import KmgLogo from './components/KmgLogo'
-import { getDashboardSummary } from './api/client'
+import { getDashboardSummary, getGoals } from './api/client'
 
 // SVG Icon components for sidebar navigation
 function HomeIcon(props) {
@@ -110,6 +111,11 @@ const navigation = [
       { label: 'Выполненные',      href: '/employees?status=done',        dot: 'var(--fg-success-primary)' },
     ],
   },
+  {
+    name: 'Согласование', href: '/approvals',
+    icon: ChecklistIcon,
+    badgeKey: 'pending',
+  },
   { divider: true },
   {
     name: 'Генерация целей', href: '/generation',
@@ -132,6 +138,7 @@ const pageTitles = {
   '/dashboard': 'Дашборд',
   '/employees': 'Сотрудники',
   '/operations': 'Операции',
+  '/approvals': 'Согласование',
   '/settings': 'Настройки',
 }
 
@@ -213,8 +220,15 @@ function App() {
   }
 
   useEffect(() => {
-    getDashboardSummary('Q2', 2026).then(d => {
-      setSidebarStats({ employees: d.total_employees, goals: d.total_goals })
+    Promise.all([
+      getDashboardSummary('Q2', 2026),
+      getGoals({ status: 'submitted', page: 1, per_page: 1 }),
+    ]).then(([d, pending]) => {
+      setSidebarStats({
+        employees: d.total_employees,
+        goals: d.total_goals,
+        pending: pending.total || 0,
+      })
     }).catch(() => {})
   }, [])
 
@@ -517,6 +531,7 @@ function App() {
             <Route path="/dashboard"  element={<Dashboard />} />
             <Route path="/employees"  element={<EmployeeGoals />} />
             <Route path="/operations" element={<Operations />} />
+            <Route path="/approvals"  element={<Approvals />} />
             <Route path="/settings"   element={<Settings />} />
           </Routes>
         </main>
