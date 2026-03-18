@@ -61,12 +61,14 @@ export default function Operations() {
   useEffect(() => {
     const load = async () => {
       setLoadingAlerts(true); setError(null)
-      try { setAlertsSummary(await getAlertsSummary({ quarter, year })) }
+      try {
+        setAlertsSummary(await getAlertsSummary({ quarter, year, page: alertPage, per_page: ALERTS_PER_PAGE }))
+      }
       catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки алертов') }
       finally { setLoadingAlerts(false) }
     }
     load()
-  }, [quarter, year])
+  }, [quarter, year, alertPage])
 
   const handleReindex = async () => {
     setLoadingIndex(true); setError(null)
@@ -218,10 +220,9 @@ export default function Operations() {
         {/* Alert list */}
         {(() => {
           const allAlerts = alertsSummary?.alerts || []
-          const filteredAlerts = sevFilter ? allAlerts.filter(a => a.severity === sevFilter) : allAlerts
-          const alertTotalPages = Math.max(1, Math.ceil(filteredAlerts.length / ALERTS_PER_PAGE))
+          const pagedAlerts = sevFilter ? allAlerts.filter(a => a.severity === sevFilter) : allAlerts
+          const alertTotalPages = alertsSummary?.total_pages || 1
           const safeAlertPage = Math.min(alertPage, alertTotalPages)
-          const pagedAlerts = filteredAlerts.slice((safeAlertPage - 1) * ALERTS_PER_PAGE, safeAlertPage * ALERTS_PER_PAGE)
 
           return (
             <>
