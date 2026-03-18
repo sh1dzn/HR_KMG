@@ -15,6 +15,7 @@ const statusConfig = {
 
 const statusFlow = ['draft', 'submitted', 'approved', 'in_progress', 'done']
 const statusLabels = { draft: 'Черновик', submitted: 'Согласование', approved: 'Утверждена', in_progress: 'В работе', done: 'Выполнена' }
+const statusShort = { draft: 'Черн.', submitted: 'Согл.', approved: 'Утв.', in_progress: 'Работа', done: 'Готово' }
 
 const getScoreStyle = (s) => {
   if (!s && s !== 0) return { color: 'var(--text-quaternary)' }
@@ -132,25 +133,28 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
           </div>
 
           {/* Pipeline */}
-          <div className="px-4 py-3 sm:px-6 sm:py-4 flex justify-center overflow-x-auto" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="flex items-center gap-1.5">
+          <div className="px-3 py-3 sm:px-6 sm:py-4 flex justify-center" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="flex items-center gap-1">
               {statusFlow.map((step, i) => {
                 const isPast = i < currentIdx
                 const isCurrent = i === currentIdx
                 return (
-                  <div key={step} className="flex items-center gap-1.5">
-                    {i > 0 && <div className="w-8 h-0.5 rounded-full" style={{ backgroundColor: isPast ? 'var(--fg-success-primary)' : 'var(--border-secondary)' }} />}
+                  <div key={step} className="flex items-center gap-1">
+                    {i > 0 && <div className="w-4 sm:w-8 h-0.5 rounded-full" style={{ backgroundColor: isPast ? 'var(--fg-success-primary)' : 'var(--border-secondary)' }} />}
                     <div className="flex flex-col items-center">
-                      <div className={`h-3.5 w-3.5 rounded-full border-2 ${isCurrent ? 'scale-110' : ''}`} style={{
+                      <div className={`h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full border-2 ${isCurrent ? 'scale-110' : ''}`} style={{
                         backgroundColor: isPast ? 'var(--fg-success-primary)' : isCurrent ? sc.dot : 'transparent',
                         borderColor: isPast ? 'var(--fg-success-primary)' : isCurrent ? sc.dot : 'var(--border-secondary)',
                       }}>
                         {isPast && <svg className="h-full w-full p-[1px]" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                       </div>
-                      <span className="text-[10px] mt-1" style={{
+                      <span className="text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 whitespace-nowrap" style={{
                         color: isCurrent ? 'var(--text-primary)' : 'var(--text-quaternary)',
                         fontWeight: isCurrent ? 600 : 400,
-                      }}>{statusLabels[step]}</span>
+                      }}>
+                        <span className="sm:hidden">{statusShort[step]}</span>
+                        <span className="hidden sm:inline">{statusLabels[step]}</span>
+                      </span>
                     </div>
                   </div>
                 )
