@@ -14,10 +14,12 @@ const client = axios.create({
 })
 
 // Helper to get selected model from settings
+const VALID_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini']
 const getSelectedModel = () => {
   try {
     const s = JSON.parse(localStorage.getItem('kmg-settings') || '{}')
-    return s.openaiModel || null
+    const model = s.openaiModel
+    return model && VALID_MODELS.includes(model) ? model : null
   } catch { return null }
 }
 

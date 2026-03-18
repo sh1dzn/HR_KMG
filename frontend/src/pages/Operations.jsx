@@ -92,67 +92,73 @@ export default function Operations() {
         </p>
       </div>
 
+      {/* Period selector */}
+      <div className="card px-5 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Период:</span>
+          <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
+            {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
+          </select>
+          <input type="number" className="input-field w-24" value={year} onChange={(e) => setYear(+e.target.value)} />
+        </div>
+      </div>
+
       {/* Metrics row */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Period picker */}
-        <CardShell>
-          <div className="px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Период</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg"
-                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {[
+          {
+            label: 'Всего алертов',
+            value: alertsSummary?.total_alerts ?? '—',
+            color: alertsSummary?.total_alerts > 0 ? 'var(--text-warning-primary)' : 'var(--text-primary)',
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+          },
+          {
+            label: 'High',
+            value: alertsSummary?.high_severity ?? 0,
+            color: 'var(--fg-error-secondary)',
+            dot: severityBadge.high.dot,
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+          },
+          {
+            label: 'Medium',
+            value: alertsSummary?.medium_severity ?? 0,
+            color: 'var(--text-warning-primary)',
+            dot: severityBadge.medium.dot,
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+          },
+          {
+            label: 'Low',
+            value: alertsSummary?.low_severity ?? 0,
+            color: 'var(--text-secondary)',
+            dot: severityBadge.low.dot,
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
+          },
+          {
+            label: 'Индекс ВНД',
+            value: indexStatus?.indexed_chunks ?? '—',
+            color: 'var(--fg-brand-primary)',
+            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+          },
+        ].map((m) => (
+          <CardShell key={m.label}>
+            <div className="px-4 py-4 sm:px-5 sm:py-5">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <span className="text-xs sm:text-sm font-medium flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {m.dot && <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: m.dot }} />}
+                  {m.label}
+                </span>
+                <div className="hidden sm:flex h-10 w-10 items-center justify-center rounded-lg"
+                  style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
+                >
+                  {m.icon}
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: m.color }}>
+                {m.value}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <select className="select-field w-full" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
-                {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
-              </select>
-              <input type="number" className="input-field" value={year} onChange={(e) => setYear(+e.target.value)} />
-            </div>
-          </div>
-        </CardShell>
-
-        {/* Alerts count */}
-        <CardShell>
-          <div className="px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Всего алертов</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg"
-                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-              </div>
-            </div>
-            <div className="text-3xl font-semibold tracking-tight" style={{ color: alertsSummary?.total_alerts > 0 ? 'var(--text-warning-primary)' : 'var(--text-primary)' }}>
-              {alertsSummary?.total_alerts ?? '—'}
-            </div>
-          </div>
-        </CardShell>
-
-        {/* Index count */}
-        <CardShell>
-          <div className="px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Индекс ВНД</span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg"
-                style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                </svg>
-              </div>
-            </div>
-            <div className="text-3xl font-semibold tracking-tight" style={{ color: 'var(--fg-brand-primary)' }}>
-              {indexStatus?.indexed_chunks ?? '—'}
-            </div>
-          </div>
-        </CardShell>
+          </CardShell>
+        ))}
       </div>
 
       {error && (

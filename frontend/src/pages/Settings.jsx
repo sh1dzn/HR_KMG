@@ -80,10 +80,20 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [serverInfo, setServerInfo] = useState(null)
 
+  const validModels = modelOptions.map(m => m.value)
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setSettings({ ...defaultSettings, ...JSON.parse(stored) })
+      if (stored) {
+        const parsed = { ...defaultSettings, ...JSON.parse(stored) }
+        // Reset model if it's not in the valid list
+        if (!validModels.includes(parsed.openaiModel)) {
+          parsed.openaiModel = defaultSettings.openaiModel
+        }
+        setSettings(parsed)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
+      }
     } catch {}
     // Load server health info
     fetch(API_BASE.replace('/api', '') + '/health')
