@@ -6,10 +6,12 @@ import {
 import EmployeePicker from '../components/EmployeePicker'
 
 const severityBadge = {
-  high:   { bg: 'var(--bg-error-primary)',   color: 'var(--fg-error-secondary)',  border: 'var(--border-error-secondary)' },
-  medium: { bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)',border: 'var(--border-warning)' },
-  low:    { bg: 'var(--bg-tertiary)',         color: 'var(--text-secondary)',      border: 'var(--border-primary)' },
+  high:   { bg: 'var(--bg-error-primary)',   color: 'var(--fg-error-secondary)',  border: 'var(--border-error-secondary)', dot: 'var(--fg-error-secondary)' },
+  medium: { bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)',border: 'var(--border-warning)', dot: 'var(--text-warning-primary)' },
+  low:    { bg: 'var(--bg-tertiary)',         color: 'var(--text-secondary)',      border: 'var(--border-primary)', dot: 'var(--fg-quaternary)' },
 }
+
+const ALERTS_PER_PAGE = 15
 
 const CardShell = ({ children, className = '' }) => (
   <div className={`card ${className}`}>{children}</div>
@@ -27,6 +29,8 @@ export default function Operations() {
   const [exportResult,  setExportResult]  = useState(null)
   const [loadingAlerts, setLoadingAlerts] = useState(false)
   const [loadingIndex,  setLoadingIndex]  = useState(false)
+  const [alertPage,     setAlertPage]     = useState(1)
+  const [sevFilter,     setSevFilter]     = useState('')
   const [exporting,     setExporting]     = useState(false)
   const [error,         setError]         = useState(null)
 
@@ -160,81 +164,142 @@ export default function Operations() {
         </div>
       )}
 
-      {/* Main grid */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-
-        {/* Alert Manager */}
-        <CardShell>
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg icon-box-warning"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-              </div>
-              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Alert Manager</div>
+      {/* Alert Manager Table */}
+      <CardShell>
+        <div className="px-5 py-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg icon-box-warning">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
             </div>
-          </div>
-          <div className="p-5 space-y-4">
-            {/* Severity breakdown */}
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { label: 'High',   value: alertsSummary?.high_severity   ?? 0, style: severityBadge.high },
-                { label: 'Medium', value: alertsSummary?.medium_severity ?? 0, style: severityBadge.medium },
-                { label: 'Low',    value: alertsSummary?.low_severity    ?? 0, style: severityBadge.low },
-              ].map(({ label, value, style }) => (
-                <div key={label} className="rounded-xl px-4 py-3"
-                  style={{ backgroundColor: style.bg, border: `1px solid ${style.border}` }}
-                >
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: style.color, opacity: 0.7 }}>{label}</div>
-                  <div className="mt-2 text-2xl font-semibold" style={{ color: style.color }}>{value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-xl px-4 py-3 text-sm"
-              style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', color: 'var(--text-tertiary)' }}
+            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Alert Manager</div>
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+              style={{ backgroundColor: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: '1px solid var(--border-warning)' }}
             >
-              {loadingAlerts ? 'Обновление алертов...' : 'Алерты формируются по SMART-индексу, стратегической связке, весам, числу целей и статусу согласования.'}
-            </div>
-
-            <div className="space-y-2">
-              {(alertsSummary?.alerts || []).slice(0, 8).map((alert) => {
-                const s = severityBadge[alert.severity] || severityBadge.low
-                return (
-                  <div key={alert.id} className="rounded-xl px-4 py-3"
-                    style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        style={{ backgroundColor: s.bg, color: s.color, border: `1px solid ${s.border}` }}
-                      >{alert.severity}</span>
-                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{alert.title}</span>
-                    </div>
-                    <div className="mt-1.5 text-sm" style={{ color: 'var(--text-tertiary)' }}>{alert.message}</div>
-                    <div className="mt-1 text-xs" style={{ color: 'var(--text-quaternary)' }}>
-                      {alert.employee_name}{alert.goal_title ? ` · ${alert.goal_title}` : ''}
-                    </div>
-                  </div>
-                )
-              })}
-
-              {!loadingAlerts && !(alertsSummary?.alerts || []).length && (
-                <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm status-success"
+              {alertsSummary?.total_alerts ?? 0}
+            </span>
+          </div>
+          {/* Severity filter tabs */}
+          <div className="flex gap-1.5">
+            {[
+              { key: '', label: 'Все' },
+              { key: 'high', label: 'High', count: alertsSummary?.high_severity },
+              { key: 'medium', label: 'Medium', count: alertsSummary?.medium_severity },
+              { key: 'low', label: 'Low', count: alertsSummary?.low_severity },
+            ].map((tab) => {
+              const active = sevFilter === tab.key
+              const sev = severityBadge[tab.key]
+              return (
+                <button key={tab.key}
+                  onClick={() => { setSevFilter(tab.key); setAlertPage(1) }}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: active ? (sev?.bg || 'var(--bg-tertiary)') : '',
+                    color: active ? (sev?.color || 'var(--text-secondary)') : 'var(--text-quaternary)',
+                    border: active ? `1px solid ${sev?.border || 'var(--border-secondary)'}` : '1px solid transparent',
+                  }}
                 >
-                  <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  В выбранном периоде критичных алертов не найдено.
+                  {sev?.dot && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sev.dot }} />}
+                  {tab.label}
+                  {tab.count != null && <span style={{ opacity: 0.7 }}>{tab.count}</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Desktop table */}
+        {(() => {
+          const allAlerts = alertsSummary?.alerts || []
+          const filteredAlerts = sevFilter ? allAlerts.filter(a => a.severity === sevFilter) : allAlerts
+          const alertTotalPages = Math.max(1, Math.ceil(filteredAlerts.length / ALERTS_PER_PAGE))
+          const safeAlertPage = Math.min(alertPage, alertTotalPages)
+          const pagedAlerts = filteredAlerts.slice((safeAlertPage - 1) * ALERTS_PER_PAGE, safeAlertPage * ALERTS_PER_PAGE)
+
+          return (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                      {['', 'Проблема', 'Сотрудник', 'Подразделение', 'Рекомендация'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap"
+                          style={{ color: 'var(--text-quaternary)', borderBottom: '1px solid var(--border-secondary)' }}
+                        >{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedAlerts.map((alert) => {
+                      const s = severityBadge[alert.severity] || severityBadge.low
+                      return (
+                        <tr key={alert.id} className="transition-colors"
+                          style={{ borderBottom: '1px solid var(--border-secondary)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                        >
+                          <td className="px-4 py-3 w-8">
+                            <span className="h-2 w-2 rounded-full inline-block" style={{ backgroundColor: s.dot }} title={alert.severity} />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{alert.title}</div>
+                            <div className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{alert.message}</div>
+                            {alert.goal_title && (
+                              <div className="mt-0.5 text-xs truncate max-w-xs" style={{ color: 'var(--text-quaternary)' }}>{alert.goal_title}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{alert.employee_name}</td>
+                          <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell" style={{ color: 'var(--text-tertiary)' }}>{alert.department_name}</td>
+                          <td className="px-4 py-3 hidden xl:table-cell">
+                            <div className="text-xs max-w-xs" style={{ color: 'var(--text-tertiary)' }}>{alert.recommended_action}</div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {pagedAlerts.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                          {loadingAlerts ? 'Загрузка алертов...' : 'Алертов не найдено'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {alertTotalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border-secondary)' }}>
+                  <button
+                    onClick={() => setAlertPage(p => Math.max(1, p - 1))}
+                    disabled={safeAlertPage <= 1}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
+                    style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Назад
+                  </button>
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{safeAlertPage} из {alertTotalPages}</span>
+                  <button
+                    onClick={() => setAlertPage(p => Math.min(alertTotalPages, p + 1))}
+                    disabled={safeAlertPage >= alertTotalPages}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
+                    style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
+                  >
+                    Вперёд
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 6 15 12 9 18"/></svg>
+                  </button>
                 </div>
               )}
-            </div>
-          </div>
-        </CardShell>
+            </>
+          )
+        })()}
+      </CardShell>
 
-        {/* Right column */}
-        <div className="space-y-6">
+      {/* Bottom row: VND Index + HRIS */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div>
           {/* VND Index */}
           <CardShell>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
@@ -273,7 +338,8 @@ export default function Operations() {
               </button>
             </div>
           </CardShell>
-
+        </div>
+        <div>
           {/* HRIS Integration */}
           <CardShell>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
