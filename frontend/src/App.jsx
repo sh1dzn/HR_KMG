@@ -6,7 +6,9 @@ import Dashboard from './pages/Dashboard'
 import EmployeeGoals from './pages/EmployeeGoals'
 import Operations from './pages/Operations'
 import Home from './pages/Home'
+import Settings from './pages/Settings'
 import KmgLogo from './components/KmgLogo'
+import { getDashboardSummary } from './api/client'
 
 // SVG Icon components for sidebar navigation
 function HomeIcon(props) {
@@ -79,15 +81,7 @@ function BellIcon(props) {
     </svg>
   )
 }
-function ChevronDownIcon(props) {
-  return (
-    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
-// Navigation config with dividers and sub-items
+// Navigation config with dividers
 const navigation = [
   {
     name: 'Главная', href: '/',
@@ -106,12 +100,7 @@ const navigation = [
     name: 'Сотрудники',
     icon: UsersIcon,
     href: '/employees',
-    items: [
-      { label: 'Все сотрудники', href: '/employees' },
-      { label: 'Активные цели', href: '/employees?filter=active' },
-      { label: 'На проверке', href: '/employees?filter=review' },
-      { label: 'Завершённые', href: '/employees?filter=completed' },
-    ],
+    badgeKey: 'employees',
   },
   { divider: true },
   {
@@ -186,8 +175,8 @@ function XIcon({ className }) {
 function App() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [expandedSections, setExpandedSections] = useState({})
   const [themeMode, setThemeMode] = useState('system')
+  const [sidebarStats, setSidebarStats] = useState({})
   const [systemTheme, setSystemTheme] = useState('light')
   const currentTitle = pageTitles[location.pathname] || 'HR AI Module'
   const resolvedTheme = themeMode === 'system' ? systemTheme : themeMode
@@ -212,6 +201,12 @@ function App() {
   }, [themeMode, resolvedTheme])
 
   useEffect(() => { setMobileMenuOpen(false) }, [location.pathname])
+
+  useEffect(() => {
+    getDashboardSummary('Q2', 2026).then(d => {
+      setSidebarStats({ employees: d.total_employees, goals: d.total_goals })
+    }).catch(() => {})
+  }, [])
 
   const modeMeta = {
     light:  { icon: SunIcon,     short: 'L', label: 'Light' },
@@ -310,71 +305,7 @@ function App() {
             }
 
             const Icon = item.icon
-            const hasSubItems = item.items && item.items.length > 0
-            const isExpanded = expandedSections[item.name]
-
-            if (hasSubItems) {
-              return (
-                <div key={item.name}>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedSections(prev => ({ ...prev, [item.name]: !prev[item.name] }))}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear"
-                    style={{ color: 'var(--sidebar-text)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
-                  >
-                    <span style={{ color: 'var(--fg-quaternary)' }}>
-                      <Icon />
-                    </span>
-                    <span className="flex-1 text-left">{item.name}</span>
-                    <ChevronDownIcon
-                      className="transition-transform duration-200"
-                      style={{
-                        color: 'var(--fg-quaternary)',
-                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                      }}
-                    />
-                  </button>
-                  {isExpanded && (
-                    <div className="ml-8 mt-0.5 space-y-0.5">
-                      {item.items.map((sub) => (
-                        <NavLink
-                          key={sub.href + sub.label}
-                          to={sub.href}
-                          className={({ isActive }) => [
-                            'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors duration-100 ease-linear',
-                            isActive ? 'font-medium' : '',
-                          ].join(' ')}
-                          style={({ isActive }) => isActive
-                            ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
-                            : { color: 'var(--sidebar-text)' }
-                          }
-                          onMouseEnter={(e) => {
-                            if (!e.currentTarget.style.backgroundColor || e.currentTarget.style.backgroundColor === '') {
-                              e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            const isActive = location.pathname === sub.href || location.search === sub.href.split('?')[1]
-                            if (!isActive) e.currentTarget.style.backgroundColor = ''
-                          }}
-                        >
-                          <span>{sub.label}</span>
-                          {sub.badge != null && (
-                            <span className="rounded-full px-2 py-0.5 text-xs font-medium"
-                              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
-                            >
-                              {sub.badge}
-                            </span>
-                          )}
-                        </NavLink>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            }
+            const badgeValue = item.badgeKey ? sidebarStats[item.badgeKey] : null
 
             return (
               <NavLink
@@ -406,6 +337,13 @@ function App() {
                       <Icon />
                     </span>
                     <span className="flex-1">{item.name}</span>
+                    {badgeValue != null && (
+                      <span className="rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                      >
+                        {badgeValue}
+                      </span>
+                    )}
                     {item.badge && (
                       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
                         style={{
@@ -497,6 +435,7 @@ function App() {
             <Route path="/dashboard"  element={<Dashboard />} />
             <Route path="/employees"  element={<EmployeeGoals />} />
             <Route path="/operations" element={<Operations />} />
+            <Route path="/settings"   element={<Settings />} />
           </Routes>
         </main>
       </div>
