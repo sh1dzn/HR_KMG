@@ -42,7 +42,7 @@ const fmt = (v, d = 0) => {
   return Number.isFinite(n) ? n.toFixed(d) : '0'
 }
 
-const ROWS_PER_PAGE = 10
+const ROWS_PER_PAGE = 20
 
 /* ── Sort icon ─────────────────────────────────────────── */
 function SortIcon({ direction }) {
@@ -82,6 +82,7 @@ export default function EmployeeGoals() {
   const [sortCol,          setSortCol]         = useState('employee_name')
   const [sortDir,          setSortDir]         = useState('asc')
   const [page,             setPage]            = useState(1)
+  const [totalGoals,       setTotalGoals]      = useState(0)
   const deferredQuery = useDeferredValue(searchQuery)
 
   const normalize = (g) => ({
@@ -95,31 +96,18 @@ export default function EmployeeGoals() {
     const load = async () => {
       setLoading(true); setError(null)
       try {
-        const params = {}
+        const params = { page, per_page: ROWS_PER_PAGE }
         if (quarter) params.quarter = quarter
         if (year)    params.year    = +year
         if (status)  params.status  = status
-        // Fetch first page to get total count
-        const first = await getGoals({ ...params, page: 1, per_page: 100 })
-        let allGoals = first.goals || []
-        const total = first.total || 0
-        const totalPages = Math.ceil(total / 100)
-        // Fetch remaining pages in parallel
-        if (totalPages > 1) {
-          const pages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2)
-          const results = await Promise.all(
-            pages.map(p => getGoals({ ...params, page: p, per_page: 100 }))
-          )
-          for (const r of results) {
-            allGoals = allGoals.concat(r.goals || [])
-          }
-        }
-        setGoals(allGoals.map(normalize))
+        const r = await getGoals(params)
+        setGoals((r.goals || []).map(normalize))
+        setTotalGoals(r.total || 0)
       } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки целей') }
       finally { setLoading(false) }
     }
     load()
-  }, [quarter, year, status, reloadKey])
+  }, [quarter, year, status, reloadKey, page])
 
   const handleBatchEvaluate = async (employeeId) => {
     setEvaluating(true); setSelectedEmployee(employeeId); setBatchResult(null); setError(null)
@@ -161,17 +149,17 @@ export default function EmployeeGoals() {
     finally { setWorkflowActionId(null) }
   }
 
-  /* ── Filter + Sort + Paginate ─────────────────────────── */
+  /* ── Client-side search filter (within loaded page) ──── */
   const q = deferredQuery.trim().toLowerCase()
   const filtered = useMemo(() => {
-    const list = goals.filter((g) => {
-      if (!q) return true
-      return [g.employee_name, g.department_name, g.position_name, g.manager_name, g.title, g.metric, g.goal_type, g.strategic_link]
+    if (!q) return goals
+    return goals.filter((g) =>
+      [g.employee_name, g.department_name, g.position_name, g.manager_name, g.title, g.metric, g.goal_type, g.strategic_link]
         .filter(Boolean).join(' ').toLowerCase().includes(q)
-    })
-    return list
+    )
   }, [goals, q])
 
+  /* ── Client-side sort ──────────────────────────────────── */
   const sorted = useMemo(() => {
     const copy = [...filtered]
     copy.sort((a, b) => {
@@ -188,11 +176,12 @@ export default function EmployeeGoals() {
     return copy
   }, [filtered, sortCol, sortDir])
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / ROWS_PER_PAGE))
+  const paged = sorted
+  const totalPages = Math.max(1, Math.ceil(totalGoals / ROWS_PER_PAGE))
   const safePage = Math.min(page, totalPages)
-  const paged = sorted.slice((safePage - 1) * ROWS_PER_PAGE, safePage * ROWS_PER_PAGE)
 
-  useEffect(() => { setPage(1) }, [deferredQuery, quarter, year, status])
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1) }, [quarter, year, status])
 
   const toggleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -304,7 +293,7 @@ export default function EmployeeGoals() {
               <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                 style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
               >
-                {filtered.length} {filtered.length === 1 ? 'цель' : 'целей'}
+                {totalGoals} {totalGoals === 1 ? 'цель' : 'целей'}
               </span>
             </div>
             {selectedRows.size > 0 && (
