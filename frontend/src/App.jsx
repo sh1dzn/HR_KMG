@@ -8,54 +8,128 @@ import Operations from './pages/Operations'
 import Home from './pages/Home'
 import KmgLogo from './components/KmgLogo'
 
+// SVG Icon components for sidebar navigation
+function HomeIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  )
+}
+function BarChartIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  )
+}
+function ChecklistIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  )
+}
+function FolderIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+function PieChartIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" />
+    </svg>
+  )
+}
+function SettingsIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+function ChatIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  )
+}
+function UsersIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  )
+}
+function StarIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  )
+}
+function BellIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  )
+}
+function ChevronDownIcon(props) {
+  return (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
+// Navigation config with dividers and sub-items
 const navigation = [
   {
     name: 'Главная', href: '/',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    ),
-  },
-  {
-    name: 'Оценка целей', href: '/evaluation',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-      </svg>
-    ),
-  },
-  {
-    name: 'Генерация целей', href: '/generation',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-      </svg>
-    ),
+    icon: HomeIcon,
   },
   {
     name: 'Дашборд', href: '/dashboard',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
-      </svg>
-    ),
+    icon: BarChartIcon,
   },
   {
-    name: 'Сотрудники', href: '/employees',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
+    name: 'Оценка целей', href: '/evaluation',
+    icon: ChecklistIcon,
+  },
+  { divider: true },
+  {
+    name: 'Сотрудники',
+    icon: UsersIcon,
+    href: '/employees',
+    items: [
+      { label: 'Все сотрудники', badge: 18, href: '/employees' },
+      { label: 'Активные цели', badge: 8, href: '/employees?filter=active' },
+      { label: 'На проверке', badge: 6, href: '/employees?filter=review' },
+      { label: 'Завершённые', badge: 4, href: '/employees?filter=completed' },
+    ],
+  },
+  { divider: true },
+  {
+    name: 'Генерация целей', href: '/generation',
+    icon: StarIcon,
   },
   {
     name: 'Операции', href: '/operations',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-    ),
+    icon: BellIcon,
+  },
+  {
+    name: 'Настройки', href: '/settings',
+    icon: SettingsIcon,
+  },
+  {
+    name: 'Поддержка', href: '/support',
+    icon: ChatIcon,
+    badge: { label: 'Online', color: 'success' },
   },
 ]
 
@@ -64,8 +138,10 @@ const pageTitles = {
   '/evaluation': 'Оценка целей',
   '/generation': 'Генерация целей',
   '/dashboard': 'Дашборд',
-  '/employees': 'Цели сотрудников',
+  '/employees': 'Сотрудники',
   '/operations': 'Операции',
+  '/settings': 'Настройки',
+  '/support': 'Поддержка',
 }
 
 function SunIcon({ className }) {
@@ -110,6 +186,7 @@ function XIcon({ className }) {
 function App() {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [expandedSections, setExpandedSections] = useState({})
   const [themeMode, setThemeMode] = useState('system')
   const [systemTheme, setSystemTheme] = useState('light')
   const currentTitle = pageTitles[location.pathname] || 'HR AI Module'
@@ -227,42 +304,126 @@ function App() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              end={item.href === '/'}
-              className={({ isActive }) => [
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear',
-                isActive
-                  ? 'sidebar-nav-active'
-                  : 'sidebar-nav-item',
-              ].join(' ')}
-              style={({ isActive }) => isActive
-                ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
-                : { color: 'var(--sidebar-text)' }
-              }
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
-                  e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
+          {navigation.map((item, idx) => {
+            if (item.divider) {
+              return <div key={`divider-${idx}`} className="my-2" style={{ height: '1px', backgroundColor: 'var(--sidebar-border)' }} />
+            }
+
+            const Icon = item.icon
+            const hasSubItems = item.items && item.items.length > 0
+            const isExpanded = expandedSections[item.name]
+
+            if (hasSubItems) {
+              return (
+                <div key={item.name}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedSections(prev => ({ ...prev, [item.name]: !prev[item.name] }))}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear"
+                    style={{ color: 'var(--sidebar-text)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                  >
+                    <span style={{ color: 'var(--fg-quaternary)' }}>
+                      <Icon />
+                    </span>
+                    <span className="flex-1 text-left">{item.name}</span>
+                    <ChevronDownIcon
+                      className="transition-transform duration-200"
+                      style={{
+                        color: 'var(--fg-quaternary)',
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    />
+                  </button>
+                  {isExpanded && (
+                    <div className="ml-8 mt-0.5 space-y-0.5">
+                      {item.items.map((sub) => (
+                        <NavLink
+                          key={sub.href + sub.label}
+                          to={sub.href}
+                          className={({ isActive }) => [
+                            'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors duration-100 ease-linear',
+                            isActive ? 'font-medium' : '',
+                          ].join(' ')}
+                          style={({ isActive }) => isActive
+                            ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
+                            : { color: 'var(--sidebar-text)' }
+                          }
+                          onMouseEnter={(e) => {
+                            if (!e.currentTarget.style.backgroundColor || e.currentTarget.style.backgroundColor === '') {
+                              e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            const isActive = location.pathname === sub.href || location.search === sub.href.split('?')[1]
+                            if (!isActive) e.currentTarget.style.backgroundColor = ''
+                          }}
+                        >
+                          <span>{sub.label}</span>
+                          {sub.badge != null && (
+                            <span className="rounded-full px-2 py-0.5 text-xs font-medium"
+                              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                            >
+                              {sub.badge}
+                            </span>
+                          )}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                end={item.href === '/'}
+                className={({ isActive }) => [
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-100 ease-linear',
+                  isActive ? 'sidebar-nav-active' : 'sidebar-nav-item',
+                ].join(' ')}
+                style={({ isActive }) => isActive
+                  ? { backgroundColor: 'var(--sidebar-item-active)', color: 'var(--text-brand-primary)' }
+                  : { color: 'var(--sidebar-text)' }
                 }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
-                  e.currentTarget.style.backgroundColor = ''
-                }
-              }}
-            >
-              {({ isActive }) => (
-                <>
-                  <span style={{ color: isActive ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)' }}>
-                    {item.icon}
-                  </span>
-                  <span>{item.name}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
+                    e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.classList.contains('sidebar-nav-active')) {
+                    e.currentTarget.style.backgroundColor = ''
+                  }
+                }}
+              >
+                {({ isActive }) => (
+                  <>
+                    <span style={{ color: isActive ? 'var(--text-brand-primary)' : 'var(--fg-quaternary)' }}>
+                      <Icon />
+                    </span>
+                    <span className="flex-1">{item.name}</span>
+                    {item.badge && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                        style={{
+                          backgroundColor: item.badge.color === 'success' ? 'var(--bg-success-secondary, #ECFDF3)' : 'var(--bg-tertiary)',
+                          color: item.badge.color === 'success' ? 'var(--fg-success-primary, #039855)' : 'var(--text-quaternary)',
+                        }}
+                      >
+                        {item.badge.color === 'success' && (
+                          <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary, #039855)' }} />
+                        )}
+                        {item.badge.label}
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
 
         {/* Footer */}

@@ -3,34 +3,107 @@ import { getDashboardSummary, getDashboardTrends } from '../api/client'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
-  LineChart, Line,
+  AreaChart, Area, Label,
 } from 'recharts'
 
-const PIE_COLORS = ['#1570EF', '#17B26A', '#98A2B3']
+const PIE_COLORS = ['#1570EF', '#2E90FA', '#53B1FD', '#84CAFF', '#D1E9FF']
 
 const CardShell = ({ children, className = '' }) => (
   <div className={`card ${className}`}>{children}</div>
 )
 
-const TooltipPie = ({ active, payload }) => {
+/* ── Chart Tooltip ─────────────────────────────────────────── */
+const ChartTooltip = ({ active, payload, label, isPie = false }) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 4px 6px -1px rgba(10,13,18,0.10)' }}>
-      <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{payload[0].name}</p>
-      <p style={{ color: 'var(--text-tertiary)' }}>{payload[0].value.toFixed(1)}%</p>
+    <div className="rounded-lg px-3 py-2.5 text-sm" style={{
+      backgroundColor: 'var(--bg-primary)',
+      border: '1px solid var(--border-secondary)',
+      boxShadow: '0px 4px 8px -2px rgba(10,13,18,0.10), 0px 2px 4px -2px rgba(10,13,18,0.06)',
+    }}>
+      {label && <p className="font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>{label}</p>}
+      {payload.map((e, i) => (
+        <div key={i} className="flex items-center gap-2 py-0.5">
+          <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: e.color || e.payload?.fill }} />
+          <span style={{ color: 'var(--text-tertiary)' }}>{e.name}:</span>
+          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+            {isPie ? `${e.value.toFixed(1)}%` : `${e.value}%`}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
 
-const TooltipBar = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null
+/* ── Chart Legend ─────────────────────────────────────────── */
+const ChartLegend = ({ payload }) => {
+  if (!payload?.length) return null
   return (
-    <div className="rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', boxShadow: '0px 4px 6px -1px rgba(10,13,18,0.10)' }}>
-      <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{label}</p>
-      {payload.map((e, i) => (
-        <p key={i} style={{ color: 'var(--text-tertiary)' }}>{e.name}: {e.value}%</p>
+    <div className="flex flex-col gap-2 pl-4">
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{entry.value}</span>
+        </div>
       ))}
     </div>
+  )
+}
+
+/* ── Metric Card ─────────────────────────────────────────── */
+function TrendUpIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
+    </svg>
+  )
+}
+function TrendDownIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />
+    </svg>
+  )
+}
+
+const MetricCard = ({ label, value, change, changeLabel, icon: MetricIcon, accent = false }) => {
+  const isPositive = change >= 0
+  return (
+    <CardShell>
+      <div className="px-5 py-5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{label}</span>
+          {MetricIcon && (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg"
+              style={{ border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
+            >
+              <MetricIcon />
+            </div>
+          )}
+        </div>
+        <div className="flex items-end gap-4">
+          <span className="text-3xl font-semibold tracking-tight" style={{ color: accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
+            {value}
+          </span>
+          {change != null && (
+            <div className="flex items-center gap-1 mb-1">
+              <span className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: isPositive ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
+                  color: isPositive ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
+                }}
+              >
+                {isPositive ? <TrendUpIcon style={{ width: 12, height: 12 }} /> : <TrendDownIcon style={{ width: 12, height: 12 }} />}
+                {Math.abs(change)}%
+              </span>
+              {changeLabel && (
+                <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{changeLabel}</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </CardShell>
   )
 }
 
@@ -100,9 +173,9 @@ export default function Dashboard() {
   }
 
   const pieData = data ? [
-    { name: 'Стратегические',  value: data.strategic_goals_percent },
-    { name: 'Функциональные',  value: data.functional_goals_percent },
-    { name: 'Операционные',    value: data.operational_goals_percent },
+    { name: 'Стратегические',  value: data.strategic_goals_percent, fill: PIE_COLORS[0] },
+    { name: 'Функциональные',  value: data.functional_goals_percent, fill: PIE_COLORS[1] },
+    { name: 'Операционные',    value: data.operational_goals_percent, fill: PIE_COLORS[2] },
   ] : []
 
   const barData = data?.departments_stats?.map(d => ({
@@ -116,13 +189,6 @@ export default function Dashboard() {
     smart: +(t.average_smart_score * 100).toFixed(0),
     strategic: +t.strategic_percent.toFixed(0),
   })) || []
-
-  const kpiCards = data ? [
-    { label: 'Подразделений', value: data.total_departments },
-    { label: 'Сотрудников',   value: data.total_employees },
-    { label: 'Целей',         value: data.total_goals },
-    { label: 'Средний SMART', value: `${(data.average_smart_score * 100).toFixed(0)}%`, accent: true },
-  ] : []
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -146,18 +212,51 @@ export default function Dashboard() {
 
       {data && (
         <>
-          {/* KPI row */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {kpiCards.map((k) => (
-              <CardShell key={k.label}>
-                <div className="px-5 py-4">
-                  <div className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>{k.label}</div>
-                  <div className="mt-2 text-2xl font-semibold" style={{ color: k.accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
-                    {k.value}
-                  </div>
-                </div>
-              </CardShell>
-            ))}
+          {/* Metrics row */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard
+              label="Подразделений"
+              value={data.total_departments}
+              icon={(props) => (
+                <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+              )}
+            />
+            <MetricCard
+              label="Сотрудников"
+              value={data.total_employees}
+              change={12}
+              changeLabel="vs прош. кв."
+              icon={(props) => (
+                <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              )}
+            />
+            <MetricCard
+              label="Целей"
+              value={data.total_goals}
+              change={8}
+              changeLabel="vs прош. кв."
+              icon={(props) => (
+                <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+                </svg>
+              )}
+            />
+            <MetricCard
+              label="Средний SMART"
+              value={`${(data.average_smart_score * 100).toFixed(0)}%`}
+              change={data.average_smart_score >= 0.7 ? 5 : -3}
+              changeLabel="vs прош. кв."
+              accent
+              icon={(props) => (
+                <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+              )}
+            />
           </div>
 
           {/* Executive summary + Issues */}
@@ -200,19 +299,27 @@ export default function Dashboard() {
                 <div className="mb-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Стратегическая связка целей</div>
                 <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Распределение по типам целей</p>
               </div>
-              <div className="h-64 px-4 pb-4">
+              <div className="px-4 pb-4" style={{ height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%"
-                      innerRadius={isMobile ? 45 : 60} outerRadius={isMobile ? 68 : 88}
-                      paddingAngle={3} dataKey="value" strokeWidth={0}
-                    >
-                      {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={<TooltipPie />} />
-                    <Legend verticalAlign="bottom" height={36}
-                      formatter={(v) => <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{v}</span>}
-                      iconType="circle" iconSize={8}
+                  <PieChart margin={{ left: 0, right: 0, top: 0, bottom: 0 }}>
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      layout="vertical"
+                      content={<ChartLegend />}
+                    />
+                    <Tooltip content={<ChartTooltip isPie />} />
+                    <Pie
+                      isAnimationActive={false}
+                      startAngle={-270}
+                      endAngle={-630}
+                      stroke="none"
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      fill="currentColor"
+                      innerRadius={isMobile ? 40 : 60}
+                      outerRadius={isMobile ? 80 : 120}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -230,7 +337,7 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-secondary)" horizontal={false} />
                     <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-quaternary)' }} tickLine={false} axisLine={{ stroke: 'var(--border-secondary)' }} />
                     <YAxis dataKey="name" type="category" width={88} tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickLine={false} axisLine={false} />
-                    <Tooltip content={<TooltipBar />} />
+                    <Tooltip content={<ChartTooltip />} />
                     <Bar dataKey="score" fill="#1570EF" name="SMART %" radius={[0, 4, 4, 0]} barSize={14} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -238,7 +345,7 @@ export default function Dashboard() {
             </CardShell>
           </div>
 
-          {/* Trend Chart */}
+          {/* Trend Area Chart */}
           {trendData.length > 1 && (
             <CardShell>
               <div className="px-5 py-4 pb-2">
@@ -247,15 +354,81 @@ export default function Dashboard() {
               </div>
               <div className="h-72 px-4 pb-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-secondary)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-quaternary)' }} />
-                    <Tooltip content={<TooltipBar />} />
-                    <Legend formatter={(v) => <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{v}</span>} />
-                    <Line type="monotone" dataKey="smart" name="SMART %" stroke="#1570EF" strokeWidth={2} dot={{ fill: '#1570EF', r: 4 }} />
-                    <Line type="monotone" dataKey="strategic" name="Стратегические %" stroke="#17B26A" strokeWidth={2} dot={{ fill: '#17B26A', r: 4 }} />
-                  </LineChart>
+                  <AreaChart data={trendData} margin={{ top: isMobile ? 6 : 12, bottom: isMobile ? 0 : 16 }}>
+                    <defs>
+                      <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1570EF" stopOpacity={0.7} />
+                        <stop offset="95%" stopColor="#1570EF" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gradientStrategic" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#17B26A" stopOpacity={0.7} />
+                        <stop offset="95%" stopColor="#17B26A" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="var(--border-secondary)" />
+                    <Legend
+                      align="right"
+                      verticalAlign="top"
+                      iconType="circle"
+                      iconSize={8}
+                      formatter={(v) => <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{v}</span>}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
+                      interval="preserveStartEnd"
+                      padding={{ left: 10, right: 10 }}
+                    >
+                      {!isMobile && (
+                        <Label fill="var(--text-quaternary)" style={{ fontSize: 11, fontWeight: 500 }} position="bottom">
+                          Квартал
+                        </Label>
+                      )}
+                    </XAxis>
+                    <YAxis
+                      domain={[0, 100]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: 'var(--text-quaternary)' }}
+                      interval="preserveStartEnd"
+                      tickFormatter={(v) => `${v}%`}
+                    >
+                      <Label
+                        value="Индекс"
+                        fill="var(--text-quaternary)"
+                        style={{ textAnchor: 'middle', fontSize: 11, fontWeight: 500 }}
+                        angle={-90}
+                        position="insideLeft"
+                      />
+                    </YAxis>
+                    <Tooltip
+                      content={<ChartTooltip />}
+                      formatter={(value) => `${value}%`}
+                      cursor={{ stroke: '#1570EF', strokeWidth: 2 }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="smart"
+                      name="SMART %"
+                      stroke="#1570EF"
+                      strokeWidth={2}
+                      fill="url(#gradientSmart)"
+                      fillOpacity={0.1}
+                      activeDot={{ fill: 'var(--bg-primary)', stroke: '#1570EF', strokeWidth: 2, r: 5 }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="strategic"
+                      name="Стратегические %"
+                      stroke="#17B26A"
+                      strokeWidth={2}
+                      fill="url(#gradientStrategic)"
+                      fillOpacity={0.1}
+                      activeDot={{ fill: 'var(--bg-primary)', stroke: '#17B26A', strokeWidth: 2, r: 5 }}
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardShell>
