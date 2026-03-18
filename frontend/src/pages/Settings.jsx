@@ -12,7 +12,8 @@ const defaultSettings = {
 }
 
 const modelOptions = [
-  { value: 'gpt-4o', label: 'GPT-4o', desc: 'Самая мощная — лучшее качество оценки SMART' },
+  { value: 'gpt-5-mini', label: 'GPT-5 Mini', desc: 'Новейшая модель — высокое качество при низкой стоимости' },
+  { value: 'gpt-4o', label: 'GPT-4o', desc: 'Мощная и надёжная — лучшее качество оценки SMART' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini', desc: 'Быстрая и экономичная, хорошее качество' },
   { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', desc: 'Высокое качество, большой контекст' },
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', desc: 'Максимальная скорость, базовое качество' },
