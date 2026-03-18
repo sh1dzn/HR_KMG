@@ -123,20 +123,14 @@ export default function EmployeeGoals() {
     return [...set].sort()
   }, [employees])
 
-  /* ── Client-side filter ────────────────────────────────── */
+  /* ── Client-side search (dept is server-side now) ────── */
   const filtered = useMemo(() => {
-    let list = employees
     const q = searchQuery.trim().toLowerCase()
-    if (q) {
-      list = list.filter(e =>
-        [e.full_name, e.department_name, e.position_name].filter(Boolean).join(' ').toLowerCase().includes(q)
-      )
-    }
-    if (deptFilter) {
-      list = list.filter(e => e.department_name === deptFilter)
-    }
-    return list
-  }, [employees, searchQuery, deptFilter])
+    if (!q) return employees
+    return employees.filter(e =>
+      [e.full_name, e.department_name, e.position_name].filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [employees, searchQuery])
 
   /* ── Expand employee → load goals ──────────────────────── */
   const toggleEmployee = async (empId) => {
