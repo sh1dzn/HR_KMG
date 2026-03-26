@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getAccessToken, setAccessToken } from '../contexts/AuthContext'
 
 const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE_URL = rawApiBaseUrl
@@ -12,6 +13,68 @@ const client = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+// ─── Auth token interceptors ────────────────────────────────────────────────
+
+// Request interceptor: attach Bearer token
+client.interceptors.request.use((config) => {
+  const token = getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  if (config.url?.startsWith('/auth')) {
+    config.withCredentials = true
+  }
+  return config
+})
+
+// Response interceptor: handle 401 with token refresh
+let isRefreshing = false
+let refreshQueue = []
+
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/refresh')
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({ resolve, reject })
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+          return client(originalRequest)
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const res = await client.post('/auth/refresh', null, { withCredentials: true })
+        const newToken = res.data.access_token
+        setAccessToken(newToken)
+        refreshQueue.forEach(({ resolve }) => resolve(newToken))
+        refreshQueue = []
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        return client(originalRequest)
+      } catch (refreshError) {
+        refreshQueue.forEach(({ reject }) => reject(refreshError))
+        refreshQueue = []
+        setAccessToken(null)
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Helper to get selected model from settings
 const VALID_MODELS = ['gpt-5-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini']
@@ -203,6 +266,35 @@ export const getIntegrationSystems = async () => {
 
 export const exportGoalsToHRSystem = async (payload) => {
   const response = await client.post('/integrations/export-goals', payload)
+  return response.data
+}
+
+// Auth API
+export const authLogin = async (email, password) => {
+  const response = await client.post('/auth/login', { email, password }, { withCredentials: true })
+  return response.data
+}
+
+export const authRefresh = async () => {
+  const response = await client.post('/auth/refresh', null, { withCredentials: true })
+  return response.data
+}
+
+export const authLogout = async () => {
+  const response = await client.post('/auth/logout', null, { withCredentials: true })
+  return response.data
+}
+
+export const authMe = async () => {
+  const response = await client.get('/auth/me')
+  return response.data
+}
+
+export const authChangePassword = async (oldPassword, newPassword) => {
+  const response = await client.post('/auth/change-password', {
+    old_password: oldPassword,
+    new_password: newPassword,
+  })
   return response.data
 }
 
