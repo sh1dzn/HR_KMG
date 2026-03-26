@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom'
 import GoalEvaluation from './pages/GoalEvaluation'
 import GoalGeneration from './pages/GoalGeneration'
 import Dashboard from './pages/Dashboard'
@@ -8,8 +8,11 @@ import Operations from './pages/Operations'
 import Home from './pages/Home'
 import Settings from './pages/Settings'
 import Approvals from './pages/Approvals'
+import Login from './pages/Login'
+import ChangePassword from './pages/ChangePassword'
 import KmgLogo from './components/KmgLogo'
 import { getDashboardSummary, getGoals } from './api/client'
+import { useAuth } from './contexts/AuthContext'
 
 // SVG Icon components for sidebar navigation
 function HomeIcon(props) {
@@ -87,14 +90,17 @@ const navigation = [
   {
     name: 'Главная', href: '/',
     icon: HomeIcon,
+    roles: ['employee', 'manager', 'admin'],
   },
   {
     name: 'Дашборд', href: '/dashboard',
     icon: BarChartIcon,
+    roles: ['manager', 'admin'],
   },
   {
     name: 'Оценка целей', href: '/evaluation',
     icon: ChecklistIcon,
+    roles: ['employee', 'manager', 'admin'],
   },
   { divider: true },
   {
@@ -102,6 +108,7 @@ const navigation = [
     icon: UsersIcon,
     href: '/employees',
     badgeKey: 'employees',
+    roles: ['employee', 'manager', 'admin'],
     filters: [
       { label: 'Все',              href: '/employees' },
       { label: 'Черновики',        href: '/employees?status=draft',       dot: 'var(--fg-quaternary)' },
@@ -115,19 +122,23 @@ const navigation = [
     name: 'Согласование', href: '/approvals',
     icon: ChecklistIcon,
     badgeKey: 'pending',
+    roles: ['employee', 'manager', 'admin'],
   },
   { divider: true },
   {
     name: 'Генерация целей', href: '/generation',
     icon: StarIcon,
+    roles: ['employee', 'manager', 'admin'],
   },
   {
     name: 'Операции', href: '/operations',
     icon: BellIcon,
+    roles: ['admin'],
   },
   {
     name: 'Настройки', href: '/settings',
     icon: SettingsIcon,
+    roles: ['employee', 'manager', 'admin'],
   },
 ]
 
@@ -181,7 +192,20 @@ function XIcon({ className }) {
   )
 }
 
+function ProtectedRoute({ children, allowedRoles }) {
+  const { isAuthenticated, loading, user } = useAuth()
+  if (loading) return null
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.must_change_password) return <Navigate to="/change-password" replace />
+  if (allowedRoles) {
+    const userRole = user?.role
+    if (!allowedRoles.includes(userRole)) return <Navigate to="/" replace />
+  }
+  return children
+}
+
 function App() {
+  const { isAuthenticated, loading, user, role, logout } = useAuth()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('kmg-sidebar-collapsed') === 'true')
@@ -269,6 +293,24 @@ function App() {
     )
   }
 
+  if (!isAuthenticated && !loading) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Загрузка...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       {/* Mobile overlay */}
@@ -344,7 +386,7 @@ function App() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-          {navigation.map((item, idx) => {
+          {navigation.filter((item) => item.divider || !item.roles || item.roles.includes(role)).map((item, idx) => {
             if (item.divider) {
               return <div key={`divider-${idx}`} className="my-2" style={{ height: '1px', backgroundColor: 'var(--sidebar-border)' }} />
             }
@@ -461,19 +503,34 @@ function App() {
               </div>
               <div className="flex items-center gap-3 px-1">
                 <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
-                  HR
+                  {user?.employee_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>HR Admin</div>
-                  <div className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>Администратор</div>
+                  <div className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user?.employee_name || 'User'}</div>
+                  <div className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>
+                    {user?.role === 'admin' ? 'Администратор' : user?.role === 'manager' ? 'Руководитель' : 'Сотрудник'}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={logout}
+                  title="Выйти"
+                  className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                  style={{ color: 'var(--fg-quaternary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-item-hover)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                </button>
               </div>
             </>
           )}
           {sidebarCollapsed && (
             <div className="flex justify-center">
               <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
-                HR
+                {user?.employee_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
               </div>
             </div>
           )}
@@ -525,14 +582,16 @@ function App() {
         {/* Page content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <Routes>
-            <Route path="/"           element={<Home />} />
-            <Route path="/evaluation" element={<GoalEvaluation />} />
-            <Route path="/generation" element={<GoalGeneration />} />
-            <Route path="/dashboard"  element={<Dashboard />} />
-            <Route path="/employees"  element={<EmployeeGoals />} />
-            <Route path="/operations" element={<Operations />} />
-            <Route path="/approvals"  element={<Approvals />} />
-            <Route path="/settings"   element={<Settings />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/evaluation" element={<ProtectedRoute><GoalEvaluation /></ProtectedRoute>} />
+            <Route path="/generation" element={<ProtectedRoute><GoalGeneration /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><Dashboard /></ProtectedRoute>} />
+            <Route path="/employees" element={<ProtectedRoute><EmployeeGoals /></ProtectedRoute>} />
+            <Route path="/operations" element={<ProtectedRoute allowedRoles={['admin']}><Operations /></ProtectedRoute>} />
+            <Route path="/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           </Routes>
         </main>
       </div>
