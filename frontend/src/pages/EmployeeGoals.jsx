@@ -6,6 +6,8 @@ import {
   getGoalWorkflow, rejectGoal, submitGoal,
 } from '../api/client'
 import GoalModal from '../components/GoalModal'
+import OneOnOneModal from '../components/OneOnOneModal'
+import { useAuth } from '../contexts/AuthContext'
 
 /* ── Status config ─────────────────────────────────────── */
 const statusConfig = {
@@ -51,6 +53,8 @@ const statusLabels = {
 export default function EmployeeGoals() {
   const [searchParams] = useSearchParams()
   const statusFilter = searchParams.get('status') || ''
+  const { role } = useAuth()
+  const [agendaModal, setAgendaModal] = useState(null)
 
   const [employees,        setEmployees]       = useState([])
   const [totalEmployees,   setTotalEmployees]  = useState(0)
@@ -380,10 +384,19 @@ export default function EmployeeGoals() {
           <span className={summary.weight_valid ? 'badge-success' : 'badge-error'} style={{ fontSize: 11 }}>
             Вес: {fmt(summary.total_weight)}%
           </span>
+          {role !== 'employee' && (
+            <button type="button"
+              onClick={(e) => { e.stopPropagation(); setAgendaModal({ employeeId: emp.id, employeeName: emp.full_name }) }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium ml-auto"
+              style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
+            >
+              1-on-1
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); handleBatchEvaluate(emp.id) }}
             disabled={evaluating === emp.id}
-            className="btn-primary ml-auto" style={{ padding: '5px 14px', fontSize: '12px' }}
+            className="btn-primary" style={{ padding: '5px 14px', fontSize: '12px' }}
           >
             {evaluating === emp.id ? 'Оценка...' : 'Оценить все'}
           </button>
@@ -768,6 +781,16 @@ export default function EmployeeGoals() {
               getGoals(params).then(r => { setFilteredGoals(r.goals || []); setTotalFilteredGoals(r.total || 0) }).catch(() => {})
             }
           }}
+        />
+      )}
+
+      {agendaModal && (
+        <OneOnOneModal
+          employeeId={agendaModal.employeeId}
+          employeeName={agendaModal.employeeName}
+          quarter="Q2"
+          year={2026}
+          onClose={() => setAgendaModal(null)}
         />
       )}
     </div>
