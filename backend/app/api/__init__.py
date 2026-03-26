@@ -2,7 +2,7 @@
 API Routes for HR AI Module
 """
 from fastapi import APIRouter
-from app.api import alerts, auth, goals, evaluation, generation, dashboard, employees, integrations
+from app.api import alerts, analytics, auth, goals, evaluation, generation, dashboard, employees, integrations
 
 api_router = APIRouter()
 
@@ -44,6 +44,12 @@ api_router.include_router(
 )
 
 api_router.include_router(
+    analytics.router,
+    prefix="/dashboard",
+    tags=["Расширенная аналитика"],
+)
+
+api_router.include_router(
     alerts.router,
     prefix="/alerts",
     tags=["Алерты качества"],
@@ -65,6 +71,7 @@ TAGS_METADATA = [
     {"name": "Оценка целей (SMART)", "description": "Оценка одной цели или пакетная оценка по SMART-методологии, переформулировка"},
     {"name": "Генерация целей (RAG)", "description": "AI-генерация целей по ВНД и стратегии, каскадирование, управление индексом"},
     {"name": "Аналитика и дашборд", "description": "Сводная статистика, индекс зрелости, тренды по кварталам"},
+    {"name": "Расширенная аналитика", "description": "Тепловая карта, бенчмаркинг отделов, повестка 1-on-1"},
     {"name": "Алерты качества", "description": "Уведомления о слабых целях, дисбалансе весов, стагнации согласования"},
     {"name": "Интеграции (1C/SAP/Oracle)", "description": "Mock-экспорт целей во внешние HR-системы"},
 ]
