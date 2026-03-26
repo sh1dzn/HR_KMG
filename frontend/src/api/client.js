@@ -298,4 +298,30 @@ export const authChangePassword = async (oldPassword, newPassword) => {
   return response.data
 }
 
+// Analytics API
+export const getHeatmap = async (mode = 'maturity', quarter = null, year = null) => {
+  const params = { mode }
+  if (quarter) params.quarter = quarter
+  if (year) params.year = year
+  const response = await client.get('/dashboard/heatmap', { params })
+  return response.data
+}
+
+export const getBenchmark = async (quarter = null, year = null) => {
+  const params = {}
+  if (quarter) params.quarter = quarter
+  if (year) params.year = year
+  const response = await client.get('/dashboard/benchmark', { params })
+  return response.data
+}
+
+export const generateOneOnOneAgenda = async (employeeId, quarter, year) => {
+  const response = await client.post('/dashboard/one-on-one-agenda', {
+    employee_id: employeeId,
+    quarter,
+    year,
+  })
+  return response.data
+}
+
 export default client
