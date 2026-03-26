@@ -2,11 +2,17 @@
 API Routes for HR AI Module
 """
 from fastapi import APIRouter
-from app.api import alerts, goals, evaluation, generation, dashboard, employees, integrations
+from app.api import alerts, auth, goals, evaluation, generation, dashboard, employees, integrations
 
 api_router = APIRouter()
 
 # Include all routers
+api_router.include_router(
+    auth.router,
+    prefix="/auth",
+    tags=["Авторизация"],
+)
+
 api_router.include_router(
     employees.router,
     prefix="/employees",
@@ -52,6 +58,7 @@ api_router.include_router(
 
 # OpenAPI tag metadata for Swagger UI ordering and descriptions
 TAGS_METADATA = [
+    {"name": "Авторизация", "description": "Вход, выход, обновление токена, смена пароля"},
     {"name": "Служебные", "description": "Health check и метаинформация сервиса"},
     {"name": "Сотрудники", "description": "Список сотрудников с поиском и фильтрацией по подразделению"},
     {"name": "Цели", "description": "CRUD целей, workflow согласования (submit/approve/reject/comment), аудит-трейл"},
