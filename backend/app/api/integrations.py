@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies.auth import require_role
+from app.models.user import User
 from app.schemas.integration import GoalsExportRequest, GoalsExportResponse, IntegrationSystemsResponse
 from app.services.integration_service import integration_service
 
@@ -12,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("/systems", response_model=IntegrationSystemsResponse)
-async def get_integration_systems():
+async def get_integration_systems(current_user: User = Depends(require_role("admin"))):
     """
     Получить список доступных HR-систем для интеграции.
 
@@ -26,6 +28,7 @@ async def get_integration_systems():
 async def export_goals_to_hr_system(
     request: GoalsExportRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
 ):
     """
     Экспортировать цели сотрудника во внешнюю HR-систему (mock).

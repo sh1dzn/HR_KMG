@@ -5,6 +5,8 @@ Evaluation API endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.dependencies.auth import get_current_user
+from app.models.user import User
 from app.models import Goal, Employee
 from app.schemas.evaluation import (
     EvaluationRequest,
@@ -27,7 +29,7 @@ def _criterion_score(criterion) -> float:
 
 
 @router.post("/evaluate", response_model=EvaluationResponse)
-async def evaluate_goal(request: EvaluationRequest):
+async def evaluate_goal(request: EvaluationRequest, current_user: User = Depends(get_current_user)):
     """
     Оценить цель по методологии SMART
 
@@ -53,7 +55,8 @@ async def evaluate_goal(request: EvaluationRequest):
 @router.post("/evaluate-batch", response_model=BatchEvaluationResponse)
 async def evaluate_batch(
     request: BatchEvaluationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Пакетная оценка целей сотрудника
@@ -174,7 +177,7 @@ async def evaluate_batch(
 
 
 @router.post("/reformulate")
-async def reformulate_goal(request: EvaluationRequest):
+async def reformulate_goal(request: EvaluationRequest, current_user: User = Depends(get_current_user)):
     """
     Предложить улучшенную формулировку цели
 

@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
+from app.dependencies.auth import require_role
+from app.models.user import User
 from app.models import Goal, Employee, Department, GoalStatus
 from app.schemas.generation import DepartmentStats, DashboardSummary
 from app.config import settings
@@ -92,7 +94,8 @@ def _department_stats(
 async def get_dashboard_summary(
     quarter: Optional[str] = None,
     year: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("manager", "admin")),
 ):
     goals_query = db.query(Goal)
     if quarter:
@@ -153,7 +156,8 @@ async def get_department_stats(
     department_id: int,
     quarter: Optional[str] = None,
     year: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("manager", "admin")),
 ):
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
@@ -193,7 +197,8 @@ async def get_department_stats(
 @router.get("/trends")
 async def get_dashboard_trends(
     year: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("manager", "admin")),
 ):
     """
     Тренды качества целеполагания по кварталам.
@@ -248,7 +253,8 @@ async def get_employee_goals_summary(
     employee_id: int,
     quarter: Optional[str] = None,
     year: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("manager", "admin")),
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:

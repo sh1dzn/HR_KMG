@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel
 from app.database import get_db
+from app.dependencies.auth import require_role
+from app.models.user import User
 from app.models import Department, Employee, Position
 
 
@@ -33,7 +35,8 @@ router = APIRouter()
 async def get_employees(
     department_id: Optional[int] = None,
     search: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("manager", "admin")),
 ):
     """Получить список сотрудников"""
     query = db.query(Employee).filter(Employee.is_active == True)

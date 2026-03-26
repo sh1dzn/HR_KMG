@@ -50,9 +50,8 @@ app = FastAPI(
 
 ### Интеграция
 
-Все эндпоинты принимают и возвращают JSON. Аутентификация не требуется
-(хакатонный контур). Для production-интеграции добавьте Bearer-токен
-через middleware.
+Все эндпоинты принимают и возвращают JSON. Авторизация через JWT Bearer-токен.
+Получите токен через POST /api/auth/login.
 
 ### Версия: {version}
     """.format(version=settings.APP_VERSION),

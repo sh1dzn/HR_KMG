@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
+from app.dependencies.auth import get_current_user
+from app.models.user import User
 from app.models import Department, Employee, Goal, GoalEvent, GoalEventType, Document, GoalStatus
 from app.schemas.generation import (
     AcceptedGeneratedGoalsRequest,
@@ -243,7 +245,8 @@ def _build_historical_check(db: Session, employee: Employee, quarter: str, year:
 @router.post("/generate", response_model=GenerationResponse)
 async def generate_goals(
     request: GenerationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Сгенерировать цели для сотрудника
@@ -314,7 +317,8 @@ async def generate_goals(
 @router.post("/generate-and-save")
 async def generate_and_save_goals(
     request: GenerationRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Сгенерировать и сохранить цели в базу данных
@@ -322,7 +326,7 @@ async def generate_and_save_goals(
     Генерирует цели и создает их как черновики в системе
     """
     # Generate goals
-    response = await generate_goals(request, db)
+    response = await generate_goals(request, db, current_user)
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
@@ -363,7 +367,8 @@ async def generate_and_save_goals(
 @router.post("/save-accepted", response_model=AcceptedGeneratedGoalsResponse)
 async def save_accepted_generated_goals(
     request: AcceptedGeneratedGoalsRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Сохранить принятые пользователем AI-сгенерированные цели."""
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
@@ -413,7 +418,8 @@ async def save_accepted_generated_goals(
 async def get_available_documents(
     department: Optional[str] = None,
     doc_type: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Получить список доступных ВНД документов
@@ -468,13 +474,13 @@ async def get_available_documents(
 
 
 @router.get("/index-status", response_model=DocumentIndexStatusResponse)
-async def get_document_index_status():
+async def get_document_index_status(current_user: User = Depends(get_current_user)):
     status = await asyncio.to_thread(rag_service.get_index_status)
     return DocumentIndexStatusResponse(**status)
 
 
 @router.post("/reindex-documents", response_model=DocumentReindexResponse)
-async def reindex_documents():
+async def reindex_documents(current_user: User = Depends(get_current_user)):
     indexed_documents = await asyncio.to_thread(rag_service.ensure_collection_populated, True)
     status = await asyncio.to_thread(rag_service.get_index_status)
     message = (
@@ -491,7 +497,7 @@ async def reindex_documents():
 
 
 @router.get("/focus-areas")
-async def get_focus_areas():
+async def get_focus_areas(current_user: User = Depends(get_current_user)):
     """
     Получить список типовых фокус-направлений
 
