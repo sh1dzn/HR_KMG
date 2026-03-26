@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     MIN_GOALS_PER_EMPLOYEE: int = 3
     MAX_GOALS_PER_EMPLOYEE: int = 5
 
+    # Authentication
+    JWT_SECRET_KEY: str = "change-me-in-production-use-a-64-char-random-string"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    DEFAULT_SEED_PASSWORD: str = "KMG2026!"
+    ADMIN_EMPLOYEE_IDS: str = ""
+
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
         case_sensitive = True
