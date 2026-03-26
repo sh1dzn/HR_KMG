@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getDashboardSummary, getDashboardTrends } from '../api/client'
+import Heatmap from '../components/Heatmap'
+import Benchmark from '../components/Benchmark'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -209,6 +211,9 @@ export default function Dashboard() {
           </select>
         </div>
       </div>
+
+      <Heatmap quarter={quarter} year={year} />
+      <Benchmark quarter={quarter} year={year} />
 
       {data && (
         <>
