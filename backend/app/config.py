@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
         case_sensitive = True
+        extra = "ignore"
 
 
 @lru_cache()
