@@ -27,6 +27,8 @@ from app.schemas.analytics import (
 )
 from app.utils.smart_heuristics import evaluate_goal_heuristically
 from app.utils.goal_context import load_generation_metadata, strategic_link_for_goal, goal_type_for_goal
+from app.schemas.prediction import RiskOverviewResponse, RiskGoalItem
+from app.services.prediction_service import compute_risk_score
 
 router = APIRouter()
 
@@ -396,6 +398,43 @@ def _build_llm_agenda_prompt(
         f"Сгенерируй повестку 1-on-1 (3-7 пунктов)."
     )
     return system, user
+
+
+@router.get("/risk-overview", response_model=RiskOverviewResponse)
+async def get_risk_overview(
+    quarter: Optional[str] = None,
+    year: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("manager", "admin")),
+):
+    goals_query = db.query(Goal).options(joinedload(Goal.employee))
+    if quarter:
+        goals_query = goals_query.filter(Goal.quarter == quarter)
+    if year:
+        goals_query = goals_query.filter(Goal.year == year)
+    all_goals = goals_query.all()
+
+    distribution = {"high": 0, "medium": 0, "low": 0}
+    scored = []
+    for goal in all_goals:
+        pred = compute_risk_score(goal, db)
+        distribution[pred["risk_level"]] += 1
+        emp = goal.employee
+        scored.append(RiskGoalItem(
+            goal_id=pred["goal_id"],
+            goal_text=goal.goal_text[:100],
+            employee_name=emp.full_name if emp else None,
+            department=emp.department.name if emp and emp.department else None,
+            risk_score=pred["risk_score"],
+        ))
+
+    scored.sort(key=lambda x: x.risk_score, reverse=True)
+
+    return RiskOverviewResponse(
+        total_goals=len(all_goals),
+        risk_distribution=distribution,
+        top_risks=scored[:10],
+    )
 
 
 @router.post("/one-on-one-agenda", response_model=OneOnOneAgendaResponse)

@@ -2,7 +2,7 @@
 API Routes for HR AI Module
 """
 from fastapi import APIRouter
-from app.api import alerts, analytics, auth, goals, evaluation, generation, dashboard, employees, integrations
+from app.api import alerts, analytics, auth, cascade, dependencies, goals, evaluation, generation, dashboard, employees, integrations, prediction
 
 api_router = APIRouter()
 
@@ -61,6 +61,24 @@ api_router.include_router(
     tags=["Интеграции (1C/SAP/Oracle)"],
 )
 
+api_router.include_router(
+    prediction.router,
+    prefix="/goals",
+    tags=["Предсказание рисков"],
+)
+
+api_router.include_router(
+    cascade.router,
+    prefix="/goals",
+    tags=["Каскадирование целей"],
+)
+
+api_router.include_router(
+    dependencies.router,
+    prefix="/goals",
+    tags=["Граф зависимостей"],
+)
+
 
 # OpenAPI tag metadata for Swagger UI ordering and descriptions
 TAGS_METADATA = [
@@ -74,4 +92,7 @@ TAGS_METADATA = [
     {"name": "Расширенная аналитика", "description": "Тепловая карта, бенчмаркинг отделов, повестка 1-on-1"},
     {"name": "Алерты качества", "description": "Уведомления о слабых целях, дисбалансе весов, стагнации согласования"},
     {"name": "Интеграции (1C/SAP/Oracle)", "description": "Mock-экспорт целей во внешние HR-системы"},
+    {"name": "Предсказание рисков", "description": "Оценка риска невыполнения цели, LLM-объяснение"},
+    {"name": "Каскадирование целей", "description": "Авто-каскадирование целей с обнаружением конфликтов"},
+    {"name": "Граф зависимостей", "description": "Интерактивный граф зависимостей между целями"},
 ]
