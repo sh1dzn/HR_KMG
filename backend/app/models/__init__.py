@@ -6,6 +6,7 @@ from app.models.employee import Employee, Position
 from app.models.goal import Goal, GoalEvent, GoalEventType, GoalReview, GoalStatus, Quarter, ReviewVerdict
 from app.models.document import Document, DocumentType
 from app.models.user import User, UserRole, RefreshToken
+from app.models.dependency import GoalDependency, DependencyType, DependencyStatus, DependencyCreatedBy
 
 __all__ = [
     "Department",
@@ -23,4 +24,8 @@ __all__ = [
     "User",
     "UserRole",
     "RefreshToken",
+    "GoalDependency",
+    "DependencyType",
+    "DependencyStatus",
+    "DependencyCreatedBy",
 ]
