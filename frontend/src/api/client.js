@@ -343,4 +343,18 @@ export const getRiskOverview = async (quarter = null, year = null) => {
   return response.data
 }
 
+// Cascade API
+export const cascadePreview = async (goalId, targetDepartmentIds, goalsPerDept = 2) => {
+  const response = await client.post(`/goals/${goalId}/cascade-preview`, {
+    target_department_ids: targetDepartmentIds,
+    goals_per_department: goalsPerDept,
+  })
+  return response.data
+}
+
+export const cascadeConfirm = async (goalId, goals) => {
+  const response = await client.post(`/goals/${goalId}/cascade-confirm`, { goals })
+  return response.data
+}
+
 export default client
