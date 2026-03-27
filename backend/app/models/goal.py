@@ -75,6 +75,7 @@ class Goal(Base):
     year = Column(BigInteger, nullable=False)
     external_ref = Column(Text, nullable=True)
     priority = Column(BigInteger, nullable=True)
+    parent_goal_id = Column(UUID(as_uuid=False), ForeignKey("goals.goal_id"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
 
@@ -83,6 +84,7 @@ class Goal(Base):
     department = relationship("Department")
     events = relationship("GoalEvent", back_populates="goal", cascade="all, delete-orphan")
     reviews = relationship("GoalReview", back_populates="goal", cascade="all, delete-orphan")
+    parent_goal = relationship("Goal", remote_side=["goal_id"], foreign_keys=[parent_goal_id])
 
     def __repr__(self):
         return f"<Goal(goal_id={self.goal_id}, text='{self.goal_text[:50]}...', status={self.status})>"
