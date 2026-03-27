@@ -324,4 +324,23 @@ export const generateOneOnOneAgenda = async (employeeId, quarter, year) => {
   return response.data
 }
 
+// Prediction API
+export const getFailurePrediction = async (goalId) => {
+  const response = await client.get(`/goals/${goalId}/failure-prediction`)
+  return response.data
+}
+
+export const explainFailurePrediction = async (goalId) => {
+  const response = await client.post(`/goals/${goalId}/failure-prediction/explain`)
+  return response.data
+}
+
+export const getRiskOverview = async (quarter = null, year = null) => {
+  const params = {}
+  if (quarter) params.quarter = quarter
+  if (year) params.year = year
+  const response = await client.get('/dashboard/risk-overview', { params })
+  return response.data
+}
+
 export default client

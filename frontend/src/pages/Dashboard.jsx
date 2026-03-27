@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { getDashboardSummary, getDashboardTrends } from '../api/client'
+import { getDashboardSummary, getDashboardTrends, getRiskOverview } from '../api/client'
 import Heatmap from '../components/Heatmap'
 import Benchmark from '../components/Benchmark'
+import RiskBadge from '../components/RiskBadge'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -121,6 +122,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [data,    setData]    = useState(null)
   const [trends,  setTrends]  = useState(null)
+  const [riskOverview, setRiskOverview] = useState(null)
   const [error,   setError]   = useState(null)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -138,6 +140,18 @@ export default function Dashboard() {
       finally { setLoading(false) }
     }
     load()
+  }, [quarter, year])
+
+  useEffect(() => {
+    const loadRisk = async () => {
+      try {
+        const risk = await getRiskOverview(quarter, year)
+        setRiskOverview(risk)
+      } catch {
+        // non-critical — silently ignore
+      }
+    }
+    loadRisk()
   }, [quarter, year])
 
   useEffect(() => {
@@ -214,6 +228,50 @@ export default function Dashboard() {
 
       <Heatmap quarter={quarter} year={year} />
       <Benchmark quarter={quarter} year={year} />
+
+      {riskOverview && riskOverview.top_risks.length > 0 && (
+        <CardShell>
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Цели под угрозой</div>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  Топ-5 целей с наибольшим риском невыполнения
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#dc2626' }} />
+                  Высокий: {riskOverview.risk_distribution.high}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#ca8a04' }} />
+                  Средний: {riskOverview.risk_distribution.medium}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#16a34a' }} />
+                  Низкий: {riskOverview.risk_distribution.low}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y" style={{ '--tw-divide-opacity': 1, borderColor: 'var(--border-secondary)' }}>
+            {riskOverview.top_risks.slice(0, 5).map((item) => (
+              <div key={item.goal_id} className="flex items-center gap-3 px-5 py-3">
+                <RiskBadge riskLevel={item.risk_score > 0.7 ? 'high' : item.risk_score >= 0.4 ? 'medium' : 'low'} riskScore={item.risk_score} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.goal_text}</div>
+                  {(item.employee_name || item.department) && (
+                    <div className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                      {[item.employee_name, item.department].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardShell>
+      )}
 
       {data && (
         <>
