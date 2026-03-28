@@ -107,8 +107,8 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-6 sm:py-10">
 
         {/* ── Top: Logo + Title ──────────────────────────────────── */}
         <div className="mb-5 sm:mb-8 flex flex-col items-center gap-2 sm:gap-3 text-center">
@@ -216,11 +216,11 @@ export default function Login() {
           <div className="space-y-4 animate-fade-in order-last">
 
             {/* Stats row */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               {MOCK_STATS.map(s => (
-                <div key={s.label} className="card px-2 py-3 sm:px-4 sm:py-3.5 text-center">
-                  <div className="text-lg sm:text-2xl font-semibold" style={{ color: 'var(--fg-brand-primary)' }}>{s.value}</div>
-                  <div className="mt-0.5 text-[10px] sm:text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
+                <div key={s.label} className="card px-3 py-3 sm:px-4 sm:py-3.5 text-center">
+                  <div className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--fg-brand-primary)' }}>{s.value}</div>
+                  <div className="mt-0.5 text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -239,8 +239,8 @@ export default function Login() {
               </div>
               <div className="space-y-2">
                 {MOCK_SMART.map(item => (
-                  <div key={item.criteria} className="flex items-center gap-2 sm:gap-3">
-                    <span className="w-20 sm:w-24 text-[11px] sm:text-xs flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{item.label}</span>
+                  <div key={item.criteria} className="flex items-center gap-1.5 sm:gap-3">
+                    <span className="w-[72px] sm:w-24 text-[11px] sm:text-xs flex-shrink-0 truncate" style={{ color: 'var(--text-tertiary)' }}>{item.label}</span>
                     <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                       <div className="h-2 rounded-full transition-all" style={{ width: `${item.score * 100}%`, backgroundColor: scoreColor(item.score) }} />
                     </div>
@@ -257,15 +257,15 @@ export default function Login() {
             </div>
 
             {/* Feature grid */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3">
               {FEATURES.map(f => (
-                <div key={f.title} className="card p-3 sm:p-4 flex gap-2.5 sm:gap-3">
+                <div key={f.title} className="card p-2.5 sm:p-4 flex flex-col sm:flex-row items-center sm:items-start gap-1.5 sm:gap-3 text-center sm:text-left">
                   <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)' }}>
                     {f.icon}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-xs sm:text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{f.title}</div>
-                    <div className="mt-0.5 text-[10px] sm:text-xs leading-tight sm:leading-4 hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{f.desc}</div>
+                    <div className="text-[11px] sm:text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{f.title}</div>
+                    <div className="mt-0.5 text-xs leading-4 hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{f.desc}</div>
                   </div>
                 </div>
               ))}
@@ -274,10 +274,10 @@ export default function Login() {
             {/* Workflow preview */}
             <div className="card p-4 sm:p-5">
               <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Жизненный цикл цели</div>
-              <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2">
-                {['Черновик', 'Согласование', 'Утверждена', 'В работе', 'Выполнена'].map((step, i, arr) => (
-                  <div key={step} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <div className="rounded-lg px-2 py-1.5 text-[10px] sm:text-xs font-medium whitespace-nowrap" style={{
+              <div className="flex items-center gap-0.5 sm:gap-2 overflow-x-auto pb-1">
+                {['Черновик', 'Согласов.', 'Утвержд.', 'В работе', 'Готово'].map((step, i, arr) => (
+                  <div key={step} className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
+                    <div className="rounded-md sm:rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-[9px] sm:text-xs font-medium whitespace-nowrap" style={{
                       backgroundColor: i === 2 ? 'var(--bg-success-primary)' : 'var(--bg-secondary)',
                       color: i === 2 ? 'var(--text-success-primary)' : 'var(--text-secondary)',
                       border: `1px solid ${i === 2 ? 'var(--border-success)' : 'var(--border-secondary)'}`,
@@ -295,9 +295,9 @@ export default function Login() {
             {/* Tech stack */}
             <div className="card p-4 sm:p-5">
               <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Технологии</div>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              <div className="flex flex-wrap gap-1 sm:gap-2">
                 {['React', 'FastAPI', 'PostgreSQL', 'ChromaDB', 'GPT-4o', 'Docker', 'Tailwind', 'SQLAlchemy'].map(t => (
-                  <span key={t} className="rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-medium" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                  <span key={t} className="rounded-full px-2 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-medium" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
                     {t}
                   </span>
                 ))}
