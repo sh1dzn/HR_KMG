@@ -231,10 +231,15 @@ export default function Dashboard() {
 
       {riskOverview && riskOverview.top_risks.length > 0 && (
         <CardShell>
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
-            <div className="flex items-center justify-between">
+          <div className="px-4 py-3 sm:px-5 sm:py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Цели под угрозой</div>
+                <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--fg-error-secondary)' }}>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  Цели под угрозой
+                </div>
                 <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   Топ-5 целей с наибольшим риском невыполнения
                 </p>
@@ -242,25 +247,25 @@ export default function Dashboard() {
               <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                 <span className="flex items-center gap-1">
                   <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#dc2626' }} />
-                  Высокий: {riskOverview.risk_distribution.high}
+                  <span className="hidden sm:inline">Высокий:</span> {riskOverview.risk_distribution.high}
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#ca8a04' }} />
-                  Средний: {riskOverview.risk_distribution.medium}
+                  <span className="hidden sm:inline">Средний:</span> {riskOverview.risk_distribution.medium}
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: '#16a34a' }} />
-                  Низкий: {riskOverview.risk_distribution.low}
+                  <span className="hidden sm:inline">Низкий:</span> {riskOverview.risk_distribution.low}
                 </span>
               </div>
             </div>
           </div>
           <div className="divide-y" style={{ '--tw-divide-opacity': 1, borderColor: 'var(--border-secondary)' }}>
             {riskOverview.top_risks.slice(0, 5).map((item) => (
-              <div key={item.goal_id} className="flex items-center gap-3 px-5 py-3">
+              <div key={item.goal_id} className="flex items-start gap-2.5 px-4 py-3 sm:items-center sm:gap-3 sm:px-5">
                 <RiskBadge riskLevel={item.risk_score > 0.7 ? 'high' : item.risk_score >= 0.4 ? 'medium' : 'low'} riskScore={item.risk_score} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.goal_text}</div>
+                  <div className="text-sm font-medium line-clamp-2 sm:truncate" style={{ color: 'var(--text-primary)' }}>{item.goal_text}</div>
                   {(item.employee_name || item.department) && (
                     <div className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                       {[item.employee_name, item.department].filter(Boolean).join(' · ')}

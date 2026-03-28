@@ -60,15 +60,15 @@ def _set_refresh_cookie(response: Response, token: str):
         key=REFRESH_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=False,  # Set True in production with HTTPS
-        samesite="strict",
+        secure=True,
+        samesite="none",
         path="/api/auth",
         max_age=REFRESH_COOKIE_MAX_AGE,
     )
 
 
 def _clear_refresh_cookie(response: Response):
-    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/api/auth")
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/api/auth", secure=True, samesite="none")
 
 
 def _build_user_profile(user: User) -> UserProfile:
