@@ -3,8 +3,11 @@ import client from '../api/client'
 
 const AuthContext = createContext(null)
 
-// Module-level access token storage (not in localStorage for security)
-let accessToken = null
+const TOKEN_KEY = 'kmg-access-token'
+const USER_KEY = 'kmg-user'
+
+// Module-level access token with localStorage persistence
+let accessToken = localStorage.getItem(TOKEN_KEY)
 
 export function getAccessToken() {
   return accessToken
@@ -12,11 +15,31 @@ export function getAccessToken() {
 
 export function setAccessToken(token) {
   accessToken = token
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token)
+  } else {
+    localStorage.removeItem(TOKEN_KEY)
+  }
+}
+
+function getSavedUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function saveUser(user) {
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(USER_KEY)
+  }
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(getSavedUser)
+  const [loading, setLoading] = useState(!accessToken)
 
   const isAuthenticated = !!user
   const role = user?.role || null
@@ -28,6 +51,7 @@ export function AuthProvider({ children }) {
       // ignore errors on logout
     }
     setAccessToken(null)
+    saveUser(null)
     setUser(null)
   }, [])
 
@@ -38,10 +62,12 @@ export function AuthProvider({ children }) {
       const me = await client.get('/auth/me', {
         headers: { Authorization: `Bearer ${res.data.access_token}` },
       })
+      saveUser(me.data)
       setUser(me.data)
       return true
     } catch {
       setAccessToken(null)
+      saveUser(null)
       setUser(null)
       return false
     }
@@ -50,14 +76,22 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const res = await client.post('/auth/login', { email, password }, { withCredentials: true })
     setAccessToken(res.data.access_token)
+    saveUser(res.data.user)
     setUser(res.data.user)
     return res.data
   }, [])
 
-  // On mount: try silent refresh
+  // On mount: if we have a saved token, verify it; otherwise try cookie refresh
   useEffect(() => {
-    refreshToken().finally(() => setLoading(false))
-  }, [refreshToken])
+    if (accessToken) {
+      client.get('/auth/me')
+        .then(res => { saveUser(res.data); setUser(res.data) })
+        .catch(() => refreshToken())
+        .finally(() => setLoading(false))
+    } else {
+      refreshToken().finally(() => setLoading(false))
+    }
+  }, [])
 
   const value = {
     user,
