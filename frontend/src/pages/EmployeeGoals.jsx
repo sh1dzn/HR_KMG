@@ -84,12 +84,17 @@ export default function EmployeeGoals() {
   const [commentsByGoal,   setCommentsByGoal]  = useState({})
   const [modalGoal,        setModalGoal]       = useState(null)
 
-  /* ── Load departments once ───────────────────────────────── */
+  /* ── Employee's own goals (for role=employee) ────────────── */
+  const [myGoals, setMyGoals]           = useState([])
+  const [totalMyGoals, setTotalMyGoals] = useState(0)
+
+  /* ── Load departments once (managers/admins only) ──────── */
   useEffect(() => {
+    if (role === 'employee') return
     getDashboardSummary('Q2', 2026).then(d => {
       setAllDepartments((d.departments_stats || []).map(ds => ({ id: ds.department_id, name: ds.department_name })))
     }).catch(() => {})
-  }, [])
+  }, [role])
 
   /* ── Reset page on filter change ───────────────────────── */
   useEffect(() => { setPage(1); setExpandedId(null); setDeptFilter('') }, [statusFilter])
@@ -99,7 +104,14 @@ export default function EmployeeGoals() {
     const load = async () => {
       setLoading(true); setError(null)
       try {
-        if (statusFilter) {
+        if (role === 'employee') {
+          // Employee: load own goals directly (backend filters by employee_id)
+          const params = { page, per_page: ROWS_PER_PAGE }
+          if (statusFilter) params.status = statusFilter
+          const r = await getGoals(params)
+          setMyGoals(r.goals || [])
+          setTotalMyGoals(r.total || 0)
+        } else if (statusFilter) {
           // Load goals by status + optional department
           const params = { status: statusFilter, page, per_page: ROWS_PER_PAGE }
           if (deptFilter) params.department_id = deptFilter
@@ -118,9 +130,9 @@ export default function EmployeeGoals() {
       finally { setLoading(false) }
     }
     load()
-  }, [page, statusFilter, deptFilter])
+  }, [page, statusFilter, deptFilter, role])
 
-  const totalItems = statusFilter ? totalFilteredGoals : totalEmployees
+  const totalItems = role === 'employee' ? totalMyGoals : (statusFilter ? totalFilteredGoals : totalEmployees)
   const totalPages = Math.max(1, Math.ceil(totalItems / ROWS_PER_PAGE))
 
   /* ── Departments list for filter ───────────────────────── */
@@ -218,6 +230,29 @@ export default function EmployeeGoals() {
       const r = await getGoals({ status: statusFilter, page, per_page: ROWS_PER_PAGE })
       setFilteredGoals(r.goals || [])
       setTotalFilteredGoals(r.total || 0)
+    } catch (e) { setError(e.response?.data?.detail || 'Ошибка действия') }
+    finally { setWorkflowActionId(null) }
+  }
+
+  /* ── Employee's own goal workflow action ─────────────────── */
+  const handleMyGoalAction = async (goalId, action) => {
+    const key = `${goalId}:${action}`
+    const comment = commentsByGoal[goalId]?.trim() || null
+    if (action === 'comment' && !comment) return
+    setWorkflowActionId(key); setError(null)
+    try {
+      const payload = { comment }
+      if (action === 'submit')  await submitGoal(goalId, payload)
+      if (action === 'approve') await approveGoal(goalId, payload)
+      if (action === 'reject')  await rejectGoal(goalId, payload)
+      if (action === 'comment') await commentGoal(goalId, payload)
+      setCommentsByGoal(p => ({ ...p, [goalId]: '' }))
+      getGoalWorkflow(goalId).then(wf => setWorkflowByGoal(p => ({ ...p, [goalId]: wf }))).catch(() => {})
+      const params = { page, per_page: ROWS_PER_PAGE }
+      if (statusFilter) params.status = statusFilter
+      const r = await getGoals(params)
+      setMyGoals(r.goals || [])
+      setTotalMyGoals(r.total || 0)
     } catch (e) { setError(e.response?.data?.detail || 'Ошибка действия') }
     finally { setWorkflowActionId(null) }
   }
@@ -429,29 +464,64 @@ export default function EmployeeGoals() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Filters */}
-      <div className="card p-4">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--fg-quaternary)' }}
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input type="text" className="input-field pl-9"
-              placeholder="Поиск по ФИО, должности..."
-              value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      {/* Filters (hidden for employees — they only see their own goals) */}
+      {role !== 'employee' && (
+        <div className="card p-4">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--fg-quaternary)' }}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" className="input-field pl-9"
+                placeholder="Поиск по ФИО, должности..."
+                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {allDepartments.length > 0 && (
+              <select className="select-field sm:w-64"
+                value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setPage(1) }}
+              >
+                <option value="">Все подразделения</option>
+                {allDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
           </div>
-          {allDepartments.length > 0 && (
-            <select className="select-field sm:w-64"
-              value={deptFilter} onChange={(e) => { setDeptFilter(e.target.value); setPage(1) }}
-            >
-              <option value="">Все подразделения</option>
-              {allDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          )}
         </div>
-      </div>
+      )}
+
+      {/* Employee: status filter tabs */}
+      {role === 'employee' && (
+        <div className="card p-3">
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(statusLabels).map(([key, label]) => {
+              const active = statusFilter === key
+              return (
+                <a key={key}
+                  href={`?status=${key}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: active ? 'var(--bg-brand-solid)' : 'var(--bg-secondary)',
+                    color: active ? '#fff' : 'var(--text-secondary)',
+                    border: `1px solid ${active ? 'var(--bg-brand-solid)' : 'var(--border-secondary)'}`,
+                  }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusConfig[key]?.dot || 'var(--fg-quaternary)' }} />
+                  {label}
+                </a>
+              )
+            })}
+            {statusFilter && (
+              <a href="?"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-quaternary)', border: '1px solid var(--border-secondary)' }}
+              >
+                Все
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="status-error flex items-center gap-2 rounded-xl px-4 py-3 text-sm">
@@ -471,7 +541,7 @@ export default function EmployeeGoals() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Загрузка сотрудников...</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{role === 'employee' ? 'Загрузка целей...' : 'Загрузка сотрудников...'}</span>
           </div>
         </div>
       ) : (
@@ -479,17 +549,174 @@ export default function EmployeeGoals() {
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              {statusFilter ? (statusLabels[statusFilter] || statusFilter) : 'Сотрудники'}
+              {role === 'employee'
+                ? (statusFilter ? (statusLabels[statusFilter] || statusFilter) : 'Мои цели')
+                : (statusFilter ? (statusLabels[statusFilter] || statusFilter) : 'Сотрудники')}
             </h2>
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
               style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
             >
               {totalItems}
             </span>
+            {role === 'employee' && (
+              <button
+                onClick={() => setModalGoal({ id: null, title: '', description: '', status: 'draft' })}
+                className="btn-primary ml-auto"
+                style={{ padding: '5px 14px', fontSize: '12px' }}
+              >
+                + Новая цель
+              </button>
+            )}
           </div>
 
-          {/* Filtered goals view (when status filter is active) */}
-          {statusFilter ? (
+          {/* Employee's own goals view */}
+          {role === 'employee' ? (
+            <div className="space-y-2">
+              {myGoals.map((goal) => {
+                const sc = statusConfig[goal.status] || statusConfig.draft
+                const wfOpen = expandedGoalId === goal.id
+                const wf = workflowByGoal[goal.id]
+                const isDraft = goal.status === 'draft' || goal.status === 'active'
+
+                return (
+                  <div key={goal.id} className="card overflow-hidden">
+                    {/* Goal header */}
+                    <div className="flex items-start gap-3 px-4 py-3.5 sm:px-5">
+                      <span className="h-2.5 w-2.5 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: sc.dot }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium leading-snug cursor-pointer hover:underline truncate"
+                          style={{ color: 'var(--text-primary)' }}
+                          onClick={() => setModalGoal(goal)}
+                        >{goal.title}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-xs rounded-full px-2 py-0.5"
+                            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                          >{sc.label}</span>
+                          {goal.goal_type && (
+                            <span className="text-xs rounded-full px-2 py-0.5"
+                              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                            >{goal.goal_type}</span>
+                          )}
+                          <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Вес {fmt(goal.weight)}%</span>
+                          {goal.deadline && (
+                            <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>
+                              Срок: {new Date(goal.deadline).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {goal.smart_score != null ? (
+                          <span className="text-sm font-semibold" style={getScoreStyle(goal.smart_score)}>
+                            {fmt(goal.smart_score * 100)}%
+                          </span>
+                        ) : (
+                          <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>--</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions bar */}
+                    <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 sm:px-5" style={{ borderTop: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
+                      {isDraft && (
+                        <button onClick={() => handleMyGoalAction(goal.id, 'submit')}
+                          disabled={workflowActionId === `${goal.id}:submit`}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+                          style={{ backgroundColor: 'var(--bg-brand-solid)', color: '#fff', border: '1px solid var(--bg-brand-solid)' }}
+                        >
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                          Отправить
+                        </button>
+                      )}
+
+                      <button onClick={() => toggleWorkflow(goal.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ml-auto"
+                        style={{ color: 'var(--text-quaternary)', border: '1px solid var(--border-secondary)' }}
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        {wfOpen ? 'Скрыть' : 'Подробнее'}
+                      </button>
+                    </div>
+
+                    {/* Workflow panel */}
+                    {wfOpen && (
+                      <div className="px-4 py-3 sm:px-5" style={{ borderTop: '1px solid var(--border-secondary)' }}>
+                        {workflowLoadingId === goal.id ? (
+                          <div className="flex items-center gap-2 py-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                            <svg className="h-4 w-4 animate-spin spinner-brand" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            Загрузка...
+                          </div>
+                        ) : wf ? (
+                          <>
+                            {/* Comment input */}
+                            <div className="flex gap-2 mb-3">
+                              <input type="text" className="input-field flex-1 text-sm"
+                                placeholder="Комментарий..."
+                                value={commentsByGoal[goal.id] || ''}
+                                onChange={(e) => setCommentsByGoal(p => ({ ...p, [goal.id]: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && commentsByGoal[goal.id]?.trim()) handleMyGoalAction(goal.id, 'comment') }}
+                              />
+                              <button onClick={() => handleMyGoalAction(goal.id, 'comment')}
+                                disabled={!commentsByGoal[goal.id]?.trim()}
+                                className="inline-flex items-center justify-center h-10 w-10 rounded-lg transition-colors disabled:opacity-40"
+                                style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
+                              >
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                </svg>
+                              </button>
+                            </div>
+                            {/* History */}
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                              {[
+                                ...(wf.events || []).map(e => ({ ...e, _type: 'event', _time: e.created_at })),
+                                ...(wf.reviews || []).map(r => ({ ...r, _type: 'review', _time: r.created_at })),
+                              ].sort((a, b) => new Date(b._time) - new Date(a._time)).slice(0, 10).map((item, i) => (
+                                <div key={i} className="flex items-start gap-2 rounded-lg px-3 py-2"
+                                  style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}>
+                                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1.5" style={{
+                                    backgroundColor: item._type === 'review' ? 'var(--fg-success-primary)' : 'var(--fg-brand-primary)',
+                                  }} />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+                                      {item.event_type || item.verdict || ''}
+                                    </div>
+                                    <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>
+                                      {item.actor_name || item.reviewer_name || 'Система'} · {new Date(item._time).toLocaleString()}
+                                    </div>
+                                    {(item.comment || item.comment_text) && (
+                                      <div className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{item.comment || item.comment_text}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {myGoals.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-xl p-12 text-center"
+                  style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}
+                >
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    {statusFilter ? `Целей со статусом «${statusLabels[statusFilter] || statusFilter}» не найдено` : 'У вас пока нет целей'}
+                  </p>
+                  <p className="mt-1 text-sm" style={{ color: 'var(--text-quaternary)' }}>
+                    {statusFilter ? 'Попробуйте другой фильтр' : 'Нажмите «+ Новая цель» чтобы создать'}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : statusFilter ? (
             <div className="space-y-2">
               {filteredGoals.map((goal) => {
                 const sc = statusConfig[goal.status] || statusConfig.draft
@@ -775,7 +1002,11 @@ export default function EmployeeGoals() {
           onClose={() => setModalGoal(null)}
           onUpdate={() => {
             // Refresh current view
-            if (statusFilter) {
+            if (role === 'employee') {
+              const params = { page, per_page: ROWS_PER_PAGE }
+              if (statusFilter) params.status = statusFilter
+              getGoals(params).then(r => { setMyGoals(r.goals || []); setTotalMyGoals(r.total || 0) }).catch(() => {})
+            } else if (statusFilter) {
               const params = { status: statusFilter, page, per_page: ROWS_PER_PAGE }
               if (deptFilter) params.department_id = deptFilter
               getGoals(params).then(r => { setFilteredGoals(r.goals || []); setTotalFilteredGoals(r.total || 0) }).catch(() => {})

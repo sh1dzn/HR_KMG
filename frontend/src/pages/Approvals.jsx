@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getGoals, approveGoal, rejectGoal, commentGoal, getGoalWorkflow } from '../api/client'
+import { useAuth } from '../contexts/AuthContext'
 import GoalModal from '../components/GoalModal'
 
 const ROWS_PER_PAGE = 15
@@ -67,6 +68,9 @@ function StatusPipeline({ current }) {
 }
 
 export default function Approvals() {
+  const { user } = useAuth()
+  const isEmployee = user?.role === 'employee'
+
   const [goals, setGoals] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -87,6 +91,7 @@ export default function Approvals() {
     try {
       const params = { page, per_page: ROWS_PER_PAGE }
       if (tab === 'submitted') params.status = 'submitted'
+      if (isEmployee) params.employee_id = user.employee_id
       const r = await getGoals(params)
       setGoals(r.goals || [])
       setTotal(r.total || 0)
@@ -161,7 +166,9 @@ export default function Approvals() {
       <div>
         <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Согласование целей</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          Очередь на утверждение, история решений и визуальный pipeline статусов.
+          {isEmployee
+            ? 'Отслеживайте статус ваших целей, отправленных на согласование.'
+            : 'Очередь на утверждение, история решений и визуальный pipeline статусов.'}
         </p>
       </div>
 
@@ -169,8 +176,8 @@ export default function Approvals() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-1.5">
           {[
-            { key: 'submitted', label: 'Ожидают решения' },
-            { key: 'all', label: 'Все цели' },
+            { key: 'submitted', label: isEmployee ? 'Мои на согласовании' : 'Ожидают решения' },
+            { key: 'all', label: isEmployee ? 'Все мои цели' : 'Все цели' },
           ].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors"
@@ -188,7 +195,7 @@ export default function Approvals() {
           ))}
         </div>
 
-        {selected.size > 0 && tab === 'submitted' && (
+        {!isEmployee && selected.size > 0 && tab === 'submitted' && (
           <button onClick={handleBatchApprove} disabled={batchLoading}
             className="btn-primary" style={{ padding: '7px 16px', fontSize: '13px' }}
           >
@@ -220,7 +227,7 @@ export default function Approvals() {
       ) : (
         <div className="space-y-2">
           {/* Select all header for submitted tab */}
-          {tab === 'submitted' && goals.length > 0 && (
+          {!isEmployee && tab === 'submitted' && goals.length > 0 && (
             <div className="flex items-center gap-3 px-1 py-1">
               <input type="checkbox" checked={allSelected} onChange={toggleAll}
                 className="h-4 w-4 rounded" style={{ accentColor: 'var(--fg-brand-primary)' }}
@@ -245,8 +252,8 @@ export default function Approvals() {
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
                 >
-                  {/* Checkbox for submitted */}
-                  {tab === 'submitted' && isSubmitted && (
+                  {/* Checkbox for submitted (manager/admin only) */}
+                  {!isEmployee && tab === 'submitted' && isSubmitted && (
                     <div className="flex-shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" checked={selected.has(goal.id)} onChange={() => toggleSelect(goal.id)}
                         className="h-4 w-4 rounded" style={{ accentColor: 'var(--fg-brand-primary)' }}
@@ -291,8 +298,8 @@ export default function Approvals() {
                         style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
                       >{goal.quarter} {goal.year}</span>
                     )}
-                    {/* Quick approve/reject for submitted */}
-                    {isSubmitted && !isOpen && (
+                    {/* Quick approve/reject for submitted (manager/admin only) */}
+                    {!isEmployee && isSubmitted && !isOpen && (
                       <div className="flex gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => handleAction(goal.id, 'approve')}
                           disabled={actionLoading === `${goal.id}:approve`}
@@ -315,6 +322,17 @@ export default function Approvals() {
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                       </div>
+                    )}
+                    {/* Awaiting badge for employees */}
+                    {isEmployee && isSubmitted && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap"
+                        style={{ backgroundColor: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)' }}>
+                        <svg className="h-3 w-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span className="hidden sm:inline">Ожидает решения руководителя</span>
+                        <span className="sm:hidden">На рассмотрении</span>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -343,8 +361,8 @@ export default function Approvals() {
                       </div>
                     )}
 
-                    {/* Actions */}
-                    {isSubmitted && (
+                    {/* Actions (manager/admin only) */}
+                    {!isEmployee && isSubmitted && (
                       <div className="mb-4 flex flex-wrap gap-2">
                         <button onClick={() => handleAction(goal.id, 'approve')}
                           disabled={actionLoading === `${goal.id}:approve`}
@@ -364,10 +382,22 @@ export default function Approvals() {
                         </button>
                       </div>
                     )}
+                    {/* Awaiting info for employees in expanded view */}
+                    {isEmployee && isSubmitted && (
+                      <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2.5"
+                        style={{ backgroundColor: 'var(--bg-warning-primary)', border: '1px solid var(--border-warning)' }}>
+                        <svg className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--text-warning-primary)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span className="text-sm" style={{ color: 'var(--text-warning-primary)' }}>
+                          Ожидает решения руководителя
+                        </span>
+                      </div>
+                    )}
 
                     {/* Comment */}
-                    <div className="mb-4 flex gap-2">
-                      <input type="text" className="input-field flex-1 text-sm"
+                    <div className="mb-4 flex flex-col sm:flex-row gap-2">
+                      <input type="text" className="input-field flex-1 text-sm w-full"
                         placeholder="Комментарий..."
                         value={comments[goal.id] || ''}
                         onChange={(e) => setComments(p => ({ ...p, [goal.id]: e.target.value }))}
@@ -375,7 +405,7 @@ export default function Approvals() {
                       />
                       <button onClick={() => handleAction(goal.id, 'comment')}
                         disabled={!comments[goal.id]?.trim() || actionLoading === `${goal.id}:comment`}
-                        className="inline-flex items-center justify-center h-10 w-10 rounded-lg transition-colors disabled:opacity-40"
+                        className="inline-flex items-center justify-center h-10 w-full sm:w-10 rounded-lg transition-colors disabled:opacity-40 flex-shrink-0"
                         style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', color: 'var(--fg-quaternary)' }}
                       >
                         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -392,7 +422,7 @@ export default function Approvals() {
                         <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text-quaternary)' }}>
                           История ({(wf.events || []).length + (wf.reviews || []).length})
                         </div>
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto overflow-x-hidden">
                           {[
                             ...(wf.events || []).map(e => ({ ...e, _type: 'event', _time: e.created_at })),
                             ...(wf.reviews || []).map(r => ({ ...r, _type: 'review', _time: r.created_at })),
@@ -435,10 +465,14 @@ export default function Approvals() {
                 </svg>
               </div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {tab === 'submitted' ? 'Нет целей на согласовании' : 'Цели не найдены'}
+                {tab === 'submitted'
+                  ? (isEmployee ? 'У вас нет целей на согласовании' : 'Нет целей на согласовании')
+                  : 'Цели не найдены'}
               </p>
               <p className="mt-1 text-sm" style={{ color: 'var(--text-quaternary)' }}>
-                {tab === 'submitted' ? 'Все цели обработаны' : 'Попробуйте другой фильтр'}
+                {tab === 'submitted'
+                  ? (isEmployee ? 'Вы не отправляли целей на рассмотрение' : 'Все цели обработаны')
+                  : 'Попробуйте другой фильтр'}
               </p>
             </div>
           )}

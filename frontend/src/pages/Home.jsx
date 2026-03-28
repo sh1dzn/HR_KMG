@@ -1,4 +1,91 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { getGoals } from '../api/client'
+
+/* ── Status config ─────────────────────────────────────────────────────────── */
+
+const STATUS_META = {
+  draft:       { label: 'Черновик',       color: 'var(--fg-quaternary)' },
+  submitted:   { label: 'На согласовании', color: 'var(--text-warning-primary)' },
+  approved:    { label: 'Утверждена',      color: 'var(--fg-success-primary)' },
+  in_progress: { label: 'В работе',        color: 'var(--fg-brand-primary)' },
+  done:        { label: 'Выполнена',       color: 'var(--fg-success-primary)' },
+}
+
+const ROLE_LABELS = {
+  admin: 'Администратор',
+  manager: 'Руководитель',
+  employee: 'Сотрудник',
+}
+
+/* ── SVG icons (stroke-based, 20x20, Untitled UI style) ──────────────────── */
+
+const icons = {
+  draft: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  ),
+  submitted: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
+  approved: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  ),
+  in_progress: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+      <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
+      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+    </svg>
+  ),
+  create: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  ),
+  evaluate: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+  goals: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+}
+
+/* ── Summary card definitions ─────────────────────────────────────────────── */
+
+const SUMMARY_CARDS = [
+  { key: 'draft',       label: 'Черновики',       icon: icons.draft },
+  { key: 'submitted',   label: 'На согласовании', icon: icons.submitted },
+  { key: 'approved',    label: 'Утверждённые',    icon: icons.approved },
+  { key: 'in_progress', label: 'В работе',        icon: icons.in_progress },
+]
+
+/* ── SMART score helpers ─────────────────────────────────────────────────── */
+
+function smartScoreColor(score) {
+  if (score >= 0.85) return 'var(--text-success-primary)'
+  if (score >= 0.7) return 'var(--text-warning-primary)'
+  return 'var(--fg-error-secondary)'
+}
+
+function formatScore(score) {
+  if (score == null) return '--'
+  return Math.round(score * 100) + '%'
+}
+
+/* ── Landing page content (fallback for non-authenticated) ───────────────── */
 
 const features = [
   {
@@ -84,7 +171,7 @@ const stats = [
 const checkItems = [
   'SMART-оценка одной цели через API',
   'Переформулировка слабой формулировки',
-  'Генерация 3–5 целей по роли и ВНД',
+  'Генерация 3-5 целей по роли и ВНД',
   'Источник каждой цели и релевантный фрагмент',
   'Пакетная оценка сотрудника за квартал',
   'Дашборд зрелости по подразделениям',
@@ -123,14 +210,203 @@ const architecture = [
   },
 ]
 
-export default function Home() {
+/* ── Dashboard (authenticated) ───────────────────────────────────────────── */
+
+function Dashboard({ user }) {
+  const [goalsData, setGoalsData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    getGoals({ page: 1, per_page: 20 })
+      .then((data) => { if (!cancelled) setGoalsData(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const goals = goalsData?.goals || []
+
+  // Count by status
+  const counts = { draft: 0, submitted: 0, approved: 0, in_progress: 0 }
+  goals.forEach((g) => {
+    const s = g.status
+    if (s in counts) counts[s]++
+  })
+
+  const recentGoals = goals.slice(0, 5)
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+
+      {/* Welcome header */}
+      <div className="card px-6 py-6 sm:px-8 sm:py-8">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+            style={{ backgroundColor: 'var(--bg-brand-secondary)', color: 'var(--fg-brand-primary)' }}
+          >
+            {(user?.employee_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2)}
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold sm:text-2xl" style={{ color: 'var(--text-primary)' }}>
+              {user?.employee_name || 'User'}
+            </h1>
+            <p className="mt-0.5 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+              {ROLE_LABELS[user?.role] || user?.role || 'Сотрудник'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Goal status summary cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {SUMMARY_CARDS.map((card) => (
+          <div key={card.key} className="card px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                {card.label}
+              </span>
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg"
+                style={{ border: '1px solid var(--border-secondary)', color: STATUS_META[card.key].color }}
+              >
+                {card.icon}
+              </div>
+            </div>
+            <div
+              className="text-3xl font-semibold tracking-tight"
+              style={{ color: loading ? 'var(--text-quaternary)' : 'var(--text-primary)' }}
+            >
+              {loading ? '--' : counts[card.key]}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent goals */}
+      <div className="card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Последние цели
+          </h2>
+          <Link to="/employees" className="text-sm font-medium" style={{ color: 'var(--fg-brand-primary)' }}>
+            Все цели
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="py-8 text-center text-sm" style={{ color: 'var(--text-quaternary)' }}>
+            Загрузка...
+          </div>
+        ) : recentGoals.length === 0 ? (
+          <div className="py-8 text-center text-sm" style={{ color: 'var(--text-quaternary)' }}>
+            Целей пока нет
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentGoals.map((goal) => {
+              const meta = STATUS_META[goal.status] || STATUS_META.draft
+              const score = goal.smart_score ?? goal.overall_score ?? null
+              return (
+                <div
+                  key={goal.id}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3"
+                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+                >
+                  {/* Status dot */}
+                  <span
+                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                    style={{ backgroundColor: meta.color }}
+                    title={meta.label}
+                  />
+
+                  {/* Goal text */}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {goal.goal_text || goal.title || 'Без названия'}
+                    </div>
+                  </div>
+
+                  {/* SMART score */}
+                  <span
+                    className="flex-shrink-0 text-sm font-semibold tabular-nums"
+                    style={{ color: score != null ? smartScoreColor(score) : 'var(--text-quaternary)' }}
+                  >
+                    {formatScore(score)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Quick actions */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          Быстрые действия
+        </h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Link
+            to="/generation"
+            className="card group flex items-center gap-4 p-5 transition-all duration-100"
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+          >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl icon-box-success">
+              {icons.create}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Создать цель</div>
+              <div className="mt-0.5 text-sm" style={{ color: 'var(--text-tertiary)' }}>Генерация новых целей</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/evaluation"
+            className="card group flex items-center gap-4 p-5 transition-all duration-100"
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+          >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl icon-box-brand">
+              {icons.evaluate}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Оценить цель</div>
+              <div className="mt-0.5 text-sm" style={{ color: 'var(--text-tertiary)' }}>SMART-оценка формулировки</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/employees"
+            className="card group flex items-center gap-4 p-5 transition-all duration-100"
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+          >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl icon-box-warning">
+              {icons.goals}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Мои цели</div>
+              <div className="mt-0.5 text-sm" style={{ color: 'var(--text-tertiary)' }}>Просмотр всех целей</div>
+            </div>
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Landing page (non-authenticated fallback) ───────────────────────────── */
+
+function LandingPage() {
   return (
     <div className="space-y-6 animate-fade-in">
 
       {/* Hero banner */}
       <div className="card rounded-2xl overflow-hidden">
         <div className="px-6 py-8 sm:px-8 sm:py-10 relative overflow-hidden">
-          {/* subtle gradient blob */}
           <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full" style={{ background: 'radial-gradient(circle, rgba(21,112,239,0.08) 0%, transparent 70%)' }} />
           <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full" style={{ background: 'radial-gradient(circle, rgba(23,178,106,0.07) 0%, transparent 70%)' }} />
 
@@ -221,8 +497,7 @@ export default function Home() {
       {/* Bottom two columns */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Checklist */}
-        <div className="card p-5"
-        >
+        <div className="card p-5">
           <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Функциональный контур</div>
           <div className="grid gap-2 sm:grid-cols-2">
             {checkItems.map((item) => (
@@ -239,8 +514,7 @@ export default function Home() {
         </div>
 
         {/* Architecture */}
-        <div className="card p-5"
-        >
+        <div className="card p-5">
           <div className="mb-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Архитектура решения</div>
           <div className="space-y-3">
             {architecture.map((a) => (
@@ -261,4 +535,16 @@ export default function Home() {
       </div>
     </div>
   )
+}
+
+/* ── Main export ─────────────────────────────────────────────────────────── */
+
+export default function Home() {
+  const { user, isAuthenticated } = useAuth()
+
+  if (isAuthenticated && user) {
+    return <Dashboard user={user} />
+  }
+
+  return <LandingPage />
 }
