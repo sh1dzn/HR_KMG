@@ -111,117 +111,24 @@ export default function Login() {
       <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
 
         {/* ── Top: Logo + Title ──────────────────────────────────── */}
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <div className="gradient-brand flex h-14 w-14 items-center justify-center rounded-2xl" style={{ boxShadow: '0px 2px 8px rgba(10,13,18,0.15)' }}>
-            <KmgLogo className="h-7 w-7 text-white" />
+        <div className="mb-5 sm:mb-8 flex flex-col items-center gap-2 sm:gap-3 text-center">
+          <div className="gradient-brand flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl" style={{ boxShadow: '0px 2px 8px rgba(10,13,18,0.15)' }}>
+            <KmgLogo className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold sm:text-3xl" style={{ color: 'var(--text-primary)' }}>HR AI Module</h1>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-              Интеллектуальное управление целями сотрудников | КМГ-КУМКОЛЬ
+            <h1 className="text-xl font-semibold sm:text-3xl" style={{ color: 'var(--text-primary)' }}>HR AI Module</h1>
+            <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm" style={{ color: 'var(--text-tertiary)' }}>
+              Управление целями | КМГ-КУМКОЛЬ
             </p>
           </div>
         </div>
 
-        {/* ── Main grid: Preview + Login ─────────────────────────── */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        {/* ── Main grid: Login + Preview ─────────────────────────── */}
+        <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
 
-          {/* ── Left: System preview ──────────────────────────────── */}
-          <div className="space-y-5 animate-fade-in">
-
-            {/* Stats row */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {MOCK_STATS.map(s => (
-                <div key={s.label} className="card px-4 py-3.5 text-center">
-                  <div className="text-2xl font-semibold" style={{ color: 'var(--fg-brand-primary)' }}>{s.value}</div>
-                  <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* SMART preview */}
-            <div className="card p-4 sm:p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--fg-brand-primary)' }}>
-                  <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                </svg>
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>SMART-оценка цели</span>
-                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>(пример)</span>
-              </div>
-              <div className="mb-3 rounded-lg px-3 py-2 text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
-                "Увеличить продажи на 15% к концу Q2 2026 через внедрение CRM"
-              </div>
-              <div className="space-y-2">
-                {MOCK_SMART.map(item => (
-                  <div key={item.criteria} className="flex items-center gap-3">
-                    <span className="w-24 text-xs flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{item.label}</span>
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${item.score * 100}%`, backgroundColor: scoreColor(item.score) }} />
-                    </div>
-                    <span className="w-10 text-right text-xs font-semibold" style={{ color: scoreColor(item.score) }}>
-                      {(item.score * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                <span>Общий балл:</span>
-                <span className="font-semibold text-sm" style={{ color: scoreColor(0.72) }}>72%</span>
-              </div>
-            </div>
-
-            {/* Feature grid */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map(f => (
-                <div key={f.title} className="card p-4 flex gap-3">
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)' }}>
-                    {f.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{f.title}</div>
-                    <div className="mt-0.5 text-xs leading-4" style={{ color: 'var(--text-tertiary)' }}>{f.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Workflow preview */}
-            <div className="card p-4 sm:p-5">
-              <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Жизненный цикл цели</div>
-              <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2">
-                {['Черновик', 'На согласовании', 'Утверждена', 'В работе', 'Выполнена'].map((step, i, arr) => (
-                  <div key={step} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <div className="rounded-lg px-2.5 py-1.5 text-xs font-medium whitespace-nowrap" style={{
-                      backgroundColor: i === 2 ? 'var(--bg-success-primary)' : 'var(--bg-secondary)',
-                      color: i === 2 ? 'var(--text-success-primary)' : 'var(--text-secondary)',
-                      border: `1px solid ${i === 2 ? 'var(--border-success)' : 'var(--border-secondary)'}`,
-                    }}>
-                      {step}
-                    </div>
-                    {i < arr.length - 1 && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-quaternary)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tech stack */}
-            <div className="card p-4 sm:p-5">
-              <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Технологии</div>
-              <div className="flex flex-wrap gap-2">
-                {['React', 'FastAPI', 'PostgreSQL', 'ChromaDB', 'GPT-4o', 'Docker', 'Tailwind CSS', 'SQLAlchemy'].map(t => (
-                  <span key={t} className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Right: Login form ─────────────────────────────────── */}
-          <div className="lg:sticky lg:top-6 h-fit">
-            <div className="card p-6 sm:p-8">
+          {/* ── Login form (first on mobile, left on desktop) ────── */}
+          <div className="lg:sticky lg:top-6 h-fit order-first">
+            <div className="card p-5 sm:p-8">
               <div className="mb-6 text-center">
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Вход в систему</h2>
                 <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>Войдите чтобы увидеть реальные данные</p>
@@ -301,6 +208,99 @@ export default function Login() {
                 <div className="mt-3 text-center text-[11px]" style={{ color: 'var(--text-quaternary)' }}>
                   Пароль для всех: <code className="font-mono px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)' }}>KMG2026!</code>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right: System preview (below login on mobile) ───── */}
+          <div className="space-y-4 animate-fade-in order-last">
+
+            {/* Stats row */}
+            <div className="grid grid-cols-4 gap-2 sm:gap-3">
+              {MOCK_STATS.map(s => (
+                <div key={s.label} className="card px-2 py-3 sm:px-4 sm:py-3.5 text-center">
+                  <div className="text-lg sm:text-2xl font-semibold" style={{ color: 'var(--fg-brand-primary)' }}>{s.value}</div>
+                  <div className="mt-0.5 text-[10px] sm:text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* SMART preview */}
+            <div className="card p-4 sm:p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--fg-brand-primary)' }}>
+                  <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                </svg>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>SMART-оценка цели</span>
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>(пример)</span>
+              </div>
+              <div className="mb-3 rounded-lg px-3 py-2 text-xs sm:text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                "Увеличить продажи на 15% к концу Q2 2026 через внедрение CRM"
+              </div>
+              <div className="space-y-2">
+                {MOCK_SMART.map(item => (
+                  <div key={item.criteria} className="flex items-center gap-2 sm:gap-3">
+                    <span className="w-20 sm:w-24 text-[11px] sm:text-xs flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{item.label}</span>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${item.score * 100}%`, backgroundColor: scoreColor(item.score) }} />
+                    </div>
+                    <span className="w-8 sm:w-10 text-right text-[11px] sm:text-xs font-semibold" style={{ color: scoreColor(item.score) }}>
+                      {(item.score * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <span>Общий балл:</span>
+                <span className="font-semibold text-sm" style={{ color: scoreColor(0.72) }}>72%</span>
+              </div>
+            </div>
+
+            {/* Feature grid */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+              {FEATURES.map(f => (
+                <div key={f.title} className="card p-3 sm:p-4 flex gap-2.5 sm:gap-3">
+                  <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)' }}>
+                    {f.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{f.title}</div>
+                    <div className="mt-0.5 text-[10px] sm:text-xs leading-tight sm:leading-4 hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Workflow preview */}
+            <div className="card p-4 sm:p-5">
+              <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Жизненный цикл цели</div>
+              <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2">
+                {['Черновик', 'Согласование', 'Утверждена', 'В работе', 'Выполнена'].map((step, i, arr) => (
+                  <div key={step} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <div className="rounded-lg px-2 py-1.5 text-[10px] sm:text-xs font-medium whitespace-nowrap" style={{
+                      backgroundColor: i === 2 ? 'var(--bg-success-primary)' : 'var(--bg-secondary)',
+                      color: i === 2 ? 'var(--text-success-primary)' : 'var(--text-secondary)',
+                      border: `1px solid ${i === 2 ? 'var(--border-success)' : 'var(--border-secondary)'}`,
+                    }}>
+                      {step}
+                    </div>
+                    {i < arr.length - 1 && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-quaternary)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tech stack */}
+            <div className="card p-4 sm:p-5">
+              <div className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Технологии</div>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {['React', 'FastAPI', 'PostgreSQL', 'ChromaDB', 'GPT-4o', 'Docker', 'Tailwind', 'SQLAlchemy'].map(t => (
+                  <span key={t} className="rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-medium" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                    {t}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
