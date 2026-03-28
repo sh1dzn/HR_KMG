@@ -66,7 +66,6 @@ client.interceptors.response.use(
         refreshQueue.forEach(({ reject }) => reject(refreshError))
         refreshQueue = []
         setAccessToken(null)
-        window.location.href = '/login'
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
@@ -354,6 +353,38 @@ export const cascadePreview = async (goalId, targetDepartmentIds, goalsPerDept =
 
 export const cascadeConfirm = async (goalId, goals) => {
   const response = await client.post(`/goals/${goalId}/cascade-confirm`, { goals })
+  return response.data
+}
+
+// Dependency API
+export const getDependencyGraph = async (quarter = null, year = null, departmentId = null) => {
+  const params = {}
+  if (quarter) params.quarter = quarter
+  if (year) params.year = year
+  if (departmentId) params.department_id = departmentId
+  const response = await client.get('/goals/dependency-graph', { params })
+  return response.data
+}
+
+export const addDependency = async (goalId, targetGoalId, type) => {
+  const response = await client.post(`/goals/${goalId}/dependencies`, {
+    target_goal_id: targetGoalId, dependency_type: type,
+  })
+  return response.data
+}
+
+export const suggestDependencies = async (goalId) => {
+  const response = await client.post(`/goals/${goalId}/suggest-dependencies`)
+  return response.data
+}
+
+export const updateDependency = async (depId, status) => {
+  const response = await client.put(`/goals/dependencies/${depId}`, { status })
+  return response.data
+}
+
+export const deleteDependency = async (depId) => {
+  const response = await client.delete(`/goals/dependencies/${depId}`)
   return response.data
 }
 
