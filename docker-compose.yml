@@ -23,6 +23,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: hr_ai_backend
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-hr_user}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-mock_smart}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -36,7 +37,7 @@ services:
       db:
         condition: service_healthy
     command: >
-      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"
 
   # Frontend
   frontend:
