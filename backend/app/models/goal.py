@@ -84,7 +84,7 @@ class Goal(Base):
     department = relationship("Department")
     events = relationship("GoalEvent", back_populates="goal", cascade="all, delete-orphan")
     reviews = relationship("GoalReview", back_populates="goal", cascade="all, delete-orphan")
-    parent_goal = relationship("Goal", remote_side=["goal_id"], foreign_keys=[parent_goal_id])
+    parent_goal = relationship("Goal", remote_side=[goal_id], foreign_keys=[parent_goal_id])
 
     def __repr__(self):
         return f"<Goal(goal_id={self.goal_id}, text='{self.goal_text[:50]}...', status={self.status})>"
