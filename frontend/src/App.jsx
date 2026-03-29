@@ -86,6 +86,15 @@ function BellIcon(props) {
   )
 }
 // Navigation config with dividers
+// Items can use `nameByRole` and `iconByRole` to show role-specific labels/icons
+function TargetIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+    </svg>
+  )
+}
+
 const navigation = [
   {
     name: 'Главная', href: '/',
@@ -93,21 +102,13 @@ const navigation = [
     roles: ['employee', 'manager', 'admin'],
   },
   {
-    name: 'Дашборд', href: '/dashboard',
-    icon: BarChartIcon,
-    roles: ['manager', 'admin'],
-  },
-  {
-    name: 'Оценка целей', href: '/evaluation',
-    icon: ChecklistIcon,
-    roles: ['employee', 'manager', 'admin'],
-  },
-  { divider: true },
-  {
-    name: 'Сотрудники',
-    icon: UsersIcon,
+    name: 'Мои цели',
+    nameByRole: { manager: 'Сотрудники', admin: 'Сотрудники' },
+    icon: TargetIcon,
+    iconByRole: { manager: UsersIcon, admin: UsersIcon },
     href: '/employees',
     badgeKey: 'employees',
+    badgeRoles: ['manager', 'admin'],
     roles: ['employee', 'manager', 'admin'],
     filters: [
       { label: 'Все',              href: '/employees' },
@@ -119,22 +120,34 @@ const navigation = [
     ],
   },
   {
-    name: 'Согласование', href: '/approvals',
+    name: 'Оценка целей', href: '/evaluation',
     icon: ChecklistIcon,
-    badgeKey: 'pending',
     roles: ['employee', 'manager', 'admin'],
   },
-  { divider: true },
   {
     name: 'Генерация целей', href: '/generation',
     icon: StarIcon,
     roles: ['employee', 'manager', 'admin'],
+  },
+  { divider: true },
+  {
+    name: 'Согласование', href: '/approvals',
+    icon: ChecklistIcon,
+    badgeKey: 'pending',
+    badgeRoles: ['manager', 'admin'],
+    roles: ['employee', 'manager', 'admin'],
+  },
+  {
+    name: 'Дашборд', href: '/dashboard',
+    icon: BarChartIcon,
+    roles: ['manager', 'admin'],
   },
   {
     name: 'Операции', href: '/operations',
     icon: BellIcon,
     roles: ['admin'],
   },
+  { divider: true },
   {
     name: 'Настройки', href: '/settings',
     icon: SettingsIcon,
@@ -392,8 +405,10 @@ function App() {
               return <div key={`divider-${idx}`} className="my-2" style={{ height: '1px', backgroundColor: 'var(--sidebar-border)' }} />
             }
 
-            const Icon = item.icon
-            const badgeValue = item.badgeKey ? sidebarStats[item.badgeKey] : null
+            const Icon = (item.iconByRole && item.iconByRole[role]) || item.icon
+            const displayName = (item.nameByRole && item.nameByRole[role]) || item.name
+            const showBadge = !item.badgeRoles || item.badgeRoles.includes(role)
+            const badgeValue = (item.badgeKey && showBadge) ? sidebarStats[item.badgeKey] : null
             const hasFilters = item.filters && item.filters.length > 0
             const isOnPage = location.pathname === item.href?.split('?')[0]
 
@@ -430,7 +445,7 @@ function App() {
                         </span>
                         {!sidebarCollapsed && (
                           <>
-                            <span className="flex-1">{item.name}</span>
+                            <span className="flex-1">{displayName}</span>
                             {badgeValue != null && (
                               <span className="rounded-full px-2 py-0.5 text-xs font-medium"
                                 style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
