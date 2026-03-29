@@ -71,6 +71,29 @@ def _goal_workflow_actions(goal: Goal) -> list[str]:
     return []
 
 
+def _can_review_goal(current_user: User, goal: Goal) -> bool:
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role == "admin":
+        return True
+    if role != "manager":
+        return False
+    if goal.employee_id == current_user.employee_id:
+        return False
+    manager_emp = current_user.employee
+    if not manager_emp:
+        return False
+    sub_ids = {sub.id for sub in manager_emp.subordinates}
+    return goal.employee_id in sub_ids
+
+
+def _goal_workflow_actions_for_user(goal: Goal, current_user: User) -> list[str]:
+    actions = _goal_workflow_actions(goal)
+    if any(action in {"approve", "reject"} for action in actions):
+        if not _can_review_goal(current_user, goal):
+            actions = [action for action in actions if action not in {"approve", "reject"}]
+    return actions
+
+
 def _ensure_goal_access(current_user: User, goal: Goal):
     role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
     if role == "admin":
@@ -261,7 +284,7 @@ def _serialize_workflow(goal: Goal) -> GoalWorkflowResponse:
         goal=_serialize_goal(None, goal, metadata),  # type: ignore[arg-type]
         events=events,
         reviews=reviews,
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -382,7 +405,7 @@ async def get_goal_workflow(goal_id: str, db: Session = Depends(get_db), current
         goal=_serialize_goal(db, goal, metadata),
         events=events,
         reviews=reviews,
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -488,7 +511,7 @@ async def submit_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Sess
     return GoalWorkflowActionResponse(
         message="Цель отправлена на согласование",
         goal=_serialize_goal(db, goal, metadata),
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -496,6 +519,8 @@ async def submit_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Sess
 async def approve_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
     _ensure_goal_access(current_user, goal)
+    if not _can_review_goal(current_user, goal):
+        raise HTTPException(status_code=403, detail="Утверждение доступно только руководителю или администратору")
     if _status_value(goal.status) != "submitted":
         raise HTTPException(status_code=400, detail="Утверждать можно только цель в статусе submitted")
 
@@ -522,7 +547,7 @@ async def approve_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Ses
     return GoalWorkflowActionResponse(
         message="Цель утверждена",
         goal=_serialize_goal(db, goal, metadata),
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -530,6 +555,8 @@ async def approve_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Ses
 async def reject_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
     _ensure_goal_access(current_user, goal)
+    if not _can_review_goal(current_user, goal):
+        raise HTTPException(status_code=403, detail="Возврат на доработку доступен только руководителю или администратору")
     if _status_value(goal.status) != "submitted":
         raise HTTPException(status_code=400, detail="Вернуть на доработку можно только цель в статусе submitted")
 
@@ -556,7 +583,7 @@ async def reject_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Sess
     return GoalWorkflowActionResponse(
         message="Цель возвращена на доработку",
         goal=_serialize_goal(db, goal, metadata),
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -587,7 +614,7 @@ async def comment_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Ses
     return GoalWorkflowActionResponse(
         message="Комментарий добавлен",
         goal=_serialize_goal(db, goal, metadata),
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -609,7 +636,7 @@ async def move_goal_status(
         return GoalWorkflowActionResponse(
             message="Статус не изменился",
             goal=_serialize_goal(db, goal, metadata),
-            available_actions=_goal_workflow_actions(goal),
+            available_actions=_goal_workflow_actions_for_user(goal, current_user),
         )
 
     _validate_target_status_for_user(current_user, current_status, target_status)
@@ -636,7 +663,7 @@ async def move_goal_status(
     return GoalWorkflowActionResponse(
         message="Статус цели обновлён",
         goal=_serialize_goal(db, goal, metadata),
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 
@@ -677,7 +704,7 @@ async def complete_goal(
     return GoalWorkflowActionResponse(
         message="Цель выполнена",
         goal=_serialize_goal(db, goal, metadata),
-        available_actions=_goal_workflow_actions(goal),
+        available_actions=_goal_workflow_actions_for_user(goal, current_user),
     )
 
 

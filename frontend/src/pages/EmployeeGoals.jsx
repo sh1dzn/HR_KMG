@@ -792,6 +792,7 @@ export default function EmployeeGoals() {
                 const wf = workflowByGoal[goal.id]
                 const isSubmitted = goal.status === 'submitted'
                 const isDraft = goal.status === 'draft' || goal.status === 'active'
+                const canReview = role !== 'employee'
 
                 return (
                   <div key={goal.id} className="card overflow-hidden">
@@ -848,7 +849,7 @@ export default function EmployeeGoals() {
                           Отправить
                         </button>
                       )}
-                      {isSubmitted && (
+                      {isSubmitted && canReview && (
                         <>
                           <button onClick={() => handleFilteredAction(goal.id, 'approve')}
                             disabled={workflowActionId === `${goal.id}:approve`}
