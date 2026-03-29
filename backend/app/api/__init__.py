@@ -25,6 +25,7 @@ _ROUTER_SPECS = [
     ("dependencies", "/goals", ["Граф зависимостей"]),
     ("chat", "/chat", ["AI Ассистент"]),
     ("documents", "/documents", ["Документы ВНД"]),
+    ("strategy", "/strategy", ["Карта стратегии"]),
     ("mcp", "/mcp", ["MCP Remote"]),
 ]
 

@@ -15,6 +15,7 @@ const Home = lazy(() => import('./pages/Home'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Approvals = lazy(() => import('./pages/Approvals'))
 const Documents = lazy(() => import('./pages/Documents'))
+const StrategyMap = lazy(() => import('./pages/StrategyMap'))
 const Login = lazy(() => import('./pages/Login'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 
@@ -133,6 +134,11 @@ const navigation = [
     roles: ['manager', 'admin'],
   },
   {
+    name: 'Карта стратегии', href: '/strategy-map',
+    icon: TargetIcon,
+    roles: ['manager', 'admin'],
+  },
+  {
     name: 'Операции', href: '/operations',
     icon: BellIcon,
     roles: ['admin'],
@@ -158,6 +164,7 @@ const pageTitles = {
   '/employees': 'Сотрудники',
   '/operations': 'Операции',
   '/approvals': 'Согласование',
+  '/strategy-map': 'Карта стратегии',
   '/documents': 'Документы ВНД',
   '/settings': 'Настройки',
 }
@@ -605,6 +612,7 @@ function App() {
               <Route path="/employees" element={<ProtectedRoute><EmployeeGoals /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute allowedRoles={['admin']}><Operations /></ProtectedRoute>} />
               <Route path="/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
+              <Route path="/strategy-map" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><StrategyMap /></ProtectedRoute>} />
               <Route path="/documents" element={<ProtectedRoute allowedRoles={['admin']}><Documents /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             </Routes>

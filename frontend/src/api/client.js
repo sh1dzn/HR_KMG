@@ -445,6 +445,21 @@ export const deleteDependency = async (depId) => {
   return response.data
 }
 
+// Quick SMART Score (heuristic, no LLM)
+export const quickScore = async (text) => {
+  const response = await client.get('/evaluation/quick-score', { params: { text } })
+  return response.data
+}
+
+// Strategy Map API
+export const analyzeStrategy = async (quarter = null, year = null) => {
+  const payload = { model: getSelectedModel() }
+  if (quarter) payload.quarter = quarter
+  if (year) payload.year = year
+  const response = await client.post('/strategy/analyze', payload, { timeout: 60000 })
+  return response.data
+}
+
 // Documents API
 export const getDocuments = async (params = {}) => {
   const response = await client.get('/documents/', { params })

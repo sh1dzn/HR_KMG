@@ -176,6 +176,56 @@ async def evaluate_batch(
     )
 
 
+@router.get("/quick-score")
+async def quick_score(
+    text: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Мгновенная SMART-оценка по эвристикам (без LLM, <10ms).
+    Используется для real-time скоринга при наборе текста.
+    """
+    if not text or len(text.strip()) < 5:
+        return {
+            "overall_score": 0,
+            "criteria": {
+                "specific": {"score": 0, "label": "Конкретность", "tip": "Начните вводить цель..."},
+                "measurable": {"score": 0, "label": "Измеримость", "tip": ""},
+                "achievable": {"score": 0, "label": "Достижимость", "tip": ""},
+                "relevant": {"score": 0, "label": "Релевантность", "tip": ""},
+                "time_bound": {"score": 0, "label": "Сроки", "tip": ""},
+            },
+            "tips": [],
+        }
+
+    result = evaluate_goal_heuristically(text.strip())
+    details = result["smart_details"]
+
+    LABELS = {
+        "specific": "Конкретность",
+        "measurable": "Измеримость",
+        "achievable": "Достижимость",
+        "relevant": "Релевантность",
+        "time_bound": "Сроки",
+    }
+
+    tips = []
+    criteria = {}
+    for key, label in LABELS.items():
+        d = details[key]
+        score = d["score"]
+        comment = d.get("comment", "")
+        criteria[key] = {"score": score, "label": label, "tip": comment}
+        if score < 0.5:
+            tips.append(comment)
+
+    return {
+        "overall_score": result["overall_score"],
+        "criteria": criteria,
+        "tips": tips[:3],
+    }
+
+
 @router.post("/reformulate")
 async def reformulate_goal(request: EvaluationRequest, current_user: User = Depends(get_current_user)):
     """

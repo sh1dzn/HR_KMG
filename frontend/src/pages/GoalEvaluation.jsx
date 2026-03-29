@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { evaluateGoal, reformulateGoal } from '../api/client'
 import SMARTScoreCard from '../components/SMARTScoreCard'
 import AIThinking from '../components/AIThinking'
+import { quickScore as fetchQuickScore } from '../api/client'
 
 const evaluationSignals = [
   'SMART по 5 критериям',
@@ -24,6 +25,17 @@ export default function GoalEvaluation() {
   const [loading,    setLoading]    = useState(false)
   const [evaluation, setEvaluation] = useState(null)
   const [error,      setError]      = useState(null)
+  const [liveScore,  setLiveScore]  = useState(null)
+  const liveTimer = useRef(null)
+
+  useEffect(() => {
+    clearTimeout(liveTimer.current)
+    if (goalText.trim().length < 5) { setLiveScore(null); return }
+    liveTimer.current = setTimeout(() => {
+      fetchQuickScore(goalText).then(setLiveScore).catch(() => {})
+    }, 600)
+    return () => clearTimeout(liveTimer.current)
+  }, [goalText])
 
   const handleEvaluate = async () => {
     if (!goalText.trim())                 { setError('Введите текст цели'); return }
@@ -107,6 +119,34 @@ export default function GoalEvaluation() {
             <input type="text" className="input-field" placeholder="Управление продаж" value={department} onChange={(e) => setDepartment(e.target.value)} />
           </div>
         </div>
+
+        {/* Live SMART Score */}
+        {liveScore && (
+          <div className="mb-5 flex flex-wrap gap-2 animate-fade-in">
+            {['specific', 'measurable', 'achievable', 'relevant', 'time_bound'].map((key) => {
+              const c = liveScore.criteria?.[key]
+              if (!c) return null
+              const s = c.score || 0
+              const clr = s >= 0.7 ? 'var(--fg-success-primary)' : s >= 0.5 ? 'var(--text-warning-primary)' : 'var(--fg-error-primary)'
+              const bg = s >= 0.7 ? 'var(--bg-success-secondary)' : s >= 0.5 ? 'var(--bg-warning-secondary)' : 'var(--bg-error-secondary)'
+              return (
+                <div key={key} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-300"
+                  style={{ backgroundColor: bg, color: clr }} title={c.tip || c.label}>
+                  <span className="font-bold">{key === 'time_bound' ? 'T' : key[0].toUpperCase()}</span>
+                  <span>{c.label}</span>
+                  <span className="tabular-nums">{Math.round(s * 100)}%</span>
+                </div>
+              )
+            })}
+            <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold"
+              style={{
+                backgroundColor: liveScore.overall_score >= 0.7 ? 'var(--bg-success-secondary)' : liveScore.overall_score >= 0.5 ? 'var(--bg-warning-secondary)' : 'var(--bg-error-secondary)',
+                color: liveScore.overall_score >= 0.7 ? 'var(--fg-success-primary)' : liveScore.overall_score >= 0.5 ? 'var(--text-warning-primary)' : 'var(--fg-error-primary)',
+              }}>
+              SMART {Math.round(liveScore.overall_score * 100)}%
+            </div>
+          </div>
+        )}
 
         <div className="status-info mb-5 flex items-start gap-3 rounded-xl px-4 py-3">
           <svg className="mt-0.5 h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
