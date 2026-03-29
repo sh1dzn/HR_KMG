@@ -445,6 +445,40 @@ export const deleteDependency = async (depId) => {
   return response.data
 }
 
+// Documents API
+export const getDocuments = async (params = {}) => {
+  const response = await client.get('/documents/', { params })
+  return response.data
+}
+
+export const getDocument = async (docId) => {
+  const response = await client.get(`/documents/${docId}`)
+  return response.data
+}
+
+export const getDocumentTypes = async () => {
+  const response = await client.get('/documents/types')
+  return response.data
+}
+
+export const uploadDocument = async (formData) => {
+  const response = await client.post('/documents/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  })
+  return response.data
+}
+
+export const updateDocument = async (docId, data) => {
+  const response = await client.put(`/documents/${docId}`, data)
+  return response.data
+}
+
+export const deleteDocument = async (docId) => {
+  const response = await client.delete(`/documents/${docId}`)
+  return response.data
+}
+
 // Chat API
 export const chatListConversations = async () => {
   const response = await client.get('/chat/conversations')

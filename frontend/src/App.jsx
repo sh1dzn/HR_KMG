@@ -14,6 +14,7 @@ const Operations = lazy(() => import('./pages/Operations'))
 const Home = lazy(() => import('./pages/Home'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Approvals = lazy(() => import('./pages/Approvals'))
+const Documents = lazy(() => import('./pages/Documents'))
 const Login = lazy(() => import('./pages/Login'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 
@@ -76,6 +77,13 @@ function TargetIcon(props) {
     </svg>
   )
 }
+function FileTextIcon(props) {
+  return (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  )
+}
 
 const navigation = [
   {
@@ -129,6 +137,11 @@ const navigation = [
     icon: BellIcon,
     roles: ['admin'],
   },
+  {
+    name: 'Документы ВНД', href: '/documents',
+    icon: FileTextIcon,
+    roles: ['admin'],
+  },
   { divider: true },
   {
     name: 'Настройки', href: '/settings',
@@ -145,6 +158,7 @@ const pageTitles = {
   '/employees': 'Сотрудники',
   '/operations': 'Операции',
   '/approvals': 'Согласование',
+  '/documents': 'Документы ВНД',
   '/settings': 'Настройки',
 }
 
@@ -591,6 +605,7 @@ function App() {
               <Route path="/employees" element={<ProtectedRoute><EmployeeGoals /></ProtectedRoute>} />
               <Route path="/operations" element={<ProtectedRoute allowedRoles={['admin']}><Operations /></ProtectedRoute>} />
               <Route path="/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
+              <Route path="/documents" element={<ProtectedRoute allowedRoles={['admin']}><Documents /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             </Routes>
           </Suspense>
