@@ -1,19 +1,21 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom'
-import GoalEvaluation from './pages/GoalEvaluation'
-import GoalGeneration from './pages/GoalGeneration'
-import Dashboard from './pages/Dashboard'
-import EmployeeGoals from './pages/EmployeeGoals'
-import Operations from './pages/Operations'
-import Home from './pages/Home'
-import Settings from './pages/Settings'
-import Approvals from './pages/Approvals'
-import Login from './pages/Login'
-import ChangePassword from './pages/ChangePassword'
 import KmgLogo from './components/KmgLogo'
 import ChatWidget from './components/ChatWidget'
 import { getDashboardSummary, getGoals } from './api/client'
 import { useAuth } from './contexts/AuthContext'
+import { getCurrentPeriod } from './utils/period'
+
+const GoalEvaluation = lazy(() => import('./pages/GoalEvaluation'))
+const GoalGeneration = lazy(() => import('./pages/GoalGeneration'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const EmployeeGoals = lazy(() => import('./pages/EmployeeGoals'))
+const Operations = lazy(() => import('./pages/Operations'))
+const Home = lazy(() => import('./pages/Home'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Approvals = lazy(() => import('./pages/Approvals'))
+const Login = lazy(() => import('./pages/Login'))
+const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 
 // SVG Icon components for sidebar navigation
 function HomeIcon(props) {
@@ -37,31 +39,10 @@ function ChecklistIcon(props) {
     </svg>
   )
 }
-function FolderIcon(props) {
-  return (
-    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-function PieChartIcon(props) {
-  return (
-    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" />
-    </svg>
-  )
-}
 function SettingsIcon(props) {
   return (
     <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  )
-}
-function ChatIcon(props) {
-  return (
-    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
     </svg>
   )
 }
@@ -226,6 +207,7 @@ function App() {
   const [themeMode, setThemeMode] = useState('system')
   const [sidebarStats, setSidebarStats] = useState({})
   const [systemTheme, setSystemTheme] = useState('light')
+  const currentPeriod = getCurrentPeriod()
   const currentTitle = pageTitles[location.pathname] || 'HR AI Module'
   const resolvedTheme = themeMode === 'system' ? systemTheme : themeMode
 
@@ -259,7 +241,7 @@ function App() {
 
   useEffect(() => {
     Promise.all([
-      getDashboardSummary('Q2', 2026),
+      getDashboardSummary(currentPeriod.quarter, currentPeriod.year),
       getGoals({ status: 'submitted', page: 1, per_page: 1 }),
     ]).then(([d, pending]) => {
       setSidebarStats({
@@ -268,7 +250,7 @@ function App() {
         pending: pending.total || 0,
       })
     }).catch(() => {})
-  }, [])
+  }, [currentPeriod.quarter, currentPeriod.year])
 
   const modeMeta = {
     light:  { icon: SunIcon,     short: 'L', label: 'Light' },
@@ -309,12 +291,14 @@ function App() {
 
   if (!isAuthenticated && !loading) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/change-password" element={<ChangePassword />} />
-        <Route path="/" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     )
   }
 
@@ -598,18 +582,20 @@ function App() {
 
         {/* Page content */}
         <main className="flex-1 overflow-hidden p-4 sm:p-6 lg:p-8">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/change-password" element={<ChangePassword />} />
-            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/evaluation" element={<ProtectedRoute><GoalEvaluation /></ProtectedRoute>} />
-            <Route path="/generation" element={<ProtectedRoute><GoalGeneration /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><Dashboard /></ProtectedRoute>} />
-            <Route path="/employees" element={<ProtectedRoute><EmployeeGoals /></ProtectedRoute>} />
-            <Route path="/operations" element={<ProtectedRoute allowedRoles={['admin']}><Operations /></ProtectedRoute>} />
-            <Route path="/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          </Routes>
+          <Suspense fallback={<div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Загрузка страницы...</div>}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/change-password" element={<ChangePassword />} />
+              <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/evaluation" element={<ProtectedRoute><GoalEvaluation /></ProtectedRoute>} />
+              <Route path="/generation" element={<ProtectedRoute><GoalGeneration /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['manager', 'admin']}><Dashboard /></ProtectedRoute>} />
+              <Route path="/employees" element={<ProtectedRoute><EmployeeGoals /></ProtectedRoute>} />
+              <Route path="/operations" element={<ProtectedRoute allowedRoles={['admin']}><Operations /></ProtectedRoute>} />
+              <Route path="/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
 

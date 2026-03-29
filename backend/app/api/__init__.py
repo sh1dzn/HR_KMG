@@ -1,89 +1,38 @@
 """
 API Routes for HR AI Module
 """
+import importlib
+import logging
+
 from fastapi import APIRouter
-from app.api import alerts, analytics, auth, cascade, chat, dependencies, goals, evaluation, generation, dashboard, employees, integrations, prediction
+
+logger = logging.getLogger("hr_ai.api")
 
 api_router = APIRouter()
 
-# Include all routers
-api_router.include_router(
-    auth.router,
-    prefix="/auth",
-    tags=["Авторизация"],
-)
+_ROUTER_SPECS = [
+    ("auth", "/auth", ["Авторизация"]),
+    ("employees", "/employees", ["Сотрудники"]),
+    ("goals", "/goals", ["Цели"]),
+    ("evaluation", "/evaluation", ["Оценка целей (SMART)"]),
+    ("generation", "/generation", ["Генерация целей (RAG)"]),
+    ("dashboard", "/dashboard", ["Аналитика и дашборд"]),
+    ("analytics", "/dashboard", ["Расширенная аналитика"]),
+    ("alerts", "/alerts", ["Алерты качества"]),
+    ("integrations", "/integrations", ["Интеграции (1C/SAP/Oracle)"]),
+    ("prediction", "/goals", ["Предсказание рисков"]),
+    ("cascade", "/goals", ["Каскадирование целей"]),
+    ("dependencies", "/goals", ["Граф зависимостей"]),
+    ("chat", "/chat", ["AI Ассистент"]),
+    ("mcp", "/mcp", ["MCP Remote"]),
+]
 
-api_router.include_router(
-    employees.router,
-    prefix="/employees",
-    tags=["Сотрудники"],
-)
-
-api_router.include_router(
-    goals.router,
-    prefix="/goals",
-    tags=["Цели"],
-)
-
-api_router.include_router(
-    evaluation.router,
-    prefix="/evaluation",
-    tags=["Оценка целей (SMART)"],
-)
-
-api_router.include_router(
-    generation.router,
-    prefix="/generation",
-    tags=["Генерация целей (RAG)"],
-)
-
-api_router.include_router(
-    dashboard.router,
-    prefix="/dashboard",
-    tags=["Аналитика и дашборд"],
-)
-
-api_router.include_router(
-    analytics.router,
-    prefix="/dashboard",
-    tags=["Расширенная аналитика"],
-)
-
-api_router.include_router(
-    alerts.router,
-    prefix="/alerts",
-    tags=["Алерты качества"],
-)
-
-api_router.include_router(
-    integrations.router,
-    prefix="/integrations",
-    tags=["Интеграции (1C/SAP/Oracle)"],
-)
-
-api_router.include_router(
-    prediction.router,
-    prefix="/goals",
-    tags=["Предсказание рисков"],
-)
-
-api_router.include_router(
-    cascade.router,
-    prefix="/goals",
-    tags=["Каскадирование целей"],
-)
-
-api_router.include_router(
-    dependencies.router,
-    prefix="/goals",
-    tags=["Граф зависимостей"],
-)
-
-api_router.include_router(
-    chat.router,
-    prefix="/chat",
-    tags=["AI Ассистент"],
-)
+for module_name, prefix, tags in _ROUTER_SPECS:
+    try:
+        module = importlib.import_module(f"app.api.{module_name}")
+        api_router.include_router(module.router, prefix=prefix, tags=tags)
+    except Exception as exc:
+        logger.warning("Router %s is skipped due to import error: %s", module_name, exc)
 
 
 # OpenAPI tag metadata for Swagger UI ordering and descriptions
@@ -102,4 +51,5 @@ TAGS_METADATA = [
     {"name": "Каскадирование целей", "description": "Авто-каскадирование целей с обнаружением конфликтов"},
     {"name": "Граф зависимостей", "description": "Интерактивный граф зависимостей между целями"},
     {"name": "AI Ассистент", "description": "Чат с AI-ассистентом: история диалогов, RAG по ВНД, контекст роли"},
+    {"name": "MCP Remote", "description": "Публичный MCP endpoint (HTTP JSON-RPC) для внешних AI-клиентов"},
 ]

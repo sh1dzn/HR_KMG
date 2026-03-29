@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useAuth } from '../contexts/AuthContext'
 import {
   chatListConversations,
@@ -95,6 +97,40 @@ function SparklesIcon({ className }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
     </svg>
+  )
+}
+
+function MarkdownMessage({ content }) {
+  return (
+    <div className="chat-markdown">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc ml-5 mb-2">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal ml-5 mb-2">{children}</ol>,
+          li: ({ children }) => <li className="mb-1">{children}</li>,
+          h1: ({ children }) => <h1 className="text-base font-semibold mb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-semibold mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+          code: ({ children, className }) => (
+            <code className={`rounded px-1.5 py-0.5 bg-black/5 ${className || ''}`.trim()}>{children}</code>
+          ),
+          pre: ({ children }) => (
+            <pre className="rounded-lg p-3 overflow-x-auto text-xs mb-2 bg-black/5">{children}</pre>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto mb-2">
+              <table className="w-full text-xs border-collapse">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => <th className="text-left font-semibold border-b py-1 pr-2">{children}</th>,
+          td: ({ children }) => <td className="border-b py-1 pr-2 align-top">{children}</td>,
+        }}
+      >
+        {content || ''}
+      </ReactMarkdown>
+    </div>
   )
 }
 
@@ -408,7 +444,11 @@ export default function ChatWidget() {
                             }
                           }
                         >
-                          <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                          {msg.role === 'assistant' ? (
+                            <MarkdownMessage content={msg.content} />
+                          ) : (
+                            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                          )}
                         </div>
                       </div>
                     ))}

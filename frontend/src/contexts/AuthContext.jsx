@@ -91,7 +91,7 @@ export function AuthProvider({ children }) {
     } else {
       refreshToken().finally(() => setLoading(false))
     }
-  }, [])
+  }, [refreshToken])
 
   const value = {
     user,

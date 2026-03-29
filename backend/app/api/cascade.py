@@ -44,5 +44,9 @@ async def cascade_confirm(
     if not goal:
         raise HTTPException(status_code=404, detail="Цель не найдена")
 
-    created_ids = confirm_cascade(str(goal.goal_id), [g.model_dump() for g in body.goals], db)
+    try:
+        created_ids = confirm_cascade(str(goal.goal_id), [g.model_dump() for g in body.goals], db)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return CascadeConfirmResponse(created_count=len(created_ids), goal_ids=created_ids)

@@ -26,6 +26,7 @@ from app.schemas.goal import (
     GoalCreate,
     GoalEventInfo,
     GoalListResponse,
+    GoalMoveRequest,
     GoalResponse,
     GoalReviewInfo,
     GoalUpdate,
@@ -62,9 +63,59 @@ def _goal_workflow_actions(goal: Goal) -> list[str]:
         return ["submit", "comment"]
     if status == "submitted":
         return ["approve", "reject", "comment"]
-    if status in {"approved", "in_progress", "done", "cancelled", "overdue", "archived"}:
+    if status in {"approved", "in_progress"}:
+        return ["complete", "comment"]
+    if status in {"done", "cancelled", "overdue", "archived"}:
         return ["comment"]
     return []
+
+
+def _ensure_goal_access(current_user: User, goal: Goal):
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role == "admin":
+        return
+    if role == "employee":
+        if goal.employee_id != current_user.employee_id:
+            raise HTTPException(status_code=403, detail="Нет доступа к этой цели")
+        return
+    if role == "manager":
+        if goal.employee_id == current_user.employee_id:
+            return
+        manager_emp = current_user.employee
+        if not manager_emp:
+            raise HTTPException(status_code=403, detail="Нет доступа к этой цели")
+        sub_ids = {sub.id for sub in manager_emp.subordinates}
+        if goal.employee_id in sub_ids:
+            return
+        raise HTTPException(status_code=403, detail="Нет доступа к этой цели")
+    raise HTTPException(status_code=403, detail="Нет доступа к этой цели")
+
+
+def _is_employee_status_transition_allowed(current_status: str, target_status: str) -> bool:
+    allowed_map = {
+        "draft": {"in_progress", "submitted", "draft"},
+        "active": {"in_progress", "submitted", "active"},
+        "in_progress": {"draft", "submitted", "done", "in_progress"},
+        "submitted": {"draft", "submitted"},
+        "approved": {"in_progress", "done", "approved"},
+        "done": {"in_progress", "done"},
+        "overdue": {"in_progress", "done", "overdue"},
+    }
+    return target_status in allowed_map.get(current_status, set())
+
+
+def _validate_target_status_for_user(current_user: User, current_status: str, target_status: str):
+    role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    if role in {"admin", "manager"}:
+        return
+    # Employee cannot force administrative statuses via kanban move.
+    if target_status in {"approved", "cancelled", "archived", "overdue"}:
+        raise HTTPException(status_code=400, detail="Недопустимый целевой статус для сотрудника")
+    if not _is_employee_status_transition_allowed(current_status, target_status):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Переход из статуса '{current_status}' в '{target_status}' недоступен",
+        )
 
 
 def _resolve_action_actor(db: Session, goal: Goal, actor_id: Optional[int], *, prefer_manager: bool = False) -> Optional[Employee]:
@@ -272,6 +323,7 @@ async def get_goals(
 @router.get("/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     metadata = load_generation_metadata(db, [goal.goal_id]).get(str(goal.goal_id))
     return _serialize_goal(db, goal, metadata)
 
@@ -279,6 +331,7 @@ async def get_goal(goal_id: str, db: Session = Depends(get_db), current_user: Us
 @router.get("/{goal_id}/workflow", response_model=GoalWorkflowResponse)
 async def get_goal_workflow(goal_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     metadata = load_generation_metadata(db, [goal.goal_id]).get(str(goal.goal_id))
     events = [
         GoalEventInfo(
@@ -357,6 +410,7 @@ async def create_goal(goal_data: GoalCreate, db: Session = Depends(get_db), curr
 @router.put("/{goal_id}", response_model=GoalResponse)
 async def update_goal(goal_id: str, goal_data: GoalUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
 
     old_text = goal.goal_text
     update_data = goal_data.model_dump(exclude_unset=True)
@@ -388,6 +442,7 @@ async def update_goal(goal_id: str, goal_data: GoalUpdate, db: Session = Depends
 @router.post("/{goal_id}/submit", response_model=GoalWorkflowActionResponse)
 async def submit_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     if _status_value(goal.status) not in {"draft", "active"}:
         raise HTTPException(status_code=400, detail="Отправить можно только цель в статусе draft или active")
 
@@ -419,6 +474,7 @@ async def submit_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Sess
 @router.post("/{goal_id}/approve", response_model=GoalWorkflowActionResponse)
 async def approve_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     if _status_value(goal.status) != "submitted":
         raise HTTPException(status_code=400, detail="Утверждать можно только цель в статусе submitted")
 
@@ -452,6 +508,7 @@ async def approve_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Ses
 @router.post("/{goal_id}/reject", response_model=GoalWorkflowActionResponse)
 async def reject_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     if _status_value(goal.status) != "submitted":
         raise HTTPException(status_code=400, detail="Вернуть на доработку можно только цель в статусе submitted")
 
@@ -485,6 +542,7 @@ async def reject_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Sess
 @router.post("/{goal_id}/comment", response_model=GoalWorkflowActionResponse)
 async def comment_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     if not request.comment or not request.comment.strip():
         raise HTTPException(status_code=400, detail="Для комментария требуется текст")
 
@@ -512,9 +570,100 @@ async def comment_goal(goal_id: str, request: GoalWorkflowActionRequest, db: Ses
     )
 
 
+@router.post("/{goal_id}/move", response_model=GoalWorkflowActionResponse)
+async def move_goal_status(
+    goal_id: str,
+    request: GoalMoveRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
+
+    current_status = _status_value(goal.status)
+    target_status = request.target_status.value if hasattr(request.target_status, "value") else str(request.target_status)
+
+    if current_status == target_status:
+        metadata = load_generation_metadata(db, [goal.goal_id]).get(str(goal.goal_id))
+        return GoalWorkflowActionResponse(
+            message="Статус не изменился",
+            goal=_serialize_goal(db, goal, metadata),
+            available_actions=_goal_workflow_actions(goal),
+        )
+
+    _validate_target_status_for_user(current_user, current_status, target_status)
+    actor = _resolve_action_actor(db, goal, request.actor_id, prefer_manager=False)
+
+    old_status = goal.status
+    goal.status = GoalStatus(target_status)
+    goal.updated_at = datetime.now(timezone.utc)
+
+    comment_text = request.comment or f"Статус изменён на {target_status}"
+    _record_goal_event(
+        db,
+        goal=goal,
+        event_type=GoalEventType.STATUS_CHANGED,
+        actor_id=actor.id if actor else None,
+        old_status=old_status,
+        new_status=goal.status,
+        metadata={"comment": comment_text},
+    )
+
+    db.commit()
+    db.refresh(goal)
+    metadata = load_generation_metadata(db, [goal.goal_id]).get(str(goal.goal_id))
+    return GoalWorkflowActionResponse(
+        message="Статус цели обновлён",
+        goal=_serialize_goal(db, goal, metadata),
+        available_actions=_goal_workflow_actions(goal),
+    )
+
+
+@router.post("/{goal_id}/complete", response_model=GoalWorkflowActionResponse)
+async def complete_goal(
+    goal_id: str,
+    request: GoalWorkflowActionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
+
+    current_status = _status_value(goal.status)
+    if current_status in {"done", "cancelled", "archived"}:
+        raise HTTPException(status_code=400, detail="Цель уже завершена или закрыта")
+
+    _validate_target_status_for_user(current_user, current_status, "done")
+    actor = _resolve_action_actor(db, goal, request.actor_id, prefer_manager=False)
+
+    old_status = goal.status
+    goal.status = GoalStatus.DONE
+    goal.updated_at = datetime.now(timezone.utc)
+    comment_text = request.comment or "Цель отмечена как выполненная"
+    _record_goal_event(
+        db,
+        goal=goal,
+        event_type=GoalEventType.STATUS_CHANGED,
+        actor_id=actor.id if actor else None,
+        old_status=old_status,
+        new_status=GoalStatus.DONE,
+        metadata={"comment": comment_text},
+    )
+
+    db.commit()
+    db.refresh(goal)
+    metadata = load_generation_metadata(db, [goal.goal_id]).get(str(goal.goal_id))
+    return GoalWorkflowActionResponse(
+        message="Цель выполнена",
+        goal=_serialize_goal(db, goal, metadata),
+        available_actions=_goal_workflow_actions(goal),
+    )
+
+
 @router.delete("/{goal_id}")
 async def delete_goal(goal_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     goal = _load_goal_or_404(db, goal_id)
+    _ensure_goal_access(current_user, goal)
     db.query(GoalReview).filter(GoalReview.goal_id == goal_id).delete(synchronize_session=False)
     db.query(GoalEvent).filter(GoalEvent.goal_id == goal_id).delete(synchronize_session=False)
     db.delete(goal)

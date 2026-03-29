@@ -43,8 +43,15 @@ class ConversationDetailResponse(BaseModel):
         from_attributes = True
 
 
+class TokenUsageResponse(BaseModel):
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+
+
 class SendMessageResponse(BaseModel):
     user_message: ChatMessageResponse
     assistant_message: ChatMessageResponse
     conversation_id: str
     title: str
+    token_usage: Optional[TokenUsageResponse] = None

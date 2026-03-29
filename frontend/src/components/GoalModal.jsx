@@ -31,6 +31,7 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
+  const [actionError, setActionError] = useState(null)
 
   useEffect(() => {
     if (!initialGoal?.id) return
@@ -42,7 +43,7 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
       setGoal(fullGoal)
       setWf(wfData)
     }).finally(() => setLoading(false))
-  }, [initialGoal?.id])
+  }, [initialGoal])
 
   // Close on Escape
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
     const text = comment.trim() || null
     if (action === 'comment' && !text) return
     setActionLoading(action)
+    setActionError(null)
     try {
       const payload = { comment: text }
       if (action === 'submit') await submitGoal(goal.id, payload)
@@ -77,7 +79,9 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
       setGoal(fullGoal)
       setWf(data)
       if (onUpdate) onUpdate()
-    } catch {}
+    } catch (err) {
+      setActionError(err.response?.data?.detail || 'Не удалось выполнить действие')
+    }
     finally { setActionLoading(null) }
   }
 
@@ -265,6 +269,13 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
                 </svg>
               </button>
             </div>
+            {actionError && (
+              <div className="rounded-lg px-3 py-2 text-sm"
+                style={{ backgroundColor: 'var(--bg-error-secondary)', color: 'var(--text-error-primary)' }}
+              >
+                {actionError}
+              </div>
+            )}
 
             {/* Workflow history */}
             {loading ? (

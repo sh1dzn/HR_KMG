@@ -1,9 +1,11 @@
 """
 Dashboard API endpoints
 """
+import threading
+import time
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Any, Optional
 from app.database import get_db
 from app.dependencies.auth import require_role
 from app.models.user import User
@@ -14,6 +16,59 @@ from app.utils.goal_context import goal_type_for_goal, load_generation_metadata,
 from app.utils.smart_heuristics import evaluate_goal_heuristically
 
 router = APIRouter()
+
+_SUMMARY_CACHE_TTL_SECONDS = 30.0
+_SUMMARY_CACHE: dict[tuple[Optional[str], Optional[int]], tuple[float, Any]] = {}
+_SUMMARY_CACHE_LOCK = threading.Lock()
+
+
+def _cache_now() -> float:
+    return time.monotonic()
+
+
+def _summary_cache_key(quarter: Optional[str], year: Optional[int]) -> tuple[Optional[str], Optional[int]]:
+    return quarter, year
+
+
+def _get_summary_cache(quarter: Optional[str], year: Optional[int]) -> Optional[Any]:
+    key = _summary_cache_key(quarter, year)
+    now = _cache_now()
+    with _SUMMARY_CACHE_LOCK:
+        cached = _SUMMARY_CACHE.get(key)
+        if not cached:
+            return None
+        cached_at, payload = cached
+        if now - cached_at > _SUMMARY_CACHE_TTL_SECONDS:
+            _SUMMARY_CACHE.pop(key, None)
+            return None
+        return payload
+
+
+def _set_summary_cache(quarter: Optional[str], year: Optional[int], payload: Any) -> None:
+    with _SUMMARY_CACHE_LOCK:
+        _SUMMARY_CACHE[_summary_cache_key(quarter, year)] = (_cache_now(), payload)
+
+
+def _normalized_goal_type(goal_type: str) -> str:
+    """Normalize goal type into dashboard buckets."""
+    if goal_type in {"activity", "output", "impact"}:
+        return goal_type
+    # Legacy/unknown labels (e.g. "operational") are treated as activity.
+    return "activity"
+
+
+def _normalized_strategic_link(link: str) -> str:
+    """Normalize strategic link into dashboard buckets."""
+    if link in {"strategic", "functional", "operational"}:
+        return link
+
+    # Legacy values from older classifiers.
+    legacy_map = {
+        "high": "strategic",
+        "medium": "functional",
+        "low": "operational",
+    }
+    return legacy_map.get(link, "operational")
 
 
 def _department_stats(
@@ -37,8 +92,10 @@ def _department_stats(
         status_counts[status_key] = status_counts.get(status_key, 0) + 1
 
         metadata = generation_metadata.get(str(goal.goal_id))
-        type_counts[goal_type_for_goal(goal, metadata)] += 1
-        link_counts[strategic_link_for_goal(goal, metadata)] += 1
+        goal_type = _normalized_goal_type(goal_type_for_goal(goal, metadata))
+        type_counts[goal_type] += 1
+        link = _normalized_strategic_link(strategic_link_for_goal(goal, metadata))
+        link_counts[link] += 1
 
         criteria_totals["S"] += details["specific"]["score"]
         criteria_totals["M"] += details["measurable"]["score"]
@@ -97,6 +154,10 @@ async def get_dashboard_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("manager", "admin")),
 ):
+    cached_summary = _get_summary_cache(quarter, year)
+    if cached_summary is not None:
+        return cached_summary
+
     goals_query = db.query(Goal)
     if quarter:
         goals_query = goals_query.filter(Goal.quarter == quarter)
@@ -136,7 +197,7 @@ async def get_dashboard_summary(
     total_linked = strategic_count + functional_count + operational_count
     top_issues = sorted(set(all_weak_criteria), key=all_weak_criteria.count, reverse=True)[:5]
 
-    return DashboardSummary(
+    summary = DashboardSummary(
         total_departments=len(departments),
         total_employees=total_employees,
         total_goals=total_goals,
@@ -149,6 +210,8 @@ async def get_dashboard_summary(
         quarter=quarter,
         year=year,
     )
+    _set_summary_cache(quarter, year, summary)
+    return summary
 
 
 @router.get("/department/{department_id}", response_model=DepartmentStats)

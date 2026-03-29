@@ -79,6 +79,12 @@ class GoalWorkflowActionRequest(BaseModel):
     comment: Optional[str] = Field(None, max_length=2000, description="Комментарий")
 
 
+class GoalMoveRequest(BaseModel):
+    target_status: GoalStatusEnum = Field(..., description="Целевой статус цели")
+    comment: Optional[str] = Field(None, max_length=2000, description="Комментарий к перемещению")
+    actor_id: Optional[int] = Field(None, description="Инициатор действия")
+
+
 class GoalWorkflowActionResponse(BaseModel):
     message: str
     goal: "GoalResponse"

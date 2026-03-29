@@ -115,9 +115,8 @@ class GoalGenerator:
         Returns:
             GenerationResponse with generated goals
         """
-        # Ensure count is within limits
-        count = max(settings.MIN_GOALS_PER_EMPLOYEE,
-                   min(count, settings.MAX_GOALS_PER_EMPLOYEE))
+        # Respect API contract (1..MAX), even if portfolio-level minimum is higher.
+        count = max(1, min(count, settings.MAX_GOALS_PER_EMPLOYEE))
 
         # Search for relevant documents
         try:
@@ -180,7 +179,7 @@ class GoalGenerator:
         generated_goals = []
         total_weight = 0
 
-        for goal_data in result.get("goals", []):
+        for goal_data in result.get("goals", [])[:count]:
             source_doc_id = goal_data.get("source_doc_id")
             source_doc = SourceDocument(
                 doc_id=str(source_doc_id) if source_doc_id is not None else "",

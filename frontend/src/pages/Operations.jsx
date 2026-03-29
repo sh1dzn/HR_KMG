@@ -4,6 +4,7 @@ import {
   getEmployees, getIntegrationSystems, reindexDocuments,
 } from '../api/client'
 import EmployeePicker from '../components/EmployeePicker'
+import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
 
 const severityBadge = {
   high:   { bg: 'var(--bg-error-primary)',   color: 'var(--fg-error-secondary)',  border: 'var(--border-error-secondary)', dot: 'var(--fg-error-secondary)' },
@@ -18,8 +19,10 @@ const CardShell = ({ children, className = '' }) => (
 )
 
 export default function Operations() {
-  const [quarter,       setQuarter]       = useState('Q2')
-  const [year,          setYear]          = useState(2026)
+  const currentPeriod = getCurrentPeriod()
+  const yearOptions = getYearRange(currentPeriod.year, 1, 2)
+  const [quarter,       setQuarter]       = useState(currentPeriod.quarter)
+  const [year,          setYear]          = useState(currentPeriod.year)
   const [alertsSummary, setAlertsSummary] = useState(null)
   const [indexStatus,   setIndexStatus]   = useState(null)
   const [employees,     setEmployees]     = useState([])
@@ -99,9 +102,11 @@ export default function Operations() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>Период:</span>
           <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
-            {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
+            {QUARTERS.map(q => <option key={q}>{q}</option>)}
           </select>
-          <input type="number" className="input-field w-24" value={year} onChange={(e) => setYear(+e.target.value)} />
+          <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
+            {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
       </div>
 

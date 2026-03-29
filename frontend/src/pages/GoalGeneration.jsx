@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { generateGoals, getFocusAreas, getEmployees, getGoals, saveAcceptedGeneratedGoals } from '../api/client'
 import EmployeePicker from '../components/EmployeePicker'
 import AIThinking from '../components/AIThinking'
+import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
 
 const normalizeGoalText = (t = '') =>
   t.toLowerCase().replace(/[^\wа-яА-Яa-zA-Z0-9%\s]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -22,9 +23,11 @@ const strategicStyle = (link) => {
 }
 
 export default function GoalGeneration() {
+  const currentPeriod = getCurrentPeriod()
+  const yearOptions = getYearRange(currentPeriod.year, 1, 2)
   const [employeeId,         setEmployeeId]         = useState('')
-  const [quarter,            setQuarter]            = useState('Q2')
-  const [year,               setYear]               = useState(2026)
+  const [quarter,            setQuarter]            = useState(currentPeriod.quarter)
+  const [year,               setYear]               = useState(currentPeriod.year)
   const [selectedFocusAreas, setSelectedFocusAreas] = useState([])
   const [count,              setCount]              = useState(3)
   const [loading,            setLoading]            = useState(false)
@@ -176,12 +179,14 @@ export default function GoalGeneration() {
           <div>
             <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Квартал</label>
             <select className="select-field w-full" value={quarter} onChange={(e) => setQuarter(e.target.value)}>
-              {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
+              {QUARTERS.map(q => <option key={q}>{q}</option>)}
             </select>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Год</label>
-            <input type="number" className="input-field" value={year} onChange={(e) => setYear(+e.target.value)} />
+            <select className="select-field w-full" value={year} onChange={(e) => setYear(+e.target.value)}>
+              {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Количество целей</label>

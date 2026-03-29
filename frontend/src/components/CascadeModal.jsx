@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { cascadePreview, cascadeConfirm, getEmployees } from '../api/client'
 import AIThinking from './AIThinking'
 
@@ -13,8 +13,11 @@ export default function CascadeModal({ goalId, goalText, departments, quarter, y
   const [selectedDepts, setSelectedDepts] = useState([])
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState(null)
+  const [employeesByDept, setEmployeesByDept] = useState({})
+  const [selectedEmployeeByDept, setSelectedEmployeeByDept] = useState({})
 
   const toggleDept = (id) => setSelectedDepts(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
@@ -24,25 +27,53 @@ export default function CascadeModal({ goalId, goalText, departments, quarter, y
     setError(null)
     try {
       const data = await cascadePreview(goalId, selectedDepts)
+      setLoadingEmployees(true)
+
+      const deptEntries = data.cascaded_goals || []
+      const employeeResults = await Promise.allSettled(
+        deptEntries.map((dept) => getEmployees({ department_id: dept.department_id }))
+      )
+
+      const nextEmployeesByDept = {}
+      const nextSelectedByDept = {}
+      deptEntries.forEach((dept, idx) => {
+        const result = employeeResults[idx]
+        const employees = result?.status === 'fulfilled' ? (result.value?.employees || []) : []
+        nextEmployeesByDept[dept.department_id] = employees
+        if (employees.length > 0) nextSelectedByDept[dept.department_id] = employees[0].id
+      })
+
+      setEmployeesByDept(nextEmployeesByDept)
+      setSelectedEmployeeByDept(nextSelectedByDept)
       setPreview(data)
       setStep(2)
     } catch (err) {
       setError(err.response?.data?.detail || 'Ошибка генерации')
     } finally {
       setLoading(false)
+      setLoadingEmployees(false)
     }
   }
 
   const handleConfirm = async () => {
     if (!preview) return
+    const missingEmployeeDept = preview.cascaded_goals.find(
+      (dept) => (dept.goals?.length || 0) > 0 && !selectedEmployeeByDept[dept.department_id]
+    )
+    if (missingEmployeeDept) {
+      setError(`Выберите сотрудника для подразделения "${missingEmployeeDept.department_name}"`)
+      return
+    }
+
     setConfirming(true)
     try {
       const goals = []
       for (const dept of preview.cascaded_goals) {
+        const employeeId = selectedEmployeeByDept[dept.department_id]
         for (const g of dept.goals) {
           goals.push({
             department_id: dept.department_id,
-            employee_id: 0, // Will need employee selection — use first employee in dept for now
+            employee_id: employeeId,
             text: g.text,
             weight: g.suggested_weight,
             quarter, year,
@@ -58,6 +89,12 @@ export default function CascadeModal({ goalId, goalText, departments, quarter, y
       setConfirming(false)
     }
   }
+
+  const hasMissingEmployeeSelection = Boolean(
+    preview?.cascaded_goals?.some(
+      (dept) => (dept.goals?.length || 0) > 0 && !selectedEmployeeByDept[dept.department_id]
+    )
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(12,17,29,0.48)', backdropFilter: 'blur(2px)' }}>
@@ -108,7 +145,7 @@ export default function CascadeModal({ goalId, goalText, departments, quarter, y
                         <span className="text-xs font-medium" style={{ color: cs.color }}>{cs.label}</span>
                         <p className="text-sm mt-1" style={{ color: 'var(--text-primary)' }}>{c.explanation}</p>
                         <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                          {c.goal_a.department}: "{c.goal_a.text?.slice(0, 60)}..." vs {c.goal_b.department}: "{c.goal_b.text?.slice(0, 60)}..."
+                          {c.goal_a.department}: &quot;{c.goal_a.text?.slice(0, 60)}...&quot; vs {c.goal_b.department}: &quot;{c.goal_b.text?.slice(0, 60)}...&quot;
                         </div>
                       </div>
                     )
@@ -121,6 +158,34 @@ export default function CascadeModal({ goalId, goalText, departments, quarter, y
             {preview.cascaded_goals.map(dept => (
               <div key={dept.department_id} className="mb-4">
                 <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{dept.department_name}</h3>
+                <div className="mb-2">
+                  <label className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                    Ответственный сотрудник
+                  </label>
+                  <select
+                    value={selectedEmployeeByDept[dept.department_id] || ''}
+                    onChange={(e) => setSelectedEmployeeByDept((prev) => ({
+                      ...prev,
+                      [dept.department_id]: e.target.value ? Number(e.target.value) : null,
+                    }))}
+                    className="w-full mt-1 rounded-lg px-3 py-2 text-sm"
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-secondary)',
+                    }}
+                  >
+                    <option value="">Выберите сотрудника</option>
+                    {(employeesByDept[dept.department_id] || []).map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.full_name}</option>
+                    ))}
+                  </select>
+                  {!loadingEmployees && dept.goals.length > 0 && (employeesByDept[dept.department_id] || []).length === 0 && (
+                    <p className="mt-1 text-xs" style={{ color: 'var(--text-warning-primary)' }}>
+                      В этом подразделении нет доступных сотрудников для назначения.
+                    </p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {dept.goals.map((g, i) => (
                     <div key={i} className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
@@ -140,7 +205,7 @@ export default function CascadeModal({ goalId, goalText, departments, quarter, y
                 style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
                 Назад
               </button>
-              <button onClick={handleConfirm} disabled={confirming}
+              <button onClick={handleConfirm} disabled={confirming || hasMissingEmployeeSelection || loadingEmployees}
                 className="flex-1 gradient-brand rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-60">
                 {confirming ? 'Создание...' : 'Подтвердить каскад'}
               </button>

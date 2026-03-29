@@ -2,20 +2,25 @@
 Chat Service — AI Assistant with role-based context and RAG
 """
 import logging
-from typing import Optional, List, Dict
+import re
+from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 
-from app.models.user import User, UserRole
-from app.models.goal import Goal, GoalStatus
+from app.models.user import User
+from app.models.goal import Goal
 from app.models.employee import Employee
 from app.models.department import Department
-from app.models.chat import ChatConversation, ChatMessage, ChatMessageRole
+from app.models.chat import ChatConversation, ChatMessage
 from app.services.llm_service import llm_service
 from app.services.rag_service import rag_service
+from app.services.platform_mcp_service import build_mcp_context
 
 logger = logging.getLogger("hr_ai.chat")
 
 MAX_CONTEXT_MESSAGES = 20
+TOKEN_FOOTER_PATTERN = re.compile(
+    r"(?:\n\n---\n`Токены: вход \d+, выход \d+, всего \d+`\s*)+$"
+)
 
 # ── Role-based system prompts ─────────────────────────────────────────────────
 
@@ -36,9 +41,11 @@ SYSTEM_PROMPT_EMPLOYEE = """Ты — AI-ассистент системы упр
 
 Правила:
 - Отвечай на русском языке
+- Форматируй ответ в Markdown (заголовки, списки, таблицы, когда уместно)
 - Будь конкретным и полезным
 - Ссылайся на ВНД когда это уместно
 - Не выдумывай информацию — если не знаешь, скажи об этом
+- Используй MCP-контекст платформы для фактов и цифр
 - Ты НЕ имеешь доступа к данным других сотрудников
 """
 
@@ -63,9 +70,11 @@ SYSTEM_PROMPT_MANAGER = """Ты — AI-ассистент системы упр�
 
 Правила:
 - Отвечай на русском языке
+- Форматируй ответ в Markdown (заголовки, списки, таблицы, когда уместно)
 - Будь конкретным и полезным
 - Ссылайся на ВНД когда это уместно
 - Не выдумывай информацию — если не знаешь, скажи об этом
+- Используй MCP-контекст платформы для фактов и цифр
 - У тебя есть доступ к данным подчинённых сотрудников
 """
 
@@ -90,9 +99,11 @@ SYSTEM_PROMPT_ADMIN = """Ты — AI-ассистент системы упра�
 
 Правила:
 - Отвечай на русском языке
+- Форматируй ответ в Markdown (заголовки, списки, таблицы, когда уместно)
 - Будь конкретным и полезным
 - Ссылайся на ВНД когда это уместно
 - Не выдумывай информацию — если не знаешь, скажи об этом
+- Используй MCP-контекст платформы для фактов и цифр
 - У тебя есть полный доступ ко всем данным системы
 """
 
@@ -175,22 +186,19 @@ def _get_system_context(db: Session) -> str:
     return "\n".join(lines)
 
 
-def _get_rag_context(query: str) -> str:
+async def _get_rag_context(query: str) -> str:
     """Search ВНД documents relevant to the query."""
     try:
-        results = rag_service.collection.query(
-            query_texts=[query],
-            n_results=3,
-        )
-        if not results or not results.get("documents") or not results["documents"][0]:
+        # Use service-level search to keep embedding dimensions consistent.
+        results = await rag_service.search(query=query, n_results=3)
+        if not results:
             return ""
 
-        docs = results["documents"][0]
-        metadatas = results["metadatas"][0] if results.get("metadatas") else [{}] * len(docs)
-
         lines = ["Релевантные фрагменты из ВНД:"]
-        for i, (doc, meta) in enumerate(zip(docs, metadatas), 1):
+        for i, item in enumerate(results[:3], 1):
+            meta = item.get("metadata", {}) if isinstance(item, dict) else {}
             title = meta.get("title", "Документ") if isinstance(meta, dict) else "Документ"
+            doc = item.get("content", "") if isinstance(item, dict) else ""
             lines.append(f"\n--- Фрагмент {i} (из: {title}) ---\n{doc[:500]}")
 
         return "\n".join(lines)
@@ -199,7 +207,7 @@ def _get_rag_context(query: str) -> str:
         return ""
 
 
-def _build_system_prompt(user: User, db: Session, user_message: str) -> str:
+async def _build_system_prompt(user: User, db: Session, user_message: str) -> str:
     """Build role-based system prompt with context."""
     emp = user.employee
     employee_name = emp.full_name if emp else "Пользователь"
@@ -207,7 +215,15 @@ def _build_system_prompt(user: User, db: Session, user_message: str) -> str:
     department = emp.department.name if emp and emp.department else "—"
 
     employee_context = _get_employee_context(user, db)
-    rag_context = _get_rag_context(user_message)
+    rag_context = await _get_rag_context(user_message)
+    mcp_context = build_mcp_context(user, db, user_message)
+
+    data_context_parts = []
+    if rag_context:
+        data_context_parts.append(rag_context)
+    if mcp_context:
+        data_context_parts.append(f"Актуальные данные платформы (MCP):\n{mcp_context}")
+    data_context = "\n\n".join(data_context_parts)
 
     role = user.role.value if hasattr(user.role, 'value') else str(user.role)
 
@@ -215,18 +231,18 @@ def _build_system_prompt(user: User, db: Session, user_message: str) -> str:
         system_context = _get_system_context(db)
         return SYSTEM_PROMPT_ADMIN.format(
             employee_name=employee_name, position=position, department=department,
-            employee_context=employee_context, system_context=system_context, rag_context=rag_context,
+            employee_context=employee_context, system_context=system_context, rag_context=data_context,
         )
     elif role == "manager":
         team_context = _get_team_context(user, db)
         return SYSTEM_PROMPT_MANAGER.format(
             employee_name=employee_name, position=position, department=department,
-            employee_context=employee_context, team_context=team_context, rag_context=rag_context,
+            employee_context=employee_context, team_context=team_context, rag_context=data_context,
         )
     else:
         return SYSTEM_PROMPT_EMPLOYEE.format(
             employee_name=employee_name, position=position, department=department,
-            employee_context=employee_context, rag_context=rag_context,
+            employee_context=employee_context, rag_context=data_context,
         )
 
 
@@ -245,15 +261,29 @@ async def generate_title(message: str, model: Optional[str] = None) -> str:
         return message[:50] + ("..." if len(message) > 50 else "")
 
 
+def _format_usage_footer(usage: Dict[str, int]) -> str:
+    input_tokens = int(usage.get("input_tokens", 0))
+    output_tokens = int(usage.get("output_tokens", 0))
+    total_tokens = int(usage.get("total_tokens", input_tokens + output_tokens))
+    return (
+        "\n\n---\n"
+        f"`Токены: вход {input_tokens}, выход {output_tokens}, всего {total_tokens}`"
+    )
+
+
+def _strip_usage_footers(content: str) -> str:
+    return TOKEN_FOOTER_PATTERN.sub("", content or "").rstrip()
+
+
 async def chat_reply(
     user: User,
     db: Session,
     conversation: ChatConversation,
     user_message: str,
     model: Optional[str] = None,
-) -> str:
+) -> Dict[str, Any]:
     """Generate AI reply for a conversation."""
-    system_prompt = _build_system_prompt(user, db, user_message)
+    system_prompt = await _build_system_prompt(user, db, user_message)
 
     # Build message history
     history_messages = (
@@ -269,23 +299,26 @@ async def chat_reply(
     messages_for_llm = [{"role": "system", "content": system_prompt}]
     for msg in history_messages:
         r = msg.role.value if hasattr(msg.role, 'value') else str(msg.role)
-        messages_for_llm.append({"role": r, "content": msg.content})
+        content = msg.content
+        if r == "assistant":
+            content = _strip_usage_footers(content)
+        messages_for_llm.append({"role": r, "content": content})
     messages_for_llm.append({"role": "user", "content": user_message})
 
-    # Call LLM directly with messages array
-    import asyncio
-    from app.services.llm_service import ALLOWED_MODELS
+    llm_result = await llm_service.complete_messages_with_usage(
+        messages=messages_for_llm,
+        temperature=0.4,
+        max_tokens=2000,
+        model=model,
+    )
+    content = (llm_result.get("content") or "").strip()
+    if not content:
+        content = "Не удалось сформировать ответ."
 
-    use_model = llm_service.model
-    if model and model in ALLOWED_MODELS:
-        use_model = model
-
-    kwargs = {
-        "model": use_model,
-        "messages": messages_for_llm,
-        "temperature": 0.4,
-        "max_tokens": 2000,
+    usage = llm_result.get("usage") or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    content = f"{content}{_format_usage_footer(usage)}"
+    return {
+        "content": content,
+        "usage": usage,
+        "model": llm_result.get("model"),
     }
-
-    response = await asyncio.to_thread(llm_service.client.chat.completions.create, **kwargs)
-    return response.choices[0].message.content

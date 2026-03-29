@@ -219,6 +219,19 @@ export const commentGoal = async (goalId, payload = {}) => {
   return response.data
 }
 
+export const moveGoalStatus = async (goalId, targetStatus, payload = {}) => {
+  const response = await client.post(`/goals/${goalId}/move`, {
+    target_status: targetStatus,
+    ...payload,
+  })
+  return response.data
+}
+
+export const completeGoal = async (goalId, payload = {}) => {
+  const response = await client.post(`/goals/${goalId}/complete`, payload)
+  return response.data
+}
+
 // Dashboard API
 export const getDashboardSummary = async (quarter = null, year = null) => {
   const params = {}

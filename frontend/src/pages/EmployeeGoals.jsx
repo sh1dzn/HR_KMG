@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
-  approveGoal, commentGoal, evaluateBatch,
+  approveGoal, commentGoal, completeGoal, evaluateBatch,
   getDashboardSummary, getEmployees, getEmployeeGoalsSummary, getGoals,
-  getGoalWorkflow, rejectGoal, submitGoal,
+  getGoalWorkflow, moveGoalStatus, rejectGoal, submitGoal,
 } from '../api/client'
 import GoalModal from '../components/GoalModal'
+import GoalsKanban from '../components/GoalsKanban'
 import OneOnOneModal from '../components/OneOnOneModal'
 import { useAuth } from '../contexts/AuthContext'
+import { getCurrentPeriod } from '../utils/period'
 
 /* ── Status config ─────────────────────────────────────── */
 const statusConfig = {
@@ -25,9 +27,10 @@ const actionStyles = {
   submit:  { bg: 'var(--bg-brand-solid)', color: '#fff', border: 'var(--bg-brand-solid)' },
   approve: { bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)' },
   reject:  { bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: 'var(--border-warning)' },
+  complete:{ bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)' },
   comment: { bg: 'var(--bg-primary)', color: 'var(--text-secondary)', border: 'var(--border-secondary)' },
 }
-const actionLabels  = { submit: 'Отправить', approve: 'Утвердить', reject: 'На доработку', comment: 'Комментарий' }
+const actionLabels  = { submit: 'Отправить', approve: 'Утвердить', reject: 'На доработку', complete: 'Выполнить', comment: 'Комментарий' }
 const eventLabels   = { created: 'Создание', edited: 'Редактирование', submitted: 'Отправка', approved: 'Утверждение', rejected: 'Возврат', commented: 'Комментарий', status_changed: 'Смена статуса', archived: 'Архивация' }
 const verdictLabels = { approve: 'Утверждено', reject: 'Отклонено', needs_changes: 'На доработку', comment_only: 'Комментарий' }
 
@@ -51,6 +54,7 @@ const statusLabels = {
 }
 
 export default function EmployeeGoals() {
+  const currentPeriod = getCurrentPeriod()
   const [searchParams] = useSearchParams()
   const statusFilter = searchParams.get('status') || ''
   const { role } = useAuth()
@@ -85,16 +89,17 @@ export default function EmployeeGoals() {
   const [modalGoal,        setModalGoal]       = useState(null)
 
   /* ── Employee's own goals (for role=employee) ────────────── */
+  const [employeeView, setEmployeeView] = useState('list')
   const [myGoals, setMyGoals]           = useState([])
   const [totalMyGoals, setTotalMyGoals] = useState(0)
 
   /* ── Load departments once (managers/admins only) ──────── */
   useEffect(() => {
     if (role === 'employee') return
-    getDashboardSummary('Q2', 2026).then(d => {
+    getDashboardSummary(currentPeriod.quarter, currentPeriod.year).then(d => {
       setAllDepartments((d.departments_stats || []).map(ds => ({ id: ds.department_id, name: ds.department_name })))
     }).catch(() => {})
-  }, [role])
+  }, [role, currentPeriod.quarter, currentPeriod.year])
 
   /* ── Reset page on filter change ───────────────────────── */
   useEffect(() => { setPage(1); setExpandedId(null); setDeptFilter('') }, [statusFilter])
@@ -134,12 +139,6 @@ export default function EmployeeGoals() {
 
   const totalItems = role === 'employee' ? totalMyGoals : (statusFilter ? totalFilteredGoals : totalEmployees)
   const totalPages = Math.max(1, Math.ceil(totalItems / ROWS_PER_PAGE))
-
-  /* ── Departments list for filter ───────────────────────── */
-  const departments = useMemo(() => {
-    const set = new Set(employees.map(e => e.department_name).filter(Boolean))
-    return [...set].sort()
-  }, [employees])
 
   /* ── Client-side search (dept is server-side now) ────── */
   const filtered = useMemo(() => {
@@ -201,6 +200,7 @@ export default function EmployeeGoals() {
       if (action === 'submit')  await submitGoal(goal.id, payload)
       if (action === 'approve') await approveGoal(goal.id, payload)
       if (action === 'reject')  await rejectGoal(goal.id, payload)
+      if (action === 'complete') await completeGoal(goal.id, payload)
       if (action === 'comment') await commentGoal(goal.id, payload)
       setCommentsByGoal(p => ({ ...p, [goal.id]: '' }))
       const [data] = await Promise.all([
@@ -223,6 +223,7 @@ export default function EmployeeGoals() {
       if (action === 'submit')  await submitGoal(goalId, payload)
       if (action === 'approve') await approveGoal(goalId, payload)
       if (action === 'reject')  await rejectGoal(goalId, payload)
+      if (action === 'complete') await completeGoal(goalId, payload)
       if (action === 'comment') await commentGoal(goalId, payload)
       setCommentsByGoal(p => ({ ...p, [goalId]: '' }))
       // Refresh workflow + goals list
@@ -245,6 +246,7 @@ export default function EmployeeGoals() {
       if (action === 'submit')  await submitGoal(goalId, payload)
       if (action === 'approve') await approveGoal(goalId, payload)
       if (action === 'reject')  await rejectGoal(goalId, payload)
+      if (action === 'complete') await completeGoal(goalId, payload)
       if (action === 'comment') await commentGoal(goalId, payload)
       setCommentsByGoal(p => ({ ...p, [goalId]: '' }))
       getGoalWorkflow(goalId).then(wf => setWorkflowByGoal(p => ({ ...p, [goalId]: wf }))).catch(() => {})
@@ -255,6 +257,23 @@ export default function EmployeeGoals() {
       setTotalMyGoals(r.total || 0)
     } catch (e) { setError(e.response?.data?.detail || 'Ошибка действия') }
     finally { setWorkflowActionId(null) }
+  }
+
+  const handleKanbanMove = async (goal, targetStatus) => {
+    if (!goal || !goal.id || !targetStatus || goal.status === targetStatus) return
+    const key = `${goal.id}:move`
+    setWorkflowActionId(key); setError(null)
+    try {
+      await moveGoalStatus(goal.id, targetStatus)
+      setMyGoals((prev) => prev.map((item) => (
+        item.id === goal.id ? { ...item, status: targetStatus, updated_at: new Date().toISOString() } : item
+      )))
+      getGoalWorkflow(goal.id).then(wf => setWorkflowByGoal(p => ({ ...p, [goal.id]: wf }))).catch(() => {})
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Не удалось переместить цель')
+    } finally {
+      setWorkflowActionId(null)
+    }
   }
 
   /* ── Render goal card (shared between desktop & mobile) ── */
@@ -493,7 +512,7 @@ export default function EmployeeGoals() {
       {/* Employee: status filter tabs */}
       {role === 'employee' && (
         <div className="card p-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
             {Object.entries(statusLabels).map(([key, label]) => {
               const active = statusFilter === key
               return (
@@ -519,6 +538,32 @@ export default function EmployeeGoals() {
                 Все
               </a>
             )}
+            <div className="ml-auto flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEmployeeView('list')}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: employeeView === 'list' ? 'var(--bg-brand-solid)' : 'var(--bg-secondary)',
+                  color: employeeView === 'list' ? '#fff' : 'var(--text-secondary)',
+                  border: `1px solid ${employeeView === 'list' ? 'var(--bg-brand-solid)' : 'var(--border-secondary)'}`,
+                }}
+              >
+                Список
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmployeeView('kanban')}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: employeeView === 'kanban' ? 'var(--bg-brand-solid)' : 'var(--bg-secondary)',
+                  color: employeeView === 'kanban' ? '#fff' : 'var(--text-secondary)',
+                  border: `1px solid ${employeeView === 'kanban' ? 'var(--bg-brand-solid)' : 'var(--border-secondary)'}`,
+                }}
+              >
+                Канбан
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -571,12 +616,24 @@ export default function EmployeeGoals() {
 
           {/* Employee's own goals view */}
           {role === 'employee' ? (
+            employeeView === 'kanban' ? (
+              <GoalsKanban
+                goals={myGoals}
+                statusConfig={statusConfig}
+                statusLabels={statusLabels}
+                busyKey={workflowActionId}
+                onMoveGoal={handleKanbanMove}
+                onCompleteGoal={(goalId) => handleMyGoalAction(goalId, 'complete')}
+                onOpenGoal={(goal) => setModalGoal(goal)}
+              />
+            ) : (
             <div className="space-y-2">
               {myGoals.map((goal) => {
                 const sc = statusConfig[goal.status] || statusConfig.draft
                 const wfOpen = expandedGoalId === goal.id
                 const wf = workflowByGoal[goal.id]
                 const isDraft = goal.status === 'draft' || goal.status === 'active'
+                const canComplete = ['approved', 'in_progress', 'active', 'overdue'].includes(goal.status)
 
                 return (
                   <div key={goal.id} className="card overflow-hidden">
@@ -626,6 +683,16 @@ export default function EmployeeGoals() {
                         >
                           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                           Отправить
+                        </button>
+                      )}
+                      {canComplete && (
+                        <button onClick={() => handleMyGoalAction(goal.id, 'complete')}
+                          disabled={workflowActionId === `${goal.id}:complete`}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+                          style={{ backgroundColor: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: '1px solid var(--border-success)' }}
+                        >
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                          Выполнить
                         </button>
                       )}
 
@@ -716,10 +783,10 @@ export default function EmployeeGoals() {
                 </div>
               )}
             </div>
+            )
           ) : statusFilter ? (
             <div className="space-y-2">
               {filteredGoals.map((goal) => {
-                const sc = statusConfig[goal.status] || statusConfig.draft
                 const initials = (goal.employee_name || '??').split(' ').map(w => w[0]).slice(0, 2).join('')
                 const wfOpen = expandedGoalId === goal.id
                 const wf = workflowByGoal[goal.id]
@@ -1019,8 +1086,8 @@ export default function EmployeeGoals() {
         <OneOnOneModal
           employeeId={agendaModal.employeeId}
           employeeName={agendaModal.employeeName}
-          quarter="Q2"
-          year={2026}
+          quarter={currentPeriod.quarter}
+          year={currentPeriod.year}
           onClose={() => setAgendaModal(null)}
         />
       )}

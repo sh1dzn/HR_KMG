@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { getDashboardSummary, getDashboardTrends, getRiskOverview } from '../api/client'
 import Heatmap from '../components/Heatmap'
 import Benchmark from '../components/Benchmark'
 import RiskBadge from '../components/RiskBadge'
+import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, PieChart, Pie, Legend,
   AreaChart, Area, Label,
 } from 'recharts'
 
@@ -117,14 +118,17 @@ const getScoreBadge = (score) => {
 }
 
 export default function Dashboard() {
-  const [quarter, setQuarter] = useState('Q2')
-  const [year,    setYear]    = useState(2026)
+  const currentPeriod = getCurrentPeriod()
+  const yearOptions = getYearRange(currentPeriod.year, 1, 2)
+  const [quarter, setQuarter] = useState(currentPeriod.quarter)
+  const [year,    setYear]    = useState(currentPeriod.year)
   const [loading, setLoading] = useState(false)
   const [data,    setData]    = useState(null)
   const [trends,  setTrends]  = useState(null)
   const [riskOverview, setRiskOverview] = useState(null)
   const [error,   setError]   = useState(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [briefCopied, setBriefCopied] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -161,6 +165,73 @@ export default function Dashboard() {
     return () => window.removeEventListener('resize', update)
   }, [])
 
+  const pieData = data ? [
+    { name: 'Стратегические',  value: data.strategic_goals_percent, fill: PIE_COLORS[0] },
+    { name: 'Функциональные',  value: data.functional_goals_percent, fill: PIE_COLORS[1] },
+    { name: 'Операционные',    value: data.operational_goals_percent, fill: PIE_COLORS[2] },
+  ] : []
+
+  const barData = data?.departments_stats?.map(d => ({
+    name:     d.department_name.substring(0, 14),
+    score:    +(d.average_smart_score * 100).toFixed(0),
+    maturity: +(d.maturity_index * 100).toFixed(0),
+  })) || []
+
+  const trendData = trends?.trends?.map(t => ({
+    label: t.label,
+    smart: +(t.average_smart_score * 100).toFixed(0),
+    strategic: +t.strategic_percent.toFixed(0),
+  })) || []
+
+  const executiveBrief = useMemo(() => {
+    if (!data) return null
+
+    const departments = [...(data.departments_stats || [])]
+      .sort((a, b) => (b.maturity_index || 0) - (a.maturity_index || 0))
+
+    const top = departments.slice(0, 2).map((d) => d.department_name)
+    const risk = departments.slice(-2).map((d) => d.department_name)
+
+    const smart = Math.round((data.average_smart_score || 0) * 100)
+    const strategic = Math.round(data.strategic_goals_percent || 0)
+    const functional = Math.round(data.functional_goals_percent || 0)
+    const operational = Math.round(data.operational_goals_percent || 0)
+
+    const actions = []
+    if (smart < 70) actions.push('Запустить обязательный SMART-review перед отправкой целей на согласование')
+    if (strategic < 30) actions.push('Увеличить долю стратегических целей в подразделениях с низкой зрелостью')
+    if (operational > 45) actions.push('Снизить перекос в операционные задачи и усилить impact/output цели')
+    if ((data.top_issues || []).length) actions.push(`Сфокусировать обучение на критериях: ${(data.top_issues || []).slice(0, 3).join(', ')}`)
+    if (!actions.length) actions.push('Закрепить текущий стандарт: ежемесячный мониторинг зрелости и ранних рисков')
+
+    return {
+      headline: `Период ${quarter} ${year}: SMART ${smart}%, стратегическая связка ${strategic}%`,
+      bullets: [
+        `Лучшие подразделения по зрелости: ${top.length ? top.join(', ') : 'н/д'}.`,
+        `Зоны риска: ${risk.length ? risk.join(', ') : 'н/д'}.`,
+        `Баланс целей: стратегические ${strategic}%, функциональные ${functional}%, операционные ${operational}%.`,
+      ],
+      actions: actions.slice(0, 3),
+    }
+  }, [data, quarter, year])
+
+  const copyExecutiveBrief = () => {
+    if (!executiveBrief) return
+    const text = [
+      `## Executive Brief (${quarter} ${year})`,
+      '',
+      `- ${executiveBrief.headline}`,
+      ...executiveBrief.bullets.map((item) => `- ${item}`),
+      '',
+      '### Рекомендуемые действия',
+      ...executiveBrief.actions.map((item, idx) => `${idx + 1}. ${item}`),
+    ].join('\n')
+    navigator.clipboard.writeText(text).then(() => {
+      setBriefCopied(true)
+      setTimeout(() => setBriefCopied(false), 1500)
+    }).catch(() => {})
+  }
+
   if (loading && !data) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -188,24 +259,6 @@ export default function Dashboard() {
     )
   }
 
-  const pieData = data ? [
-    { name: 'Стратегические',  value: data.strategic_goals_percent, fill: PIE_COLORS[0] },
-    { name: 'Функциональные',  value: data.functional_goals_percent, fill: PIE_COLORS[1] },
-    { name: 'Операционные',    value: data.operational_goals_percent, fill: PIE_COLORS[2] },
-  ] : []
-
-  const barData = data?.departments_stats?.map(d => ({
-    name:     d.department_name.substring(0, 14),
-    score:    +(d.average_smart_score * 100).toFixed(0),
-    maturity: +(d.maturity_index * 100).toFixed(0),
-  })) || []
-
-  const trendData = trends?.trends?.map(t => ({
-    label: t.label,
-    smart: +(t.average_smart_score * 100).toFixed(0),
-    strategic: +t.strategic_percent.toFixed(0),
-  })) || []
-
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page header */}
@@ -218,10 +271,10 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-2">
           <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
-            {['Q1','Q2','Q3','Q4'].map(q => <option key={q}>{q}</option>)}
+            {QUARTERS.map(q => <option key={q}>{q}</option>)}
           </select>
           <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
-            {[2025, 2026].map(y => <option key={y}>{y}</option>)}
+            {yearOptions.map(y => <option key={y}>{y}</option>)}
           </select>
         </div>
       </div>
@@ -274,6 +327,49 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardShell>
+      )}
+
+      {executiveBrief && (
+        <CardShell>
+          <div className="px-4 py-3 sm:px-5 sm:py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 3h18v18H3z"/><path d="M7 8h10M7 12h10M7 16h6"/>
+                </svg>
+                Executive Brief
+              </div>
+              <button
+                type="button"
+                onClick={copyExecutiveBrief}
+                className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)' }}
+              >
+                {briefCopied ? 'Скопировано' : 'Копировать'}
+              </button>
+            </div>
+          </div>
+          <div className="px-4 py-3 sm:px-5 sm:py-4 space-y-3">
+            <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{executiveBrief.headline}</div>
+            <ul className="space-y-1">
+              {executiveBrief.bullets.map((item) => (
+                <li key={item} className="text-sm" style={{ color: 'var(--text-tertiary)' }}>• {item}</li>
+              ))}
+            </ul>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-quaternary)' }}>
+                Рекомендуемые действия
+              </div>
+              <ol className="space-y-1">
+                {executiveBrief.actions.map((item, idx) => (
+                  <li key={item} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {idx + 1}. {item}
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         </CardShell>
       )}

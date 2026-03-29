@@ -20,6 +20,7 @@ const modelOptions = [
   { value: 'o3-mini', label: 'O3 Mini', desc: 'Reasoning модель — глубокий анализ, медленнее' },
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', desc: 'Максимальная скорость, базовое качество' },
 ]
+const VALID_MODELS = modelOptions.map((m) => m.value)
 
 const languageOptions = [
   { value: 'ru', label: 'Русский' },
@@ -81,21 +82,21 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [serverInfo, setServerInfo] = useState(null)
 
-  const validModels = modelOptions.map(m => m.value)
-
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = { ...defaultSettings, ...JSON.parse(stored) }
         // Reset model if it's not in the valid list
-        if (!validModels.includes(parsed.openaiModel)) {
+        if (!VALID_MODELS.includes(parsed.openaiModel)) {
           parsed.openaiModel = defaultSettings.openaiModel
         }
         setSettings(parsed)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
       }
-    } catch {}
+    } catch {
+      localStorage.removeItem(STORAGE_KEY)
+    }
     // Load server health info
     fetch(API_BASE.replace('/api', '') + '/health')
       .then(r => r.json())

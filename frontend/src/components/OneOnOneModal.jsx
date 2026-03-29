@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { generateOneOnOneAgenda } from '../api/client'
 import AIThinking from './AIThinking'
 
@@ -15,11 +15,11 @@ export default function OneOnOneModal({ employeeId, employeeName, quarter, year,
   const [expandedIdx, setExpandedIdx] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  useState(() => {
+  useEffect(() => {
     generateOneOnOneAgenda(employeeId, quarter, year)
       .then(res => { setData(res); setLoading(false) })
       .catch(err => { setError(err.response?.data?.detail || 'Ошибка генерации'); setLoading(false) })
-  }, [])
+  }, [employeeId, quarter, year])
 
   const copyToClipboard = () => {
     if (!data) return

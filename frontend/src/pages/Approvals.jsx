@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getGoals, approveGoal, rejectGoal, commentGoal, getGoalWorkflow } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import GoalModal from '../components/GoalModal'
@@ -86,7 +86,7 @@ export default function Approvals() {
   const [batchLoading, setBatchLoading] = useState(false)
   const [modalGoal, setModalGoal] = useState(null)
 
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
     setLoading(true); setError(null)
     try {
       const params = { page, per_page: ROWS_PER_PAGE }
@@ -97,9 +97,9 @@ export default function Approvals() {
       setTotal(r.total || 0)
     } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки') }
     finally { setLoading(false) }
-  }
+  }, [isEmployee, page, tab, user?.employee_id])
 
-  useEffect(() => { loadGoals() }, [page, tab])
+  useEffect(() => { loadGoals() }, [loadGoals])
   useEffect(() => { setPage(1); setSelected(new Set()) }, [tab])
 
   const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE))
@@ -112,7 +112,9 @@ export default function Approvals() {
       try {
         const wf = await getGoalWorkflow(goalId)
         setWorkflow(p => ({ ...p, [goalId]: wf }))
-      } catch {}
+      } catch (e) {
+        setError(e.response?.data?.detail || 'Ошибка загрузки истории')
+      }
       finally { setWfLoading(null) }
     }
   }

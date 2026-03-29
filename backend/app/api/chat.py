@@ -18,7 +18,7 @@ from app.schemas.chat import (
     SendMessageResponse,
     ChatMessageResponse,
     ConversationResponse,
-    ConversationDetailResponse,
+    TokenUsageResponse,
 )
 from app.services.chat_service import chat_reply, generate_title
 
@@ -81,8 +81,13 @@ async def send_message(
     db.flush()
 
     # Generate AI response
+    token_usage = None
     try:
-        reply = await chat_reply(current_user, db, conversation, request.message, model=request.model)
+        reply_payload = await chat_reply(current_user, db, conversation, request.message, model=request.model)
+        reply = reply_payload.get("content", "")
+        usage = reply_payload.get("usage")
+        if usage:
+            token_usage = TokenUsageResponse(**usage)
     except Exception as e:
         logger.error(f"Chat reply failed: {e}")
         reply = "Извините, произошла ошибка при генерации ответа. Попробуйте ещё раз."
@@ -108,6 +113,7 @@ async def send_message(
         ),
         conversation_id=str(conversation.id),
         title=conversation.title,
+        token_usage=token_usage,
     )
 
 
@@ -136,8 +142,13 @@ async def create_conversation_and_send(
     db.flush()
 
     # Generate AI response
+    token_usage = None
     try:
-        reply = await chat_reply(current_user, db, conversation, request.message, model=request.model)
+        reply_payload = await chat_reply(current_user, db, conversation, request.message, model=request.model)
+        reply = reply_payload.get("content", "")
+        usage = reply_payload.get("usage")
+        if usage:
+            token_usage = TokenUsageResponse(**usage)
     except Exception as e:
         logger.error(f"Chat reply failed: {e}")
         reply = "Извините, произошла ошибка при генерации ответа. Попробуйте ещё раз."
@@ -171,6 +182,7 @@ async def create_conversation_and_send(
         ),
         conversation_id=str(conversation.id),
         title=conversation.title,
+        token_usage=token_usage,
     )
 
 

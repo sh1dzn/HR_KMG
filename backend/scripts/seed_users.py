@@ -34,7 +34,13 @@ def seed_users():
         # Get all active employees
         employees = db.query(Employee).filter(Employee.is_active == True).all()
 
-        password_hash = hash_password(settings.DEFAULT_SEED_PASSWORD)
+        seed_password = (settings.DEFAULT_SEED_PASSWORD or "").strip()
+        if len(seed_password) < 12:
+            raise RuntimeError(
+                "DEFAULT_SEED_PASSWORD must be set in .env and contain at least 12 characters."
+            )
+
+        password_hash = hash_password(seed_password)
         created = {"employee": 0, "manager": 0, "admin": 0}
         skipped = 0
 

@@ -131,18 +131,33 @@ def confirm_cascade(
     created_ids = []
 
     for g in goals_data:
-        employee = db.query(Employee).filter(Employee.id == g["employee_id"]).first()
+        employee_id = g.get("employee_id")
+        department_id = g.get("department_id")
+        goal_text = (g.get("text") or "").strip()
+
+        if not employee_id:
+            raise ValueError(f"Для подразделения {department_id} не выбран сотрудник")
+        if not goal_text:
+            raise ValueError("Текст каскадной цели не может быть пустым")
+
+        employee = db.query(Employee).filter(Employee.id == employee_id).first()
         if not employee:
-            continue
+            raise ValueError(f"Сотрудник с id={employee_id} не найден")
+        if not employee.is_active:
+            raise ValueError(f"Сотрудник с id={employee_id} неактивен")
+        if employee.department_id != department_id:
+            raise ValueError(
+                f"Сотрудник {employee.full_name} не относится к подразделению {department_id}"
+            )
 
         goal = Goal(
             goal_id=str(uuid4()),
-            employee_id=g["employee_id"],
-            department_id=g["department_id"],
+            employee_id=employee_id,
+            department_id=department_id,
             employee_name_snapshot=employee.full_name,
             position_snapshot=employee.position.name if employee.position else None,
             department_name_snapshot=employee.department.name if employee.department else None,
-            goal_text=g["text"],
+            goal_text=goal_text,
             weight=g["weight"],
             quarter=g["quarter"],
             year=g["year"],

@@ -118,6 +118,11 @@ CHROMA_COLLECTION_NAME=vnd_documents
 DEBUG=true
 APP_NAME=HR AI Module
 APP_VERSION=1.0.0
+
+# Auth (обязательно задать сильные значения)
+JWT_SECRET_KEY=replace-with-64-char-random-string
+DEFAULT_SEED_PASSWORD=replace-with-strong-temp-password
+ADMIN_EMPLOYEE_IDS=166,167
 ```
 
 ### 3. Поднять PostgreSQL и backend
@@ -199,6 +204,8 @@ npm run dev
 | POST | `/api/goals/{id}/submit` | Отправить на согласование |
 | POST | `/api/goals/{id}/approve` | Утвердить |
 | POST | `/api/goals/{id}/reject` | Вернуть на доработку |
+| POST | `/api/goals/{id}/move` | Переместить цель в другой статус (kanban) |
+| POST | `/api/goals/{id}/complete` | Отметить цель как выполненную |
 | POST | `/api/goals/{id}/comment` | Добавить комментарий |
 
 ### Оценка целей (SMART)
@@ -242,6 +249,57 @@ npm run dev
 |-------|------|----------|
 | GET | `/api/integrations/systems` | Доступные HR-системы |
 | POST | `/api/integrations/export-goals` | Mock-экспорт целей |
+
+## MCP Server (для внешнего AI-агента)
+
+В проекте есть два режима MCP:
+
+1. `stdio` сервер для локальных клиентов:
+
+```bash
+cd backend
+python -m app.mcp.server
+```
+
+2. `remote` HTTP endpoint для публичного подключения (Claude custom connector и другие MCP-клиенты):
+
+- `GET /api/mcp/public/info` - метаинформация/готовность
+- `POST /api/mcp/public` - JSON-RPC вызовы MCP (`initialize`, `tools/list`, `tools/call`)
+
+Переменные окружения:
+
+```env
+MCP_PUBLIC_ENABLED=true
+MCP_PUBLIC_BEARER_TOKEN=your_strong_shared_token
+```
+
+Если `MCP_PUBLIC_BEARER_TOKEN` задан, передавайте один из заголовков:
+- `Authorization: Bearer <token>`
+- `X-MCP-Key: <token>`
+
+Поддерживаемые MCP tools:
+- `platform.context`
+- `platform.org_summary`
+- `platform.problem_departments`
+- `platform.top_employees`
+- `platform.employee_goals`
+- `platform.search_documents`
+
+Для вызова tool нужно передать идентификатор пользователя (`user_email` или `user_id` или `user_employee_id`), иначе сервер вернёт ошибку доступа.
+
+### Подключение в Claude (через сайт)
+
+1. Опубликуйте backend по HTTPS (например `https://hr-api.example.com`).
+2. Убедитесь, что `MCP_PUBLIC_ENABLED=true`.
+3. В `claude.ai` откройте `Settings -> Connectors -> Add custom connector`.
+4. Укажите URL MCP: `https://hr-api.example.com/api/mcp/public`.
+5. Если используете токен, настройте авторизацию в коннекторе (Bearer).
+
+## Demo для жюри
+
+Готовый пошаговый сценарий защиты (6-8 минут) находится в:
+
+- `docs/JURY_DEMO_PLAYBOOK.md`
 
 ## Структура проекта
 

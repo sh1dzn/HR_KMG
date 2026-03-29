@@ -89,6 +89,12 @@ _UNREALISTIC_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+_SPECIFIC_PASS_THRESHOLD = 0.75
+_MEASURABLE_PASS_THRESHOLD = 0.60
+_ACHIEVABLE_PASS_THRESHOLD = 0.70
+_RELEVANT_PASS_THRESHOLD = 0.70
+_TIME_BOUND_PASS_THRESHOLD = 0.65
+
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -158,10 +164,19 @@ def _evaluate_specific(text: str) -> Dict[str, Any]:
         score -= 0.15
         reasons.append("повторяющиеся слова")
 
+    # Very short broad statements should not pass as "specific".
+    if (
+        unique_count <= 4
+        and not _METRIC_PATTERNS.search(text)
+        and not _TIMEFRAME_PATTERNS.search(text)
+    ):
+        score -= 0.10
+        reasons.append("недостаточно уточняющих деталей")
+
     score = round(max(0.05, min(score, 0.98)), 2)
     comment = "; ".join(reasons) if reasons else "Оценка конкретности"
     comment = comment[0].upper() + comment[1:] + "."
-    return {"score": score, "comment": comment, "is_satisfied": score >= 0.7}
+    return {"score": score, "comment": comment, "is_satisfied": score >= _SPECIFIC_PASS_THRESHOLD}
 
 
 def _evaluate_measurable(text: str, metric: str | None = None) -> Dict[str, Any]:
@@ -189,6 +204,11 @@ def _evaluate_measurable(text: str, metric: str | None = None) -> Dict[str, Any]
         score += 0.15
         reasons.append("есть числовые значения")
 
+    # Quantified metric phrasing (e.g. "не менее", "не выше", ">= 95")
+    if _METRIC_PATTERNS.search(text):
+        score += 0.15
+        reasons.append("обнаружены формализованные метрики")
+
     # Named KPI/SLA/NPS
     if re.search(r"\b(?:kpi|sla|nps|roi|csat|mttr)\b", text, re.IGNORECASE):
         score += 0.15
@@ -199,13 +219,23 @@ def _evaluate_measurable(text: str, metric: str | None = None) -> Dict[str, Any]
         score += 0.15
         reasons.append("указано направление изменения с числом")
 
+    # Action + number pattern ("снизить ... на 25%", "increase ... by 10%")
+    if re.search(r"\b(?:снизить|увеличить|повысить|reduce|increase|decrease|improve)\b.*\d", text, re.IGNORECASE):
+        score += 0.10
+        reasons.append("действие задано числовым целевым значением")
+
+    # Range target ("с 60 до 75", "from 60 to 75")
+    if re.search(r"\bс\s*\d+\s*до\s*\d+\b|\bfrom\s+\d+\s+to\s+\d+\b", text, re.IGNORECASE):
+        score += 0.10
+        reasons.append("указан целевой диапазон значения")
+
     if not reasons:
         reasons.append("не найдено измеримых критериев")
 
     score = round(max(0.05, min(score, 0.98)), 2)
     comment = "; ".join(reasons)
     comment = comment[0].upper() + comment[1:] + "."
-    return {"score": score, "comment": comment, "is_satisfied": score >= 0.7}
+    return {"score": score, "comment": comment, "is_satisfied": score >= _MEASURABLE_PASS_THRESHOLD}
 
 
 def _evaluate_achievable(text: str, priority: Any = None) -> Dict[str, Any]:
@@ -254,7 +284,7 @@ def _evaluate_achievable(text: str, priority: Any = None) -> Dict[str, Any]:
     score = round(max(0.15, min(score, 0.95)), 2)
     comment = "; ".join(reasons)
     comment = comment[0].upper() + comment[1:] + "."
-    return {"score": score, "comment": comment, "is_satisfied": score >= 0.7}
+    return {"score": score, "comment": comment, "is_satisfied": score >= _ACHIEVABLE_PASS_THRESHOLD}
 
 
 def _evaluate_relevant(text: str) -> Dict[str, Any]:
@@ -296,7 +326,7 @@ def _evaluate_relevant(text: str) -> Dict[str, Any]:
     score = round(max(0.10, min(score, 0.98)), 2)
     comment = "; ".join(reasons)
     comment = comment[0].upper() + comment[1:] + "."
-    return {"score": score, "comment": comment, "is_satisfied": score >= 0.7}
+    return {"score": score, "comment": comment, "is_satisfied": score >= _RELEVANT_PASS_THRESHOLD}
 
 
 def _evaluate_time_bound(text: str, deadline: Any = None) -> Dict[str, Any]:
@@ -319,13 +349,18 @@ def _evaluate_time_bound(text: str, deadline: Any = None) -> Dict[str, Any]:
         score += 0.10
         reasons.append("конкретная дата")
 
+    # Quarter + year gives enough precision even without day/month.
+    if re.search(r"\bq[1-4]\b", text, re.IGNORECASE) and re.search(r"20\d{2}", text):
+        score += 0.10
+        reasons.append("указаны квартал и год")
+
     if not deadline and not _TIMEFRAME_PATTERNS.search(text):
         reasons.append("не указан срок выполнения")
 
     score = round(max(0.05, min(score, 0.98)), 2)
     comment = "; ".join(reasons)
     comment = comment[0].upper() + comment[1:] + "."
-    return {"score": score, "comment": comment, "is_satisfied": score >= 0.7}
+    return {"score": score, "comment": comment, "is_satisfied": score >= _TIME_BOUND_PASS_THRESHOLD}
 
 
 # ─── Main function ───────────────────────────────────────────────────────────
