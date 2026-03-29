@@ -367,7 +367,7 @@ export default function EmployeeGoals() {
                 />
                 <div className="grid gap-3 lg:grid-cols-2">
                   <div>
-                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>События</div>
+                    <div className="mb-1.5 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>События</div>
                     <div className="space-y-1.5">
                       {(wf.events || []).map((ev) => (
                         <div key={ev.id} className="rounded-lg px-3 py-2"
@@ -382,7 +382,7 @@ export default function EmployeeGoals() {
                     </div>
                   </div>
                   <div>
-                    <div className="mb-1.5 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Отзывы</div>
+                    <div className="mb-1.5 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Отзывы</div>
                     <div className="space-y-1.5">
                       {(wf.reviews || []).map((rv) => (
                         <div key={rv.id} className="rounded-lg px-3 py-2"
@@ -798,7 +798,9 @@ export default function EmployeeGoals() {
                   <div key={goal.id} className="card overflow-hidden">
                     {/* Goal header */}
                     <div className="flex items-start gap-3 px-4 py-3.5 sm:px-5">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white gradient-brand mt-0.5">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold mt-0.5"
+                        style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
+                      >
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -974,7 +976,9 @@ export default function EmployeeGoals() {
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
                   >
                     {/* Avatar */}
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white gradient-brand">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                      style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
+                    >
                       {initials}
                     </div>
 

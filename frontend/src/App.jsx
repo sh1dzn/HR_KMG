@@ -318,7 +318,7 @@ function App() {
           type="button"
           aria-label="Закрыть меню"
           className="fixed inset-0 z-40 lg:hidden"
-          style={{ backgroundColor: 'rgba(12,17,29,0.48)', backdropFilter: 'blur(2px)' }}
+          style={{ backgroundColor: 'rgba(12, 17, 29, 0.42)' }}
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -328,8 +328,8 @@ function App() {
         className={[
           'fixed inset-y-0 left-0 z-50 flex max-w-[88vw] flex-col transition-all duration-200 ease-out lg:translate-x-0',
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
-          sidebarCollapsed ? 'lg:w-[68px]' : 'lg:w-[280px]',
-          'w-[280px]',
+          sidebarCollapsed ? 'lg:w-[64px]' : 'lg:w-[252px]',
+          'w-[252px]',
         ].join(' ')}
         style={{
           backgroundColor: 'var(--sidebar-bg)',
@@ -339,10 +339,10 @@ function App() {
         {/* Logo area */}
         <div className={`flex h-[64px] flex-shrink-0 items-center ${sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'}`} style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
           <div className="flex items-center gap-3">
-            <div className="gradient-brand flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-              style={{ boxShadow: '0px 1px 2px rgba(10,13,18,0.10)' }}
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
+              style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
             >
-              <KmgLogo className="h-5 w-5 text-white" />
+              <KmgLogo className="h-5 w-5" />
             </div>
             {!sidebarCollapsed && (
               <div className="min-w-0">
@@ -432,7 +432,7 @@ function App() {
                           <>
                             <span className="flex-1">{displayName}</span>
                             {badgeValue != null && (
-                              <span className="rounded-full px-2 py-0.5 text-xs font-medium"
+                              <span className="rounded-md px-2 py-0.5 text-xs font-medium"
                                 style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
                               >
                                 {badgeValue}
@@ -503,7 +503,9 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3 px-1">
-                <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
+                >
                   {user?.employee_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -530,7 +532,9 @@ function App() {
           )}
           {sidebarCollapsed && (
             <div className="flex justify-center">
-              <div className="gradient-brand flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                style={{ backgroundColor: 'var(--bg-brand-primary)', color: 'var(--fg-brand-primary)', border: '1px solid var(--border-brand-secondary)' }}
+              >
                 {user?.employee_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'U'}
               </div>
             </div>
@@ -539,14 +543,13 @@ function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`flex min-w-0 flex-1 flex-col transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[280px]'}`}>
+      <div className={`flex min-w-0 flex-1 flex-col transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-[64px]' : 'lg:pl-[252px]'}`}>
         {/* Header */}
         <header
           className="sticky top-0 z-30"
           style={{
             backgroundColor: 'var(--header-bg)',
             borderBottom: '1px solid var(--header-border)',
-            backdropFilter: 'blur(8px)',
           }}
         >
           <div className="flex h-[64px] items-center justify-between gap-4 px-4 sm:px-6">
@@ -570,11 +573,6 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-                style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)', border: '1px solid var(--border-secondary)' }}
-              >
-                PostgreSQL · FastAPI · React
-              </span>
               <ThemeSwitch compact />
             </div>
           </div>

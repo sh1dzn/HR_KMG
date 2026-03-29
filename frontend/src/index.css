@@ -70,9 +70,6 @@ html, body {
     --fg-error-secondary:      #B42318;
     --text-success-secondary:  #054F31;
 
-    /* Brand gradient */
-    --brand-gradient:          linear-gradient(135deg, #1570EF 0%, #53B1FD 100%);
-
     /* Always-dark surface (hero card, code blocks) */
     --surface-dark:            #101828;
     --surface-dark-border:     #1F242F;
@@ -163,13 +160,13 @@ html, body {
   }
 
   html {
-    font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Geist', 'IBM Plex Sans', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Geist', 'IBM Plex Sans', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
     font-size: 14px;
@@ -194,7 +191,7 @@ html, body {
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500
            disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none;
     background-color: #1570EF;
-    box-shadow: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset, 0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset, 0px 1px 2px rgba(10, 13, 18, 0.05);
+    box-shadow: 0px 1px 2px rgba(10, 13, 18, 0.10);
   }
   .btn-primary:hover:not(:disabled) {
     background-color: #175CD3;
@@ -279,41 +276,42 @@ html, body {
     appearance: none;
     -webkit-appearance: none;
     width: 100%;
-    height: 8px;
+    height: 10px;
     border-radius: 9999px;
-    background-color: var(--bg-brand-secondary);
-    border: 1px solid var(--border-brand-secondary);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
     outline: none;
   }
   .range-field::-webkit-slider-runnable-track {
-    height: 8px;
+    height: 10px;
     border-radius: 9999px;
-    background-color: var(--bg-brand-secondary);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
   }
   .range-field::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    margin-top: -5px;
-    width: 18px;
-    height: 18px;
+    margin-top: -4px;
+    width: 16px;
+    height: 16px;
     border-radius: 9999px;
-    border: 2px solid #FFFFFF;
-    background-color: var(--fg-brand-primary);
-    box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.2);
+    border: 2px solid var(--fg-brand-primary);
+    background-color: var(--bg-primary);
+    box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.18);
   }
   .range-field::-moz-range-track {
-    height: 8px;
+    height: 10px;
     border-radius: 9999px;
-    background-color: var(--bg-brand-secondary);
-    border: 1px solid var(--border-brand-secondary);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
   }
   .range-field::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 9999px;
-    border: 2px solid #FFFFFF;
-    background-color: var(--fg-brand-primary);
-    box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.2);
+    border: 2px solid var(--fg-brand-primary);
+    background-color: var(--bg-primary);
+    box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.18);
   }
 
   /* iOS: prevent auto-zoom on input focus */
@@ -325,7 +323,7 @@ html, body {
 
   /* Card */
   .card {
-    @apply rounded-xl;
+    @apply rounded-lg;
     background-color: var(--bg-primary);
     border: 1px solid var(--border-secondary);
     box-shadow: 0px 1px 2px rgba(10, 13, 18, 0.05);
@@ -333,7 +331,7 @@ html, body {
 
   /* Badge base */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-[8px] py-[2px] text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-md px-[8px] py-[2px] text-xs font-medium;
   }
   .badge-gray    { @apply badge; background-color: var(--bg-tertiary);        color: var(--text-secondary);       border: 1px solid var(--border-primary); }
   .badge-brand   { @apply badge; background-color: var(--bg-brand-primary);   color: var(--text-brand-primary);   border: 1px solid var(--border-brand-secondary); }
@@ -355,8 +353,8 @@ html, body {
   .icon-box-error   { background-color: var(--bg-error-primary);   color: var(--fg-error-primary); }
   .icon-box-gray    { background-color: var(--bg-tertiary);         color: var(--fg-tertiary); }
 
-  /* Brand gradient for logo / avatar */
-  .gradient-brand { background: var(--brand-gradient); }
+  /* Brand fill for logo / avatar */
+  .gradient-brand { background-color: var(--bg-brand-solid); }
 
   /* Spinner color */
   .spinner-brand { color: var(--fg-brand-primary); }
@@ -410,8 +408,6 @@ html, body {
     color: var(--text-secondary);
     font-size: 11px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     transition: all 0.1s ease-linear;
     box-shadow: 0px 1px 2px rgba(10, 13, 18, 0.05);
   }

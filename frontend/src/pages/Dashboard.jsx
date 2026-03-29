@@ -86,12 +86,12 @@ const MetricCard = ({ label, value, change, changeLabel, icon: MetricIcon, accen
           )}
         </div>
         <div className="flex items-end gap-2 sm:gap-4 flex-wrap">
-          <span className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
+          <span className="text-2xl sm:text-3xl font-semibold" style={{ color: accent ? 'var(--fg-brand-primary)' : 'var(--text-primary)' }}>
             {value}
           </span>
           {change != null && (
             <div className="flex items-center gap-1 mb-0.5 sm:mb-1">
-              <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium"
+              <span className="inline-flex items-center gap-0.5 rounded-md px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium"
                 style={{
                   backgroundColor: isPositive ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
                   color: isPositive ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
@@ -359,7 +359,7 @@ export default function Dashboard() {
               ))}
             </ul>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-quaternary)' }}>
+              <div className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Рекомендуемые действия
               </div>
               <ol className="space-y-1">
@@ -427,7 +427,7 @@ export default function Dashboard() {
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
             <CardShell>
               <div className="px-5 py-4">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Executive Summary</div>
+                <div className="mb-3 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Executive summary</div>
                 <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
                   В {data.quarter} {data.year} средний индекс качества целей составляет{' '}
                   <span style={{ color: 'var(--fg-brand-primary)' }}>{(data.average_smart_score * 100).toFixed(0)}%</span>.
@@ -440,7 +440,7 @@ export default function Dashboard() {
             </CardShell>
             <CardShell>
               <div className="px-5 py-4">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-quaternary)' }}>Top Issues</div>
+                <div className="mb-3 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Top issues</div>
                 {data.top_issues.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {data.top_issues.map((issue) => (
@@ -519,16 +519,6 @@ export default function Dashboard() {
               <div className="h-72 px-4 pb-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={trendData} margin={{ top: isMobile ? 6 : 12, bottom: isMobile ? 0 : 16 }}>
-                    <defs>
-                      <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1570EF" stopOpacity={0.7} />
-                        <stop offset="95%" stopColor="#1570EF" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="gradientStrategic" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#17B26A" stopOpacity={0.7} />
-                        <stop offset="95%" stopColor="#17B26A" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid vertical={false} stroke="var(--border-secondary)" />
                     <Legend
                       align="right"
@@ -578,8 +568,8 @@ export default function Dashboard() {
                       name="SMART %"
                       stroke="#1570EF"
                       strokeWidth={2}
-                      fill="url(#gradientSmart)"
-                      fillOpacity={0.1}
+                      fill="#1570EF"
+                      fillOpacity={0.12}
                       activeDot={{ fill: 'var(--bg-primary)', stroke: '#1570EF', strokeWidth: 2, r: 5 }}
                     />
                     <Area
@@ -588,8 +578,8 @@ export default function Dashboard() {
                       name="Стратегические %"
                       stroke="#17B26A"
                       strokeWidth={2}
-                      fill="url(#gradientStrategic)"
-                      fillOpacity={0.1}
+                      fill="#17B26A"
+                      fillOpacity={0.12}
                       activeDot={{ fill: 'var(--bg-primary)', stroke: '#17B26A', strokeWidth: 2, r: 5 }}
                     />
                   </AreaChart>
@@ -612,7 +602,7 @@ export default function Dashboard() {
                 <thead>
                   <tr style={{ backgroundColor: 'var(--bg-secondary)' }}>
                     {['Подразделение','Сотруд.','Целей','SMART','Зрелость','Слабые критерии'].map(h => (
-                      <th key={h} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                      <th key={h} className="px-6 py-3 text-left text-xs font-medium"
                         style={{ color: 'var(--text-quaternary)', borderBottom: '1px solid var(--border-secondary)' }}
                       >{h}</th>
                     ))}
@@ -633,7 +623,7 @@ export default function Dashboard() {
                         <td className="px-6 py-4 text-center" style={{ color: 'var(--text-secondary)' }}>{dept.total_employees}</td>
                         <td className="px-6 py-4 text-center" style={{ color: 'var(--text-secondary)' }}>{dept.total_goals}</td>
                         <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                          <span className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold"
                             style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}
                           >
                             {smart}%
@@ -641,8 +631,8 @@ export default function Dashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col items-center gap-1">
-                            <div className="h-1.5 w-28 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                              <div className="h-1.5 rounded-full progress-fill-brand" style={{ width: `${matPct}%` }} />
+                            <div className="h-2 w-28 overflow-hidden rounded-md" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' }}>
+                              <div className="h-full progress-fill-brand" style={{ width: `${matPct}%` }} />
                             </div>
                             <span className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{matPct}%</span>
                           </div>
@@ -691,8 +681,8 @@ export default function Dashboard() {
                       </div>
                       <div className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
                         <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Зрелость</div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                          <div className="h-1.5 rounded-full progress-fill-brand" style={{ width: `${matPct}%` }} />
+                        <div className="mt-2 h-2 overflow-hidden rounded-md" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' }}>
+                          <div className="h-full progress-fill-brand" style={{ width: `${matPct}%` }} />
                         </div>
                         <div className="mt-1 text-xs font-medium" style={{ color: 'var(--text-quaternary)' }}>{matPct}%</div>
                       </div>

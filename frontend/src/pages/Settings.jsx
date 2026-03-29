@@ -312,14 +312,14 @@ export default function Settings() {
               {window.location.origin}/api
             </code>
             {serverInfo ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+              <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-medium"
                 style={{ backgroundColor: 'var(--bg-success-primary, #ECFDF3)', color: 'var(--text-success-primary, #039855)' }}
               >
                 <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-success-primary, #039855)' }} />
                 Подключено
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+              <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-medium"
                 style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
               >
                 Проверка...
@@ -336,7 +336,7 @@ export default function Settings() {
               <>
                 <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{serverInfo.service} v{serverInfo.version}</div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
                     style={{
                       backgroundColor: serverInfo.checks?.openai_configured ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
                       color: serverInfo.checks?.openai_configured ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
@@ -344,7 +344,7 @@ export default function Settings() {
                   >
                     OpenAI: {serverInfo.checks?.openai_configured ? 'настроен' : 'не настроен'}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
                     style={{
                       backgroundColor: serverInfo.checks?.anthropic_configured ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
                       color: serverInfo.checks?.anthropic_configured ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
@@ -352,12 +352,12 @@ export default function Settings() {
                   >
                     Anthropic: {serverInfo.checks?.anthropic_configured ? 'настроен' : 'не настроен'}
                   </span>
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
                     style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
                   >
                     Провайдер: {settings.aiProvider}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium"
                     style={{
                       backgroundColor: serverInfo.checks?.database === 'ok' ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
                       color: serverInfo.checks?.database === 'ok' ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
@@ -366,7 +366,7 @@ export default function Settings() {
                     БД: {serverInfo.checks?.database === 'ok' ? 'ок' : 'ошибка'}
                   </span>
                   {serverInfo.checks?.chroma_chunks != null && (
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
                       style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
                     >
                       ChromaDB: {serverInfo.checks.chroma_chunks} чанков

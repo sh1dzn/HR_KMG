@@ -275,7 +275,7 @@ function Dashboard({ user }) {
               </div>
             </div>
             <div
-              className="text-3xl font-semibold tracking-tight"
+              className="text-3xl font-semibold"
               style={{ color: loading ? 'var(--text-quaternary)' : 'var(--text-primary)' }}
             >
               {loading ? '--' : counts[card.key]}
@@ -350,9 +350,7 @@ function Dashboard({ user }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Link
             to="/generation"
-            className="card group flex items-center gap-4 p-5 transition-all duration-100"
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+            className="card flex items-center gap-4 p-5 transition-colors hover:bg-[var(--bg-secondary)]"
           >
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl icon-box-success">
               {icons.create}
@@ -365,9 +363,7 @@ function Dashboard({ user }) {
 
           <Link
             to="/evaluation"
-            className="card group flex items-center gap-4 p-5 transition-all duration-100"
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+            className="card flex items-center gap-4 p-5 transition-colors hover:bg-[var(--bg-secondary)]"
           >
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl icon-box-brand">
               {icons.evaluate}
@@ -380,9 +376,7 @@ function Dashboard({ user }) {
 
           <Link
             to="/employees"
-            className="card group flex items-center gap-4 p-5 transition-all duration-100"
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+            className="card flex items-center gap-4 p-5 transition-colors hover:bg-[var(--bg-secondary)]"
           >
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl icon-box-warning">
               {icons.goals}
@@ -404,51 +398,42 @@ function LandingPage() {
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* Hero banner */}
-      <div className="card rounded-2xl overflow-hidden">
-        <div className="px-6 py-8 sm:px-8 sm:py-10 relative overflow-hidden">
-          <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full" style={{ background: 'radial-gradient(circle, rgba(21,112,239,0.08) 0%, transparent 70%)' }} />
-          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full" style={{ background: 'radial-gradient(circle, rgba(23,178,106,0.07) 0%, transparent 70%)' }} />
+      {/* Intro section */}
+      <div className="card p-6 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <div>
+            <h1 className="text-2xl font-semibold leading-tight sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
+              Подсистема качества постановки целей
+            </h1>
+            <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+              Рабочая витрина модуля: проверка формулировок, подготовка целей по контексту сотрудника,
+              квартальная аналитика и единый просмотр целей по подразделениям на базе <code className="text-xs font-mono px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>mock_smart</code>.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/evaluation" className="btn-primary">
+                Перейти к оценке
+              </Link>
+              <Link to="/dashboard" className="btn-secondary">
+                Открыть дашборд
+              </Link>
+            </div>
+          </div>
 
-          <div className="relative grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-            <div>
-              <div className="status-brand mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--fg-brand-primary)' }} />
-                Corporate Goal Quality Platform
-              </div>
-              <h1 className="text-2xl font-semibold leading-tight sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
-                Подсистема качества постановки целей
-              </h1>
-              <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
-                Рабочая витрина модуля: проверка формулировок, подготовка целей по контексту сотрудника,
-                квартальная аналитика и единый просмотр целей по подразделениям на базе <code className="text-xs font-mono px-1 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>mock_smart</code>.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link to="/evaluation" className="btn-primary">
-                  Перейти к оценке
-                </Link>
-                <Link to="/dashboard" className="btn-secondary">
-                  Открыть дашборд
-                </Link>
+          <div className="grid gap-3 content-start">
+            <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+              <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Контур данных</div>
+              <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+                Восстановленный PostgreSQL-дамп, реальные сотрудники, документы, KPI и история постановки целей.
               </div>
             </div>
-
-            <div className="grid gap-3 content-start">
-              <div className="surface-dark rounded-xl px-5 py-4">
-                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--surface-dark-muted)' }}>Контур данных</div>
-                <div className="mt-2 text-sm leading-6" style={{ color: 'var(--surface-dark-text)' }}>
-                  Восстановленный PostgreSQL-дамп, реальные сотрудники, документы, KPI и история постановки целей.
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <div className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Методика</div>
+                <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>SMART, релевантность роли и квартальный контекст.</div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: 'var(--text-quaternary)' }}>Методика</div>
-                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>SMART, релевантность роли и квартальный контекст.</div>
-                </div>
-                <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: 'var(--text-quaternary)' }}>Сценарий</div>
-                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Оценка, подготовка, согласование и аналитика.</div>
-                </div>
+              <div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <div className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Сценарий</div>
+                <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Оценка, подготовка, согласование и аналитика.</div>
               </div>
             </div>
           </div>
@@ -467,7 +452,7 @@ function LandingPage() {
                 {s.icon}
               </div>
             </div>
-            <div className="text-3xl font-semibold tracking-tight" style={{ color: 'var(--fg-brand-primary)' }}>{s.value}</div>
+            <div className="text-3xl font-semibold" style={{ color: 'var(--text-primary)' }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -478,9 +463,7 @@ function LandingPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {features.map((f) => (
             <Link key={f.name} to={f.href}
-              className="card group flex items-start gap-4 p-5 transition-all duration-100"
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-brand-secondary)'; e.currentTarget.style.boxShadow = '0px 4px 6px -1px rgba(10,13,18,0.07)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-secondary)'; e.currentTarget.style.boxShadow = '0px 1px 2px rgba(10,13,18,0.05)' }}
+              className="card flex items-start gap-4 p-5 transition-colors hover:bg-[var(--bg-secondary)]"
             >
               <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${f.iconClass}`}>
                 {f.icon}

@@ -270,70 +270,103 @@ export default function ChatWidget() {
         <button
           type="button"
           onClick={handleOpen}
-          className="fixed bottom-6 right-6 z-[60] flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-105"
+          className="fixed bottom-4 right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-lg transition-colors"
           style={{
-            background: 'linear-gradient(135deg, var(--fg-brand-primary), var(--fg-brand-secondary, var(--fg-brand-primary)))',
-            color: 'white',
-            boxShadow: '0 4px 14px rgba(21,112,239,0.35)',
+            backgroundColor: 'var(--bg-primary)',
+            color: 'var(--fg-brand-primary)',
+            border: '1px solid var(--border-secondary)',
+            boxShadow: '0 4px 12px rgba(16, 24, 40, 0.14)',
           }}
           title="AI Ассистент"
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-primary)' }}
         >
-          <ChatBubbleIcon className="h-6 w-6" />
+          <ChatBubbleIcon className="h-5 w-5" />
         </button>
       )}
 
       {/* Chat panel */}
       {isOpen && (
         <div
-          className="fixed bottom-6 right-6 z-[60] flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+          className="fixed bottom-4 right-4 z-[60] flex flex-col rounded-xl overflow-hidden"
           style={{
-            width: 'min(420px, calc(100vw - 32px))',
+            width: 'min(420px, calc(100vw - 24px))',
             height: 'min(640px, calc(100vh - 100px))',
             backgroundColor: 'var(--bg-primary)',
             border: '1px solid var(--border-secondary)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            boxShadow: '0 10px 30px rgba(16, 24, 40, 0.18)',
           }}
         >
           {/* Header */}
           <div
             className="flex items-center justify-between px-4 py-3 flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, var(--fg-brand-primary), var(--fg-brand-secondary, var(--fg-brand-primary)))',
-              color: 'white',
+              backgroundColor: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border-secondary)',
             }}
           >
             <div className="flex items-center gap-3">
               {showHistory ? (
-                <button type="button" onClick={() => setShowHistory(false)} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowHistory(false)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                >
                   <ArrowLeftIcon className="h-4 w-4" />
                 </button>
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-                  <SparklesIcon className="h-4 w-4" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-md"
+                  style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)', color: 'var(--fg-brand-primary)' }}
+                >
+                  <ChatBubbleIcon className="h-4 w-4" />
                 </div>
               )}
               <div>
-                <div className="text-sm font-semibold">{showHistory ? 'История' : 'AI Ассистент'}</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{showHistory ? 'История' : 'AI Ассистент'}</div>
                 {!showHistory && (
-                  <div className="text-xs opacity-80">{ROLE_ASSISTANT_NAME[role]}</div>
+                  <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{ROLE_ASSISTANT_NAME[role]}</div>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-1">
               {!showHistory && (
                 <>
-                  <button type="button" onClick={() => { setShowHistory(true); loadConversations() }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/20 transition-colors" title="История диалогов">
+                  <button
+                    type="button"
+                    onClick={() => { setShowHistory(true); loadConversations() }}
+                    className="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                    title="История диалогов"
+                  >
                     <ListIcon className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={handleNewChat}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/20 transition-colors" title="Новый диалог">
+                  <button
+                    type="button"
+                    onClick={handleNewChat}
+                    className="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                    title="Новый диалог"
+                  >
                     <PlusIcon className="h-4 w-4" />
                   </button>
                 </>
               )}
-              <button type="button" onClick={() => setIsOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/20 transition-colors" title="Закрыть">
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-md transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
+                title="Закрыть"
+              >
                 <XIcon className="h-4 w-4" />
               </button>
             </div>
@@ -355,9 +388,10 @@ export default function ChatWidget() {
                     <div
                       key={conv.id}
                       onClick={() => handleSelectConversation(conv)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 cursor-pointer transition-colors group"
+                      className="flex items-center gap-3 rounded-lg px-3 py-3 cursor-pointer transition-colors group"
                       style={{
-                        backgroundColor: conv.id === activeConversationId ? 'var(--bg-brand-secondary)' : '',
+                        backgroundColor: conv.id === activeConversationId ? 'var(--bg-secondary)' : '',
+                        border: conv.id === activeConversationId ? '1px solid var(--border-primary)' : '1px solid transparent',
                       }}
                       onMouseEnter={(e) => { if (conv.id !== activeConversationId) e.currentTarget.style.backgroundColor = 'var(--bg-secondary)' }}
                       onMouseLeave={(e) => { if (conv.id !== activeConversationId) e.currentTarget.style.backgroundColor = '' }}
@@ -393,7 +427,7 @@ export default function ChatWidget() {
                   // Empty state with quick actions
                   <div className="flex flex-col h-full">
                     <div className="flex-1 flex flex-col items-center justify-center py-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl mb-3"
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg mb-3"
                         style={{ backgroundColor: 'var(--bg-brand-secondary)', color: 'var(--fg-brand-primary)' }}>
                         <SparklesIcon className="h-6 w-6" />
                       </div>
@@ -410,7 +444,7 @@ export default function ChatWidget() {
                           key={action.label}
                           type="button"
                           onClick={() => handleSend(action.message)}
-                          className="w-full text-left rounded-xl px-4 py-3 text-sm transition-colors"
+                          className="w-full text-left rounded-lg px-4 py-3 text-sm transition-colors"
                           style={{
                             backgroundColor: 'var(--bg-secondary)',
                             border: '1px solid var(--border-secondary)',
@@ -429,18 +463,16 @@ export default function ChatWidget() {
                     {messages.map((msg, idx) => (
                       <div key={msg.id || idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div
-                          className="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+                          className="max-w-[85%] rounded-lg px-4 py-2.5 text-sm leading-relaxed"
                           style={msg.role === 'user'
                             ? {
-                              background: 'linear-gradient(135deg, var(--fg-brand-primary), var(--fg-brand-secondary, var(--fg-brand-primary)))',
+                              backgroundColor: 'var(--bg-brand-solid)',
                               color: 'white',
-                              borderBottomRightRadius: '6px',
                             }
                             : {
                               backgroundColor: 'var(--bg-secondary)',
                               color: 'var(--text-primary)',
                               border: '1px solid var(--border-secondary)',
-                              borderBottomLeftRadius: '6px',
                             }
                           }
                         >
@@ -455,14 +487,10 @@ export default function ChatWidget() {
                     {loading && (
                       <div className="flex justify-start">
                         <div
-                          className="rounded-2xl px-4 py-3 text-sm"
-                          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', borderBottomLeftRadius: '6px' }}
+                          className="rounded-lg px-4 py-3 text-sm"
+                          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', color: 'var(--text-tertiary)' }}
                         >
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--fg-brand-primary)' }} />
-                            <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--fg-brand-primary)', animationDelay: '0.2s' }} />
-                            <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--fg-brand-primary)', animationDelay: '0.4s' }} />
-                          </div>
+                          Печатает...
                         </div>
                       </div>
                     )}
@@ -474,7 +502,7 @@ export default function ChatWidget() {
               {/* Input area */}
               <div className="flex-shrink-0 px-3 pb-3 pt-1">
                 <div
-                  className="flex items-end gap-2 rounded-xl px-3 py-2"
+                  className="flex items-end gap-2 rounded-lg px-3 py-2"
                   style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
                 >
                   <textarea
@@ -493,7 +521,7 @@ export default function ChatWidget() {
                     type="button"
                     onClick={() => handleSend()}
                     disabled={!inputValue.trim() || loading}
-                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors"
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md transition-colors"
                     style={{
                       backgroundColor: inputValue.trim() && !loading ? 'var(--fg-brand-primary)' : 'transparent',
                       color: inputValue.trim() && !loading ? 'white' : 'var(--fg-quaternary)',
