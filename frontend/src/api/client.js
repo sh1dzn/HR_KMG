@@ -388,4 +388,36 @@ export const deleteDependency = async (depId) => {
   return response.data
 }
 
+// Chat API
+export const chatListConversations = async () => {
+  const response = await client.get('/chat/conversations')
+  return response.data
+}
+
+export const chatCreateAndSend = async (message) => {
+  const response = await client.post('/chat/conversations/new', {
+    message,
+    model: getSelectedModel(),
+  })
+  return response.data
+}
+
+export const chatSendMessage = async (conversationId, message) => {
+  const response = await client.post(`/chat/conversations/${conversationId}/messages`, {
+    message,
+    model: getSelectedModel(),
+  })
+  return response.data
+}
+
+export const chatGetMessages = async (conversationId) => {
+  const response = await client.get(`/chat/conversations/${conversationId}/messages`)
+  return response.data
+}
+
+export const chatDeleteConversation = async (conversationId) => {
+  const response = await client.delete(`/chat/conversations/${conversationId}`)
+  return response.data
+}
+
 export default client

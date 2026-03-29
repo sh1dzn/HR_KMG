@@ -7,6 +7,7 @@ from app.models.goal import Goal, GoalEvent, GoalEventType, GoalReview, GoalStat
 from app.models.document import Document, DocumentType
 from app.models.user import User, UserRole, RefreshToken
 from app.models.dependency import GoalDependency, DependencyType, DependencyStatus, DependencyCreatedBy
+from app.models.chat import ChatConversation, ChatMessage, ChatMessageRole
 
 __all__ = [
     "Department",
@@ -28,4 +29,7 @@ __all__ = [
     "DependencyType",
     "DependencyStatus",
     "DependencyCreatedBy",
+    "ChatConversation",
+    "ChatMessage",
+    "ChatMessageRole",
 ]

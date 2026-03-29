@@ -2,7 +2,7 @@
 API Routes for HR AI Module
 """
 from fastapi import APIRouter
-from app.api import alerts, analytics, auth, cascade, dependencies, goals, evaluation, generation, dashboard, employees, integrations, prediction
+from app.api import alerts, analytics, auth, cascade, chat, dependencies, goals, evaluation, generation, dashboard, employees, integrations, prediction
 
 api_router = APIRouter()
 
@@ -79,6 +79,12 @@ api_router.include_router(
     tags=["Граф зависимостей"],
 )
 
+api_router.include_router(
+    chat.router,
+    prefix="/chat",
+    tags=["AI Ассистент"],
+)
+
 
 # OpenAPI tag metadata for Swagger UI ordering and descriptions
 TAGS_METADATA = [
@@ -95,4 +101,5 @@ TAGS_METADATA = [
     {"name": "Предсказание рисков", "description": "Оценка риска невыполнения цели, LLM-объяснение"},
     {"name": "Каскадирование целей", "description": "Авто-каскадирование целей с обнаружением конфликтов"},
     {"name": "Граф зависимостей", "description": "Интерактивный граф зависимостей между целями"},
+    {"name": "AI Ассистент", "description": "Чат с AI-ассистентом: история диалогов, RAG по ВНД, контекст роли"},
 ]

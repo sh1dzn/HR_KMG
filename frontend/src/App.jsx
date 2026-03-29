@@ -11,6 +11,7 @@ import Approvals from './pages/Approvals'
 import Login from './pages/Login'
 import ChangePassword from './pages/ChangePassword'
 import KmgLogo from './components/KmgLogo'
+import ChatWidget from './components/ChatWidget'
 import { getDashboardSummary, getGoals } from './api/client'
 import { useAuth } from './contexts/AuthContext'
 
@@ -611,6 +612,9 @@ function App() {
           </Routes>
         </main>
       </div>
+
+      {/* AI Chat Widget */}
+      <ChatWidget />
     </div>
   )
 }
