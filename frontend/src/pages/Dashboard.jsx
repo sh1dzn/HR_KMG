@@ -252,6 +252,36 @@ export default function Dashboard() {
     }
   }, [data, quarter, year])
 
+  const exportCSV = () => {
+    if (!data) return
+    const BOM = '\uFEFF'
+    const rows = [['Подразделение', 'Сотрудников', 'Целей', 'SMART %', 'Зрелость %', 'Стратег. %', 'Функц. %', 'Операц. %', 'Слабые критерии']]
+    for (const d of data.departments_stats || []) {
+      rows.push([
+        d.department_name,
+        d.total_employees,
+        d.total_goals,
+        Math.round((d.average_smart_score || 0) * 100),
+        Math.round((d.maturity_index || 0) * 100),
+        Math.round(d.strategic_percent || 0),
+        Math.round(d.functional_percent || 0),
+        Math.round(d.operational_percent || 0),
+        (d.weak_criteria || []).join('; '),
+      ])
+    }
+    rows.push([])
+    rows.push(['Итого', data.total_employees, data.total_goals, Math.round((data.average_smart_score || 0) * 100), '', Math.round(data.strategic_goals_percent || 0), Math.round(data.functional_goals_percent || 0), Math.round(data.operational_goals_percent || 0), (data.top_issues || []).join('; ')])
+
+    const csv = BOM + rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dashboard_${quarter}_${year}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const copyExecutiveBrief = () => {
     if (!executiveBrief) return
     const text = [
@@ -306,13 +336,21 @@ export default function Dashboard() {
             Квартальная аналитика по качеству формулировок, зрелости подразделений и стратегической связке.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
             {QUARTERS.map(q => <option key={q}>{q}</option>)}
           </select>
           <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
             {yearOptions.map(y => <option key={y}>{y}</option>)}
           </select>
+          {data && (
+            <button type="button" onClick={exportCSV} className="btn-secondary flex items-center gap-1.5 text-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              CSV
+            </button>
+          )}
         </div>
       </div>
 
