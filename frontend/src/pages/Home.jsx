@@ -260,7 +260,7 @@ function Dashboard({ user }) {
       </div>
 
       {/* Goal status summary cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {SUMMARY_CARDS.map((card) => (
           <div key={card.key} className="card px-5 py-5">
             <div className="flex items-center justify-between mb-3">
