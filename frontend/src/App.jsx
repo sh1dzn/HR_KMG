@@ -539,7 +539,7 @@ function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`flex flex-1 flex-col transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[280px]'}`}>
+      <div className={`flex min-w-0 flex-1 flex-col transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-[68px]' : 'lg:pl-[280px]'}`}>
         {/* Header */}
         <header
           className="sticky top-0 z-30"
@@ -581,7 +581,7 @@ function App() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-hidden p-4 sm:p-6 lg:p-8">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/change-password" element={<ChangePassword />} />
