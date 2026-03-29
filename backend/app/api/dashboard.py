@@ -1,6 +1,7 @@
 """
 Dashboard API endpoints
 """
+from collections import defaultdict
 import threading
 import time
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,6 +21,8 @@ router = APIRouter()
 _SUMMARY_CACHE_TTL_SECONDS = 30.0
 _SUMMARY_CACHE: dict[tuple[Optional[str], Optional[int]], tuple[float, Any]] = {}
 _SUMMARY_CACHE_LOCK = threading.Lock()
+_TRENDS_CACHE: dict[tuple[Optional[int]], tuple[float, Any]] = {}
+_TRENDS_CACHE_LOCK = threading.Lock()
 
 
 def _cache_now() -> float:
@@ -49,6 +52,32 @@ def _set_summary_cache(quarter: Optional[str], year: Optional[int], payload: Any
         _SUMMARY_CACHE[_summary_cache_key(quarter, year)] = (_cache_now(), payload)
 
 
+def _get_trends_cache(year: Optional[int]) -> Optional[Any]:
+    key = (year,)
+    now = _cache_now()
+    with _TRENDS_CACHE_LOCK:
+        cached = _TRENDS_CACHE.get(key)
+        if not cached:
+            return None
+        cached_at, payload = cached
+        if now - cached_at > _SUMMARY_CACHE_TTL_SECONDS:
+            _TRENDS_CACHE.pop(key, None)
+            return None
+        return payload
+
+
+def _set_trends_cache(year: Optional[int], payload: Any) -> None:
+    with _TRENDS_CACHE_LOCK:
+        _TRENDS_CACHE[(year,)] = (_cache_now(), payload)
+
+
+def _compute_heuristics_cache(goals: list[Goal]) -> dict[str, dict]:
+    cache: dict[str, dict] = {}
+    for goal in goals:
+        cache[str(goal.goal_id)] = evaluate_goal_heuristically(goal.goal_text, goal.metric, goal.deadline, goal.priority)
+    return cache
+
+
 def _normalized_goal_type(goal_type: str) -> str:
     """Normalize goal type into dashboard buckets."""
     if goal_type in {"activity", "output", "impact"}:
@@ -76,6 +105,7 @@ def _department_stats(
     goals: list[Goal],
     employees: list[Employee],
     generation_metadata: dict[str, dict],
+    heuristics: dict[str, dict],
 ) -> DepartmentStats:
     status_counts = {status.value: 0 for status in GoalStatus}
     type_counts = {"activity": 0, "output": 0, "impact": 0}
@@ -84,7 +114,7 @@ def _department_stats(
 
     scores = []
     for goal in goals:
-        heuristic = evaluate_goal_heuristically(goal.goal_text, goal.metric, goal.deadline, goal.priority)
+        heuristic = heuristics[str(goal.goal_id)]
         details = heuristic["smart_details"]
         scores.append(heuristic["overall_score"])
 
@@ -164,24 +194,34 @@ async def get_dashboard_summary(
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     all_goals = goals_query.all()
+    heuristics = _compute_heuristics_cache(all_goals)
     generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in all_goals])
 
     departments = db.query(Department).filter(Department.is_active == True).all()
+    active_employees = db.query(Employee).filter(Employee.is_active == True).all()
+    employees_by_department: dict[int, list[Employee]] = defaultdict(list)
+    employee_department_by_id: dict[int, int] = {}
+    for employee in active_employees:
+        employees_by_department[employee.department_id].append(employee)
+        employee_department_by_id[employee.id] = employee.department_id
+
+    goals_by_department: dict[int, list[Goal]] = defaultdict(list)
+    for goal in all_goals:
+        department_id = employee_department_by_id.get(goal.employee_id)
+        if department_id is not None:
+            goals_by_department[department_id].append(goal)
+
     department_stats = []
     all_weak_criteria = []
     strategic_count = functional_count = operational_count = 0
 
     for department in departments:
-        employees = db.query(Employee).filter(
-            Employee.department_id == department.id,
-            Employee.is_active == True,
-        ).all()
-        employee_ids = {employee.id for employee in employees}
-        goals = [goal for goal in all_goals if goal.employee_id in employee_ids]
+        employees = employees_by_department.get(department.id, [])
+        goals = goals_by_department.get(department.id, [])
         if not goals:
             continue
 
-        stats = _department_stats(department, goals, employees, generation_metadata)
+        stats = _department_stats(department, goals, employees, generation_metadata, heuristics)
         department_stats.append(stats)
         all_weak_criteria.extend(stats.weak_criteria)
         strategic_count += stats.goals_by_strategic_link["strategic"]
@@ -189,7 +229,7 @@ async def get_dashboard_summary(
         operational_count += stats.goals_by_strategic_link["operational"]
 
     total_goals = len(all_goals)
-    total_employees = db.query(Employee).filter(Employee.is_active == True).count()
+    total_employees = len(active_employees)
     average_smart_score = round(
         sum(stats.average_smart_score for stats in department_stats) / len(department_stats), 2
     ) if department_stats else 0.0
@@ -238,6 +278,7 @@ async def get_department_stats(
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     goals = goals_query.all()
+    heuristics = _compute_heuristics_cache(goals)
     generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in goals])
 
     if not goals:
@@ -254,7 +295,7 @@ async def get_department_stats(
             maturity_index=0,
         )
 
-    return _department_stats(department, goals, employees, generation_metadata)
+    return _department_stats(department, goals, employees, generation_metadata, heuristics)
 
 
 @router.get("/trends")
@@ -267,10 +308,15 @@ async def get_dashboard_trends(
     Тренды качества целеполагания по кварталам.
     Возвращает агрегированные метрики за каждый квартал.
     """
+    cached_trends = _get_trends_cache(year)
+    if cached_trends is not None:
+        return cached_trends
+
     goals_query = db.query(Goal)
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     all_goals = goals_query.all()
+    heuristics = _compute_heuristics_cache(all_goals)
 
     buckets: dict[tuple, list[Goal]] = {}
     for goal in all_goals:
@@ -287,7 +333,7 @@ async def get_dashboard_trends(
         strategic_count = 0
         output_impact_count = 0
         for goal in goals:
-            h = evaluate_goal_heuristically(goal.goal_text, goal.metric, goal.deadline, goal.priority)
+            h = heuristics[str(goal.goal_id)]
             scores.append(h["overall_score"])
             meta = generation_metadata.get(str(goal.goal_id))
             link = strategic_link_for_goal(goal, meta)
@@ -308,7 +354,9 @@ async def get_dashboard_trends(
             "output_impact_percent": round(output_impact_count / len(goals) * 100, 1) if goals else 0,
         })
 
-    return {"trends": trends}
+    payload = {"trends": trends}
+    _set_trends_cache(year, payload)
+    return payload
 
 
 @router.get("/employees/{employee_id}/goals-summary")
@@ -329,6 +377,7 @@ async def get_employee_goals_summary(
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     goals = goals_query.all()
+    heuristics = _compute_heuristics_cache(goals)
     generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in goals])
 
     if not goals:
@@ -342,7 +391,7 @@ async def get_employee_goals_summary(
             "status": "Нет целей",
         }
 
-    scores = [evaluate_goal_heuristically(g.goal_text, g.metric, g.deadline, g.priority)["overall_score"] for g in goals]
+    scores = [heuristics[str(g.goal_id)]["overall_score"] for g in goals]
     total_weight = sum(float(g.weight or 0) for g in goals)
 
     return {
@@ -360,7 +409,7 @@ async def get_employee_goals_summary(
                 "id": str(g.goal_id),
                 "title": g.goal_text,
                 "weight": float(g.weight or 0),
-                "smart_score": evaluate_goal_heuristically(g.goal_text, g.metric, g.deadline, g.priority)["overall_score"],
+                "smart_score": heuristics[str(g.goal_id)]["overall_score"],
                 "status": g.status.value if hasattr(g.status, "value") else g.status,
                 "goal_type": goal_type_for_goal(g, generation_metadata.get(str(g.goal_id))),
                 "strategic_link": strategic_link_for_goal(g, generation_metadata.get(str(g.goal_id))),

@@ -306,17 +306,123 @@ def _top_employees(db: Session, *, scope: Scope, quarter: Optional[str], year: O
     return "\n".join(lines)
 
 
+def _top_departments_data(
+    db: Session,
+    *,
+    scope: Scope,
+    quarter: Optional[str],
+    year: Optional[int],
+    limit: int = 5,
+) -> dict[str, Any]:
+    conditions = []
+    if scope.employee_ids is not None:
+        if not scope.employee_ids:
+            return {"items": [], "access_denied": True}
+        conditions.append(Goal.employee_id.in_(scope.employee_ids))
+    if quarter:
+        conditions.append(Goal.quarter == quarter)
+    if year:
+        conditions.append(Goal.year == year)
+
+    done_flag = case((Goal.status == GoalStatus.DONE, 1), else_=0)
+    approved_flag = case((Goal.status == GoalStatus.APPROVED, 1), else_=0)
+    overdue_flag = case((Goal.status == GoalStatus.OVERDUE, 1), else_=0)
+    draft_flag = case((Goal.status == GoalStatus.DRAFT, 1), else_=0)
+
+    rows = (
+        db.query(
+            Department.id.label("department_id"),
+            Department.name.label("department_name"),
+            func.count(Goal.goal_id).label("total_goals"),
+            func.sum(done_flag).label("done_goals"),
+            func.sum(approved_flag).label("approved_goals"),
+            func.sum(overdue_flag).label("overdue_goals"),
+            func.sum(draft_flag).label("draft_goals"),
+        )
+        .join(Goal, Goal.department_id == Department.id)
+        .filter(and_(*conditions) if conditions else True)
+        .group_by(Department.id, Department.name)
+        .having(func.count(Goal.goal_id) >= 3)
+        .all()
+    )
+
+    ranking: list[dict[str, Any]] = []
+    for row in rows:
+        total = int(row.total_goals or 0)
+        if total <= 0:
+            continue
+        done = int(row.done_goals or 0)
+        approved = int(row.approved_goals or 0)
+        overdue = int(row.overdue_goals or 0)
+        draft = int(row.draft_goals or 0)
+
+        completion_rate = (done + approved) / total if total else 0.0
+        overdue_rate = overdue / total if total else 0.0
+        draft_rate = draft / total if total else 0.0
+        score = completion_rate - overdue_rate * 0.6 - draft_rate * 0.2
+
+        ranking.append(
+            {
+                "department_id": int(row.department_id),
+                "department_name": row.department_name,
+                "score": round(score, 4),
+                "goals": total,
+                "completion_rate": round(completion_rate, 4),
+                "overdue_rate": round(overdue_rate, 4),
+                "draft_rate": round(draft_rate, 4),
+            }
+        )
+
+    ranking.sort(key=lambda item: item["score"], reverse=True)
+    return {
+        "items": ranking[: max(1, min(limit, 20))],
+        "access_denied": False,
+        "period": {"quarter": quarter, "year": year},
+    }
+
+
+def _top_departments(db: Session, *, scope: Scope, quarter: Optional[str], year: Optional[int], limit: int = 5) -> str:
+    data = _top_departments_data(db, scope=scope, quarter=quarter, year=year, limit=limit)
+    if data.get("access_denied"):
+        return "### MCP Top Departments\n- нет доступа к данным подразделений"
+    items = data.get("items", [])
+    if not items:
+        return "### MCP Top Departments\n- недостаточно данных для ранжирования (нужно минимум 3 цели на подразделение)"
+
+    lines = ["### MCP Top Departments (completion-focused)"]
+    for index, item in enumerate(items, start=1):
+        lines.append(
+            f"{index}. {item['department_name']}: score={item['score']:.2f}, goals={item['goals']}, "
+            f"completion={item['completion_rate'] * 100:.1f}%, overdue={item['overdue_rate'] * 100:.1f}%, "
+            f"draft={item['draft_rate'] * 100:.1f}%"
+        )
+    return "\n".join(lines)
+
+
 def _detect_intents(query: str) -> set[str]:
     q = query.lower()
     intents: set[str] = set()
-    if any(word in q for word in ("подраздел", "отдел", "департамент")) and any(
-        word in q for word in ("проблем", "слаб", "качество", "риск")
-    ):
+    department_words = ("подраздел", "отдел", "департамент", "команд")
+    employee_words = ("сотруд", "работник", "персонал", "человек")
+    best_words = ("лучший", "топ", "сильн", "лидер", "эффективн", "кто лучше", "кто лучший")
+    issue_words = ("проблем", "слаб", "качество", "риск", "худш", "отста")
+    summary_words = ("статус", "распределение", "сколько целей", "сводка", "итог", "статистик")
+
+    has_department = any(word in q for word in department_words)
+    has_employee = any(word in q for word in employee_words)
+    asks_best = any(word in q for word in best_words)
+    asks_issue = any(word in q for word in issue_words)
+
+    if has_department and asks_issue:
         intents.add("problem_departments")
-    if any(word in q for word in ("лучший", "топ", "сильн", "кто лучше", "кто лучший")):
+    if has_department and asks_best:
+        intents.add("top_departments")
+    if has_employee and asks_best:
         intents.add("top_employees")
-    if any(word in q for word in ("статус", "распределение", "сколько целей", "сводка")):
+    if any(word in q for word in summary_words):
         intents.add("summary")
+    if not intents and asks_best:
+        intents.update({"top_departments", "top_employees"})
     return intents
 
 
@@ -333,6 +439,9 @@ def build_mcp_context(user: User, db: Session, query: str) -> str:
 
     if "problem_departments" in intents:
         blocks.append(_problem_departments(db, scope=scope, quarter=quarter, year=year))
+
+    if "top_departments" in intents:
+        blocks.append(_top_departments(db, scope=scope, quarter=quarter, year=year))
 
     if "top_employees" in intents:
         blocks.append(_top_employees(db, scope=scope, quarter=quarter, year=year))
@@ -399,6 +508,25 @@ def get_top_employees_data(
 ) -> dict[str, Any]:
     scope, resolved_quarter, resolved_year = _resolve_user_scope(user, db, query, quarter, year)
     return _top_employees_data(
+        db,
+        scope=scope,
+        quarter=resolved_quarter,
+        year=resolved_year,
+        limit=max(1, min(limit, 20)),
+    )
+
+
+def get_top_departments_data(
+    user: User,
+    db: Session,
+    *,
+    query: str = "",
+    quarter: Optional[str] = None,
+    year: Optional[int] = None,
+    limit: int = 5,
+) -> dict[str, Any]:
+    scope, resolved_quarter, resolved_year = _resolve_user_scope(user, db, query, quarter, year)
+    return _top_departments_data(
         db,
         scope=scope,
         quarter=resolved_quarter,

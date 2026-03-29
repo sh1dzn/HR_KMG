@@ -1,16 +1,26 @@
 """
-Mock integration service for exporting goals to external HR systems.
+Sandbox integration service for exporting goals to external HR systems.
 """
 from __future__ import annotations
 
+import json
+import os
+import random
+import threading
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import Employee, Goal, GoalStatus
 from app.schemas.integration import (
     GoalExportReference,
+    IntegrationBatchInfo,
+    IntegrationBatchesResponse,
+    IntegrationBatchCallbackRequest,
+    IntegrationBatchRetryRequest,
+    IntegrationHealthResponse,
     GoalsExportRequest,
     GoalsExportResponse,
     IntegrationSystemInfo,
@@ -24,24 +34,180 @@ class IntegrationService:
             code="1c",
             name="1C:ЗУП / HR",
             description="Экспорт целей в формат кадрового контура 1С.",
-            status="mock_ready",
+            status="demo_sandbox",
         ),
         "sap": IntegrationSystemInfo(
             code="sap",
             name="SAP SuccessFactors",
             description="Экспорт целей в формат SAP SuccessFactors.",
-            status="mock_ready",
+            status="demo_sandbox",
         ),
         "oracle": IntegrationSystemInfo(
             code="oracle",
             name="Oracle HCM",
             description="Экспорт целей в формат Oracle HCM.",
-            status="mock_ready",
+            status="demo_sandbox",
         ),
     }
 
+    ERROR_MAP = {
+        "timeout": ("TIMEOUT", "Таймаут отправки в HRIS"),
+        "auth_error": ("AUTH_ERROR", "Ошибка авторизации HRIS"),
+        "validation_error": ("VALIDATION_ERROR", "Ошибка валидации payload на стороне HRIS"),
+    }
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._store_loaded = False
+        self._batches: list[dict] = []
+
+    def _now_iso(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    def _store_path(self) -> str:
+        return settings.INTEGRATION_DEMO_STORE_PATH
+
+    def _ensure_store_loaded(self) -> None:
+        with self._lock:
+            if self._store_loaded:
+                return
+            path = self._store_path()
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    rows = data.get("batches", [])
+                    if isinstance(rows, list):
+                        self._batches = rows
+                except Exception:
+                    self._batches = []
+            self._store_loaded = True
+
+    def _persist_store(self) -> None:
+        path = self._store_path()
+        folder = os.path.dirname(path)
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+        tmp_path = f"{path}.tmp"
+        payload = {"batches": self._batches[-300:]}
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+
+    def _batch_to_model(self, item: dict) -> IntegrationBatchInfo:
+        return IntegrationBatchInfo(
+            batch_id=item["batch_id"],
+            target_system=item["target_system"],
+            employee_id=item["employee_id"],
+            employee_name=item["employee_name"],
+            exported_count=item["exported_count"],
+            status=item["status"],
+            mode=item.get("mode", "demo_sandbox"),
+            attempt_count=item.get("attempt_count", 1),
+            error_code=item.get("error_code"),
+            error_message=item.get("error_message"),
+            requested_at=item["requested_at"],
+            updated_at=item["updated_at"],
+        )
+
+    def _normalize_simulation(self, simulate_result: str) -> str:
+        value = (simulate_result or "success").strip().lower()
+        if value == "random":
+            rnd = random.random()
+            if rnd < 0.7:
+                return "success"
+            if rnd < 0.83:
+                return "timeout"
+            if rnd < 0.93:
+                return "auth_error"
+            return "validation_error"
+        if value in {"success", "timeout", "auth_error", "validation_error"}:
+            return value
+        return "success"
+
+    def _resolve_delivery(self, dispatch_mode: str, simulate_result: str) -> tuple[str, str | None, str | None]:
+        mode = (dispatch_mode or "sync").strip().lower()
+        simulation = self._normalize_simulation(simulate_result)
+
+        # Queued mode leaves success/timeout in "queued", errors fail immediately.
+        if mode == "queued":
+            if simulation in {"auth_error", "validation_error"}:
+                code, text = self.ERROR_MAP[simulation]
+                return "failed", code, text
+            if simulation == "timeout":
+                return "queued", "TIMEOUT_PENDING", "Нет подтверждения от HRIS, ожидается callback"
+            return "queued", None, None
+
+        if simulation == "success":
+            return "sent", None, None
+        code, text = self.ERROR_MAP[simulation]
+        return "failed", code, text
+
     def list_systems(self) -> IntegrationSystemsResponse:
         return IntegrationSystemsResponse(systems=list(self.SYSTEMS.values()))
+
+    def list_batches(self, limit: int = 20) -> IntegrationBatchesResponse:
+        self._ensure_store_loaded()
+        with self._lock:
+            rows = sorted(self._batches, key=lambda x: x.get("requested_at", ""), reverse=True)
+            if limit > 0:
+                rows = rows[:limit]
+            return IntegrationBatchesResponse(items=[self._batch_to_model(x) for x in rows], total=len(self._batches))
+
+    def get_health(self) -> IntegrationHealthResponse:
+        self._ensure_store_loaded()
+        with self._lock:
+            queued = sum(1 for x in self._batches if x.get("status") == "queued")
+            sent = sum(1 for x in self._batches if x.get("status") == "sent")
+            confirmed = sum(1 for x in self._batches if x.get("status") == "confirmed")
+            failed = sum(1 for x in self._batches if x.get("status") == "failed")
+            processed = sent + confirmed + failed
+            success_rate = round(((sent + confirmed) / processed) * 100, 1) if processed else 0.0
+            last_batch_at = max((x.get("updated_at") or x.get("requested_at") for x in self._batches), default=None)
+            return IntegrationHealthResponse(
+                mode="demo_sandbox",
+                total_batches=len(self._batches),
+                queued=queued,
+                sent=sent,
+                confirmed=confirmed,
+                failed=failed,
+                success_rate=success_rate,
+                last_batch_at=last_batch_at,
+            )
+
+    def apply_callback(self, batch_id: str, request: IntegrationBatchCallbackRequest) -> IntegrationBatchInfo:
+        self._ensure_store_loaded()
+        with self._lock:
+            row = next((x for x in self._batches if x.get("batch_id") == batch_id), None)
+            if not row:
+                raise ValueError("Пакет интеграции не найден")
+            row["status"] = request.result
+            row["updated_at"] = self._now_iso()
+            if request.result == "failed":
+                row["error_code"] = row.get("error_code") or "CALLBACK_FAILED"
+                row["error_message"] = request.error_message or "HRIS callback вернул ошибку"
+            else:
+                row["error_code"] = None
+                row["error_message"] = None
+            self._persist_store()
+            return self._batch_to_model(row)
+
+    def retry_batch(self, batch_id: str, request: IntegrationBatchRetryRequest) -> IntegrationBatchInfo:
+        self._ensure_store_loaded()
+        with self._lock:
+            row = next((x for x in self._batches if x.get("batch_id") == batch_id), None)
+            if not row:
+                raise ValueError("Пакет интеграции не найден")
+
+            status, err_code, err_message = self._resolve_delivery("sync", request.simulate_result)
+            row["status"] = status
+            row["error_code"] = err_code
+            row["error_message"] = err_message
+            row["attempt_count"] = int(row.get("attempt_count", 1)) + 1
+            row["updated_at"] = self._now_iso()
+
+            self._persist_store()
+            return self._batch_to_model(row)
 
     def export_goals(self, db: Session, request: GoalsExportRequest) -> GoalsExportResponse:
         system = self.SYSTEMS.get(request.target_system.lower())
@@ -65,7 +231,7 @@ class IntegrationService:
             raise ValueError("Для экспорта не найдено целей")
 
         batch_id = str(uuid4())
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = self._now_iso()
 
         payload = self._build_payload(system.code, employee, goals, batch_id, timestamp)
         goal_refs: list[GoalExportReference] = []
@@ -77,15 +243,42 @@ class IntegrationService:
 
         db.commit()
 
+        delivery_status, error_code, error_message = self._resolve_delivery(
+            request.dispatch_mode,
+            request.simulate_result,
+        )
+        batch_record = {
+            "batch_id": batch_id,
+            "target_system": system.code,
+            "employee_id": employee.id,
+            "employee_name": employee.full_name,
+            "exported_count": len(goals),
+            "status": delivery_status,
+            "mode": "demo_sandbox",
+            "attempt_count": 1,
+            "error_code": error_code,
+            "error_message": error_message,
+            "requested_at": timestamp,
+            "updated_at": timestamp,
+        }
+        self._ensure_store_loaded()
+        with self._lock:
+            self._batches.append(batch_record)
+            self._persist_store()
+
         return GoalsExportResponse(
             batch_id=batch_id,
             target_system=system.code,
             employee_id=employee.id,
             employee_name=employee.full_name,
             exported_count=len(goals),
-            message=f"Экспортировано {len(goals)} целей в {system.name}",
+            message=f"Экспортировано {len(goals)} целей в {system.name} (sandbox)",
             payload=payload,
             goal_refs=goal_refs,
+            delivery_status=delivery_status,
+            delivery_error_code=error_code,
+            delivery_error_message=error_message,
+            mode="demo_sandbox",
         )
 
     # 1С status mapping

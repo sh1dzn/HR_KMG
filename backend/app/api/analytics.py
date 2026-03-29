@@ -2,10 +2,15 @@
 Analytics API endpoints: heatmap, benchmarking, 1-on-1 agenda
 Registered under /dashboard prefix alongside existing dashboard routes.
 """
+from bisect import bisect_left
+import threading
+import time
+from collections import defaultdict
 from datetime import datetime, date, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -28,9 +33,90 @@ from app.schemas.analytics import (
 from app.utils.smart_heuristics import evaluate_goal_heuristically
 from app.utils.goal_context import load_generation_metadata, strategic_link_for_goal, goal_type_for_goal
 from app.schemas.prediction import RiskOverviewResponse, RiskGoalItem
-from app.services.prediction_service import compute_risk_score
 
 router = APIRouter()
+
+_ANALYTICS_CACHE_TTL_SECONDS = 30.0
+_HEATMAP_CACHE: dict[tuple[str, Optional[str], Optional[int]], tuple[float, Any]] = {}
+_BENCHMARK_CACHE: dict[tuple[Optional[str], Optional[int]], tuple[float, Any]] = {}
+_RISK_CACHE: dict[tuple[Optional[str], Optional[int]], tuple[float, Any]] = {}
+_CACHE_LOCK = threading.Lock()
+
+
+def _cache_now() -> float:
+    return time.monotonic()
+
+
+def _cache_get(store: dict, key: tuple) -> Optional[Any]:
+    now = _cache_now()
+    with _CACHE_LOCK:
+        cached = store.get(key)
+        if not cached:
+            return None
+        cached_at, payload = cached
+        if now - cached_at > _ANALYTICS_CACHE_TTL_SECONDS:
+            store.pop(key, None)
+            return None
+        return payload
+
+
+def _cache_set(store: dict, key: tuple, payload: Any) -> None:
+    with _CACHE_LOCK:
+        store[key] = (_cache_now(), payload)
+
+
+def _risk_level(score: float) -> str:
+    if score > 0.7:
+        return "high"
+    if score >= 0.4:
+        return "medium"
+    return "low"
+
+
+def _build_department_history_index(history_rows: list[Any]) -> dict[int, dict[str, list[int]]]:
+    rows_by_department: dict[int, list[tuple[int, int, int]]] = defaultdict(list)
+    for row in history_rows:
+        department_id = int(row.department_id)
+        year = int(row.year)
+        total = int(row.total or 0)
+        done = int(row.done or 0)
+        rows_by_department[department_id].append((year, total, done))
+
+    index: dict[int, dict[str, list[int]]] = {}
+    for department_id, rows in rows_by_department.items():
+        rows.sort(key=lambda x: x[0])
+        years: list[int] = []
+        total_prefix: list[int] = []
+        done_prefix: list[int] = []
+        total_acc = 0
+        done_acc = 0
+        for year, total, done in rows:
+            years.append(year)
+            total_acc += total
+            done_acc += done
+            total_prefix.append(total_acc)
+            done_prefix.append(done_acc)
+        index[department_id] = {
+            "years": years,
+            "total_prefix": total_prefix,
+            "done_prefix": done_prefix,
+        }
+    return index
+
+
+def _department_history_totals(
+    history_index: dict[int, dict[str, list[int]]],
+    department_id: int,
+    goal_year: int,
+) -> tuple[int, int]:
+    entry = history_index.get(department_id)
+    if not entry:
+        return 0, 0
+    years = entry["years"]
+    pos = bisect_left(years, goal_year) - 1
+    if pos < 0:
+        return 0, 0
+    return entry["total_prefix"][pos], entry["done_prefix"][pos]
 
 
 # ── Shared helpers ───────────────────────────────────────────────────────────
@@ -100,6 +186,11 @@ async def get_heatmap(
     if mode not in ("smart", "maturity", "progress"):
         raise HTTPException(status_code=400, detail="mode must be smart, maturity, or progress")
 
+    cache_key = (mode, quarter, year)
+    cached = _cache_get(_HEATMAP_CACHE, cache_key)
+    if cached is not None:
+        return cached
+
     # Load all goals with employee eagerly
     goals_query = db.query(Goal).options(joinedload(Goal.employee))
     if quarter:
@@ -111,6 +202,17 @@ async def get_heatmap(
     departments = db.query(Department).filter(Department.is_active == True).all()
     heuristics = _compute_heuristics_cache(all_goals)
     gen_meta = load_generation_metadata(db, [g.goal_id for g in all_goals])
+    employee_counts_rows = db.query(
+        Employee.department_id,
+        func.count(Employee.id).label("employee_count"),
+    ).filter(
+        Employee.is_active == True
+    ).group_by(
+        Employee.department_id
+    ).all()
+    employee_counts_by_department = {
+        int(row.department_id): int(row.employee_count) for row in employee_counts_rows
+    }
 
     # Group goals by department
     dept_goals: dict[int, list[Goal]] = {}
@@ -160,14 +262,10 @@ async def get_heatmap(
                 goals_count=len(eg),
             )
 
-        employees_in_dept = db.query(Employee).filter(
-            Employee.department_id == dept.id, Employee.is_active == True
-        ).count()
-
         dept_results.append(HeatmapDepartment(
             id=dept.id,
             name=dept.name,
-            employee_count=employees_in_dept,
+            employee_count=employee_counts_by_department.get(dept.id, 0),
             value=value,
             breakdown=breakdown,
             employees=sorted(seen_employees.values(), key=lambda e: e.value, reverse=True),
@@ -175,11 +273,13 @@ async def get_heatmap(
 
     dept_results.sort(key=lambda d: d.value, reverse=True)
 
-    return HeatmapResponse(
+    payload = HeatmapResponse(
         departments=dept_results,
         org_average=_avg(all_values),
         mode=mode,
     )
+    _cache_set(_HEATMAP_CACHE, cache_key, payload)
+    return payload
 
 
 # ── Benchmark ────────────────────────────────────────────────────────────────
@@ -191,6 +291,11 @@ async def get_benchmark(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("manager", "admin")),
 ):
+    cache_key = (quarter, year)
+    cached = _cache_get(_BENCHMARK_CACHE, cache_key)
+    if cached is not None:
+        return cached
+
     goals_query = db.query(Goal).options(joinedload(Goal.employee))
     if quarter:
         goals_query = goals_query.filter(Goal.quarter == quarter)
@@ -274,7 +379,7 @@ async def get_benchmark(
         d.rank = i + 1
         d.delta_from_avg = round(d.maturity - org_avg_maturity, 2)
 
-    return BenchmarkResponse(
+    payload = BenchmarkResponse(
         ranking=dept_results,
         org_average=BenchmarkOrgAverage(
             maturity=org_avg_maturity,
@@ -282,6 +387,8 @@ async def get_benchmark(
             smart_criteria=org_avg_criteria,
         ),
     )
+    _cache_set(_BENCHMARK_CACHE, cache_key, payload)
+    return payload
 
 
 # ── 1-on-1 Agenda ───────────────────────────────────────────────────────────
@@ -407,34 +514,139 @@ async def get_risk_overview(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("manager", "admin")),
 ):
-    goals_query = db.query(Goal).options(joinedload(Goal.employee))
+    cache_key = (quarter, year)
+    cached = _cache_get(_RISK_CACHE, cache_key)
+    if cached is not None:
+        return cached
+
+    goals_query = db.query(Goal).options(
+        joinedload(Goal.employee).joinedload(Employee.department)
+    )
     if quarter:
         goals_query = goals_query.filter(Goal.quarter == quarter)
     if year:
         goals_query = goals_query.filter(Goal.year == year)
     all_goals = goals_query.all()
 
+    if not all_goals:
+        payload = RiskOverviewResponse(
+            total_goals=0,
+            risk_distribution={"high": 0, "medium": 0, "low": 0},
+            top_risks=[],
+        )
+        _cache_set(_RISK_CACHE, cache_key, payload)
+        return payload
+
+    goal_ids = [str(goal.goal_id) for goal in all_goals]
+    heuristics = _compute_heuristics_cache(all_goals)
+
+    rejection_rows = db.query(
+        GoalEvent.goal_id,
+        func.count(GoalEvent.id).label("count"),
+    ).filter(
+        GoalEvent.goal_id.in_(goal_ids),
+        GoalEvent.event_type == GoalEventType.REJECTED,
+    ).group_by(
+        GoalEvent.goal_id
+    ).all()
+    rejection_counts = {str(row.goal_id): int(row.count) for row in rejection_rows}
+
+    last_event_rows = db.query(
+        GoalEvent.goal_id,
+        func.max(GoalEvent.created_at).label("last_at"),
+    ).filter(
+        GoalEvent.goal_id.in_(goal_ids),
+    ).group_by(
+        GoalEvent.goal_id
+    ).all()
+    last_event_at = {str(row.goal_id): row.last_at for row in last_event_rows}
+
+    department_ids = {int(goal.department_id) for goal in all_goals if goal.department_id is not None}
+    years = [int(goal.year) for goal in all_goals if goal.year is not None]
+    max_year = max(years) if years else None
+    history_index: dict[int, dict[str, list[int]]] = {}
+    if department_ids and max_year is not None:
+        history_rows = db.query(
+            Goal.department_id.label("department_id"),
+            Goal.year.label("year"),
+            func.count(Goal.goal_id).label("total"),
+            func.sum(case((Goal.status == GoalStatus.DONE, 1), else_=0)).label("done"),
+        ).filter(
+            Goal.department_id.in_(department_ids),
+            Goal.year < max_year,
+        ).group_by(
+            Goal.department_id,
+            Goal.year,
+        ).all()
+        history_index = _build_department_history_index(history_rows)
+
+    now_utc = datetime.now(timezone.utc)
+    today = date.today()
     distribution = {"high": 0, "medium": 0, "low": 0}
     scored = []
     for goal in all_goals:
-        pred = compute_risk_score(goal, db)
-        distribution[pred["risk_level"]] += 1
+        goal_id = str(goal.goal_id)
+        smart_score = heuristics[goal_id]["overall_score"]
+        rejection_count = rejection_counts.get(goal_id, 0)
+
+        last_event = last_event_at.get(goal_id)
+        if last_event:
+            days_in_status = (now_utc - last_event).days
+        else:
+            days_in_status = (now_utc - goal.created_at).days if goal.created_at else 0
+
+        if goal.deadline:
+            if goal.deadline < today:
+                deadline_pressure = 1.0
+            else:
+                total_days = (goal.deadline - goal.created_at.date()).days if goal.created_at else 90
+                total_days = max(total_days, 1)
+                days_remaining = (goal.deadline - today).days
+                deadline_pressure = round(max(0, 1 - (days_remaining / total_days)), 2)
+        else:
+            deadline_pressure = 0.3
+
+        if goal.department_id is not None and goal.year is not None:
+            dept_total, dept_done = _department_history_totals(
+                history_index, int(goal.department_id), int(goal.year)
+            )
+        else:
+            dept_total, dept_done = 0, 0
+
+        if dept_total > 0:
+            dept_history_factor = round(1 - (dept_done / dept_total), 2)
+        else:
+            dept_history_factor = 0.5
+
+        factors = [
+            round(1 - smart_score, 2) * 0.20,
+            round(min(rejection_count / 3, 1.0), 2) * 0.20,
+            round(min(days_in_status / 30, 1.0), 2) * 0.20,
+            deadline_pressure * 0.25,
+            dept_history_factor * 0.15,
+        ]
+        risk_score = round(sum(factors), 2)
+        risk_level = _risk_level(risk_score)
+
+        distribution[risk_level] += 1
         emp = goal.employee
         scored.append(RiskGoalItem(
-            goal_id=pred["goal_id"],
+            goal_id=goal_id,
             goal_text=goal.goal_text[:100],
             employee_name=emp.full_name if emp else None,
             department=emp.department.name if emp and emp.department else None,
-            risk_score=pred["risk_score"],
+            risk_score=risk_score,
         ))
 
     scored.sort(key=lambda x: x.risk_score, reverse=True)
 
-    return RiskOverviewResponse(
+    payload = RiskOverviewResponse(
         total_goals=len(all_goals),
         risk_distribution=distribution,
         top_risks=scored[:10],
     )
+    _cache_set(_RISK_CACHE, cache_key, payload)
+    return payload
 
 
 @router.post("/one-on-one-agenda", response_model=OneOnOneAgendaResponse)

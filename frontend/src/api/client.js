@@ -305,6 +305,26 @@ export const exportGoalsToHRSystem = async (payload) => {
   return response.data
 }
 
+export const getIntegrationHealth = async () => {
+  const response = await client.get('/integrations/health')
+  return response.data
+}
+
+export const getIntegrationBatches = async (limit = 20) => {
+  const response = await client.get('/integrations/batches', { params: { limit } })
+  return response.data
+}
+
+export const simulateIntegrationCallback = async (batchId, payload) => {
+  const response = await client.post(`/integrations/batches/${batchId}/callback`, payload)
+  return response.data
+}
+
+export const retryIntegrationBatch = async (batchId, payload = {}) => {
+  const response = await client.post(`/integrations/batches/${batchId}/retry`, payload)
+  return response.data
+}
+
 // Auth API
 export const authLogin = async (email, password) => {
   const response = await client.post('/auth/login', { email, password }, { withCredentials: true })

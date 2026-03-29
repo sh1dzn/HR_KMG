@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     MCP_PUBLIC_ENABLED: bool = False
     MCP_PUBLIC_BEARER_TOKEN: str = ""
 
+    # Integration demo/sandbox mode
+    INTEGRATION_DEMO_MODE: bool = True
+    INTEGRATION_DEMO_STORE_PATH: str = "./integration_demo_store.json"
+
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env")
         case_sensitive = True

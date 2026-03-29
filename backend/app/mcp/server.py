@@ -17,6 +17,7 @@ from app.services.platform_mcp_service import (
     build_mcp_context,
     find_user_for_mcp,
     get_employee_goals_data,
+    get_top_departments_data,
     get_org_summary_data,
     get_problem_departments_data,
     get_top_employees_data,
@@ -150,6 +151,24 @@ def _tool_top_employees(arguments: dict[str, Any], db) -> dict[str, Any]:
     )
 
 
+def _tool_top_departments(arguments: dict[str, Any], db) -> dict[str, Any]:
+    user = _resolve_user(arguments, db)
+    query = str(arguments.get("query", "") or "")
+    quarter = arguments.get("quarter")
+    year = arguments.get("year")
+    limit = int(arguments.get("limit", 5))
+    if year is not None:
+        year = int(year)
+    return get_top_departments_data(
+        user,
+        db,
+        query=query,
+        quarter=quarter,
+        year=year,
+        limit=limit,
+    )
+
+
 def _tool_employee_goals(arguments: dict[str, Any], db) -> dict[str, Any]:
     user = _resolve_user(arguments, db)
     employee_id = arguments.get("employee_id")
@@ -222,6 +241,7 @@ TOOL_HANDLERS: dict[str, Callable[[dict[str, Any], Any], dict[str, Any]]] = {
     "platform.org_summary": _tool_org_summary,
     "platform.problem_departments": _tool_problem_departments,
     "platform.top_employees": _tool_top_employees,
+    "platform.top_departments": _tool_top_departments,
     "platform.employee_goals": _tool_employee_goals,
     "platform.search_documents": _tool_search_documents,
 }
@@ -276,6 +296,22 @@ TOOLS = [
     {
         "name": "platform.top_employees",
         "description": "Top performers by completion-focused score.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user_email": {"type": "string"},
+                "user_id": {"type": "string"},
+                "user_employee_id": {"type": "integer"},
+                "query": {"type": "string"},
+                "quarter": {"type": "string", "enum": ["Q1", "Q2", "Q3", "Q4"]},
+                "year": {"type": "integer"},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+            },
+        },
+    },
+    {
+        "name": "platform.top_departments",
+        "description": "Top departments by completion-focused score.",
         "inputSchema": {
             "type": "object",
             "properties": {

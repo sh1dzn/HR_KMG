@@ -131,31 +131,68 @@ export default function Dashboard() {
   const [briefCopied, setBriefCopied] = useState(false)
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true); setError(null)
+    let cancelled = false
+    const loadSummary = async () => {
+      setLoading(true)
+      setError(null)
       try {
-        const [summary, trendData] = await Promise.all([
-          getDashboardSummary(quarter, year),
-          getDashboardTrends(year),
-        ])
-        setData(summary)
-        setTrends(trendData)
-      } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки данных') }
-      finally { setLoading(false) }
+        const summary = await getDashboardSummary(quarter, year)
+        if (!cancelled) {
+          setData(summary)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.response?.data?.detail || 'Ошибка загрузки данных')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
     }
-    load()
+    loadSummary()
+    return () => {
+      cancelled = true
+    }
   }, [quarter, year])
 
   useEffect(() => {
+    let cancelled = false
+    setTrends(null)
+    getDashboardTrends(year)
+      .then((trendData) => {
+        if (!cancelled) {
+          setTrends(trendData)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTrends(null)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [year])
+
+  useEffect(() => {
+    let cancelled = false
     const loadRisk = async () => {
       try {
         const risk = await getRiskOverview(quarter, year)
-        setRiskOverview(risk)
+        if (!cancelled) {
+          setRiskOverview(risk)
+        }
       } catch {
-        // non-critical — silently ignore
+        if (!cancelled) {
+          setRiskOverview(null)
+        }
       }
     }
     loadRisk()
+    return () => {
+      cancelled = true
+    }
   }, [quarter, year])
 
   useEffect(() => {
@@ -279,8 +316,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <Heatmap quarter={quarter} year={year} />
-      <Benchmark quarter={quarter} year={year} />
+      {data && <Heatmap quarter={quarter} year={year} />}
+      {data && <Benchmark quarter={quarter} year={year} />}
 
       {riskOverview && riskOverview.top_risks.length > 0 && (
         <CardShell>

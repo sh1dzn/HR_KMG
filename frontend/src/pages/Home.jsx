@@ -134,7 +134,7 @@ const features = [
   },
   {
     name: 'Операционный контур',
-    description: 'Alert Manager, ручная переиндексация ВНД и mock-интеграция с внешними HR-системами',
+    description: 'Alert Manager, ручная переиндексация ВНД и sandbox-интеграция с внешними HR-системами',
     href: '/operations',
     iconClass: 'icon-box-gray',
     icon: (

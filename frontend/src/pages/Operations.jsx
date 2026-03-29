@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
   exportGoalsToHRSystem, getAlertsSummary, getDocumentIndexStatus,
-  getEmployees, getIntegrationSystems, reindexDocuments,
+  getEmployees, getIntegrationBatches, getIntegrationHealth, getIntegrationSystems, reindexDocuments,
+  retryIntegrationBatch, simulateIntegrationCallback,
 } from '../api/client'
 import EmployeePicker from '../components/EmployeePicker'
 import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
@@ -13,6 +14,14 @@ const severityBadge = {
 }
 
 const ALERTS_PER_PAGE = 15
+const BATCHES_PER_PAGE = 8
+
+const deliveryBadge = {
+  queued: { label: 'queued', bg: 'var(--bg-warning-primary)', color: 'var(--text-warning-primary)', border: 'var(--border-warning)' },
+  sent: { label: 'sent', bg: 'var(--bg-brand-primary)', color: 'var(--text-brand-primary)', border: 'var(--border-brand-secondary)' },
+  confirmed: { label: 'confirmed', bg: 'var(--bg-success-primary)', color: 'var(--text-success-primary)', border: 'var(--border-success)' },
+  failed: { label: 'failed', bg: 'var(--bg-error-primary)', color: 'var(--fg-error-secondary)', border: 'var(--border-error-secondary)' },
+}
 
 const CardShell = ({ children, className = '' }) => (
   <div className={`card ${className}`}>{children}</div>
@@ -27,14 +36,20 @@ export default function Operations() {
   const [indexStatus,   setIndexStatus]   = useState(null)
   const [employees,     setEmployees]     = useState([])
   const [systems,       setSystems]       = useState([])
+  const [integrationHealth, setIntegrationHealth] = useState(null)
+  const [integrationBatches, setIntegrationBatches] = useState([])
   const [employeeId,    setEmployeeId]    = useState('')
   const [targetSystem,  setTargetSystem]  = useState('1c')
+  const [dispatchMode,  setDispatchMode]  = useState('sync')
+  const [simulateResult, setSimulateResult] = useState('success')
   const [exportResult,  setExportResult]  = useState(null)
   const [loadingAlerts, setLoadingAlerts] = useState(false)
   const [loadingIndex,  setLoadingIndex]  = useState(false)
+  const [loadingBatches, setLoadingBatches] = useState(false)
   const [alertPage,     setAlertPage]     = useState(1)
   const [sevFilter,     setSevFilter]     = useState('')
   const [exporting,     setExporting]     = useState(false)
+  const [batchActionId, setBatchActionId] = useState(null)
   const [error,         setError]         = useState(null)
 
   const downloadExportFile = () => {
@@ -46,14 +61,36 @@ export default function Operations() {
     const a = document.createElement('a'); a.href = url; a.download = fn; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
   }
 
+  const loadIntegrationState = async () => {
+    setLoadingBatches(true)
+    try {
+      const [health, batches] = await Promise.all([
+        getIntegrationHealth(),
+        getIntegrationBatches(BATCHES_PER_PAGE),
+      ])
+      setIntegrationHealth(health)
+      setIntegrationBatches(batches.items || [])
+    } finally {
+      setLoadingBatches(false)
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       setError(null)
       try {
-        const [emp, sys, idx] = await Promise.all([getEmployees(), getIntegrationSystems(), getDocumentIndexStatus()])
+        const [emp, sys, idx, health, batches] = await Promise.all([
+          getEmployees(),
+          getIntegrationSystems(),
+          getDocumentIndexStatus(),
+          getIntegrationHealth(),
+          getIntegrationBatches(BATCHES_PER_PAGE),
+        ])
         setEmployees(emp.employees || [])
         setSystems(sys.systems || [])
         setIndexStatus(idx)
+        setIntegrationHealth(health)
+        setIntegrationBatches(batches.items || [])
         if (emp.employees?.length > 0) setEmployeeId(emp.employees[0].id)
         if (sys.systems?.length > 0)   setTargetSystem(sys.systems[0].code)
       } catch (e) { setError(e.response?.data?.detail || 'Ошибка загрузки данных') }
@@ -83,9 +120,52 @@ export default function Operations() {
   const handleExport = async () => {
     if (!employeeId || !targetSystem) return
     setExporting(true); setError(null)
-    try { setExportResult(await exportGoalsToHRSystem({ employee_id: employeeId, quarter, year, target_system: targetSystem, include_drafts: true })) }
+    try {
+      const result = await exportGoalsToHRSystem({
+        employee_id: employeeId,
+        quarter,
+        year,
+        target_system: targetSystem,
+        include_drafts: true,
+        dispatch_mode: dispatchMode,
+        simulate_result: simulateResult,
+      })
+      setExportResult(result)
+      await loadIntegrationState()
+    }
     catch (e) { setError(e.response?.data?.detail || 'Ошибка экспорта') }
     finally { setExporting(false) }
+  }
+
+  const handleBatchCallback = async (batchId, result) => {
+    const actionKey = `${batchId}:${result}`
+    setBatchActionId(actionKey)
+    setError(null)
+    try {
+      await simulateIntegrationCallback(batchId, {
+        result,
+        error_message: result === 'failed' ? 'Sandbox callback сообщил об ошибке' : null,
+      })
+      await loadIntegrationState()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Ошибка callback')
+    } finally {
+      setBatchActionId(null)
+    }
+  }
+
+  const handleBatchRetry = async (batchId, mode = 'success') => {
+    const actionKey = `${batchId}:retry:${mode}`
+    setBatchActionId(actionKey)
+    setError(null)
+    try {
+      await retryIntegrationBatch(batchId, { simulate_result: mode })
+      await loadIntegrationState()
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Ошибка retry')
+    } finally {
+      setBatchActionId(null)
+    }
   }
 
   return (
@@ -93,7 +173,7 @@ export default function Operations() {
       <div>
         <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Операционный контур</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          Alert Manager, управление индексом ВНД и mock-интеграция с внешними HR-системами.
+          Alert Manager, управление индексом ВНД и sandbox-контур интеграции с внешними HR-системами.
         </p>
       </div>
 
@@ -397,10 +477,20 @@ export default function Operations() {
                     <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
                   </svg>
                 </div>
-                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Mock-интеграция HRIS</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Sandbox-интеграция HRIS</div>
               </div>
             </div>
-            <div className="p-5 space-y-3">
+            <div className="p-5 space-y-4">
+              <div className="rounded-lg px-3 py-2 text-xs"
+                style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', color: 'var(--text-tertiary)' }}
+              >
+                Режим: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{integrationHealth?.mode || 'demo_sandbox'}</span>
+                {integrationHealth && (
+                  <span style={{ marginLeft: 8 }}>
+                    · Success rate: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{integrationHealth.success_rate}%</span>
+                  </span>
+                )}
+              </div>
               <EmployeePicker
                 employees={employees}
                 value={employeeId}
@@ -413,6 +503,25 @@ export default function Operations() {
                 <select className="select-field w-full" value={targetSystem} onChange={(e) => setTargetSystem(e.target.value)}>
                   {systems.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
                 </select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Режим отправки</label>
+                  <select className="select-field w-full" value={dispatchMode} onChange={(e) => setDispatchMode(e.target.value)}>
+                    <option value="sync">Sync (сразу результат)</option>
+                    <option value="queued">Queue (ожидание callback)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Сценарий</label>
+                  <select className="select-field w-full" value={simulateResult} onChange={(e) => setSimulateResult(e.target.value)}>
+                    <option value="success">success</option>
+                    <option value="timeout">timeout</option>
+                    <option value="auth_error">auth_error</option>
+                    <option value="validation_error">validation_error</option>
+                    <option value="random">random</option>
+                  </select>
+                </div>
               </div>
               <button onClick={handleExport} disabled={exporting} className="btn-secondary w-full">
                 {exporting ? (
@@ -429,6 +538,23 @@ export default function Operations() {
                   <div>
                     <div className="text-sm font-semibold break-words" style={{ color: 'var(--text-primary)' }}>{exportResult.message}</div>
                     <div className="mt-0.5 text-xs break-all" style={{ color: 'var(--text-quaternary)' }}>Batch ID: {exportResult.batch_id}</div>
+                    <div className="mt-2">
+                      {(() => {
+                        const st = deliveryBadge[exportResult.delivery_status] || deliveryBadge.sent
+                        return (
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                            style={{ backgroundColor: st.bg, color: st.color, border: `1px solid ${st.border}` }}
+                          >
+                            {st.label}
+                          </span>
+                        )
+                      })()}
+                    </div>
+                    {exportResult.delivery_error_message && (
+                      <div className="mt-1 text-xs" style={{ color: 'var(--fg-error-secondary)' }}>
+                        {exportResult.delivery_error_code}: {exportResult.delivery_error_message}
+                      </div>
+                    )}
                   </div>
                   <button onClick={downloadExportFile} className="btn-primary w-full">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -462,6 +588,86 @@ export default function Operations() {
                   </details>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>История batch</div>
+                <div className="rounded-lg" style={{ border: '1px solid var(--border-secondary)' }}>
+                  {loadingBatches ? (
+                    <div className="px-3 py-3 text-sm" style={{ color: 'var(--text-tertiary)' }}>Загрузка...</div>
+                  ) : integrationBatches.length === 0 ? (
+                    <div className="px-3 py-3 text-sm" style={{ color: 'var(--text-tertiary)' }}>Пока нет отправок</div>
+                  ) : (
+                    <div className="divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
+                      {integrationBatches.map((item) => {
+                        const st = deliveryBadge[item.status] || deliveryBadge.sent
+                        const at = new Date(item.updated_at).toLocaleString()
+                        return (
+                          <div key={item.batch_id} className="px-3 py-3 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2 justify-between">
+                              <div className="min-w-0">
+                                <div className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                                  {item.target_system.toUpperCase()} · {item.employee_name}
+                                </div>
+                                <div className="text-[11px] break-all" style={{ color: 'var(--text-quaternary)' }}>
+                                  {item.batch_id}
+                                </div>
+                              </div>
+                              <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+                                style={{ backgroundColor: st.bg, color: st.color, border: `1px solid ${st.border}` }}
+                              >
+                                {st.label}
+                              </span>
+                            </div>
+                            <div className="text-[11px]" style={{ color: 'var(--text-quaternary)' }}>
+                              {at} · attempts: {item.attempt_count}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {item.status === 'queued' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBatchCallback(item.batch_id, 'confirmed')}
+                                    disabled={batchActionId === `${item.batch_id}:confirmed`}
+                                    className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium"
+                                    style={{ border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)' }}
+                                  >
+                                    Callback success
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBatchCallback(item.batch_id, 'failed')}
+                                    disabled={batchActionId === `${item.batch_id}:failed`}
+                                    className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium"
+                                    style={{ border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)' }}
+                                  >
+                                    Callback failed
+                                  </button>
+                                </>
+                              )}
+                              {(item.status === 'failed' || item.status === 'queued') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleBatchRetry(item.batch_id, 'success')}
+                                  disabled={batchActionId === `${item.batch_id}:retry:success`}
+                                  className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium"
+                                  style={{ border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)' }}
+                                >
+                                  Retry success
+                                </button>
+                              )}
+                            </div>
+                            {item.error_code && (
+                              <div className="text-[11px]" style={{ color: 'var(--fg-error-secondary)' }}>
+                                {item.error_code}: {item.error_message || 'Ошибка интеграции'}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </CardShell>
         </div>
