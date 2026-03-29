@@ -154,7 +154,7 @@ class RAGService:
             return True
 
     def ensure_collection_populated(self, force: bool = False) -> int:
-        if not settings.OPENAI_API_KEY:
+        if not self.llm.has_openai_credentials():
             return 0
         if not force and not self._collection_needs_rebuild():
             return 0
@@ -224,12 +224,13 @@ class RAGService:
             indexed_chunks = 0
 
         vector_index_ready = indexed_chunks > 0
+        openai_configured = bool(self.llm.has_openai_credentials())
         return {
             "active_documents": active_documents,
             "indexed_chunks": indexed_chunks,
-            "openai_configured": bool(settings.OPENAI_API_KEY),
+            "openai_configured": openai_configured,
             "vector_index_ready": vector_index_ready,
-            "search_mode": "vector+lexical" if bool(settings.OPENAI_API_KEY) and vector_index_ready else "lexical",
+            "search_mode": "vector+lexical" if openai_configured and vector_index_ready else "lexical",
             "collection_name": settings.CHROMA_COLLECTION_NAME,
             "persist_dir": settings.CHROMA_PERSIST_DIR,
         }
@@ -348,7 +349,7 @@ class RAGService:
         Hybrid search: vector + lexical with RRF merge.
         Falls back to lexical-only when OpenAI is unavailable.
         """
-        if not settings.OPENAI_API_KEY:
+        if not self.llm.has_openai_credentials():
             results = await asyncio.to_thread(self._lexical_search, query, n_results, department, doc_type)
             for r in results:
                 r["search_method"] = "lexical"

@@ -38,6 +38,32 @@ _QUARTER_ORDER = {
 }
 
 
+def _user_role_value(user: User) -> str:
+    return user.role.value if hasattr(user.role, "value") else str(user.role)
+
+
+def _ensure_generation_access(current_user: User, target_employee: Employee) -> None:
+    role = _user_role_value(current_user)
+    if role == "admin":
+        return
+
+    if role == "employee":
+        if current_user.employee_id != target_employee.id:
+            raise HTTPException(status_code=403, detail="Нет доступа к генерации целей для другого сотрудника")
+        return
+
+    if role == "manager":
+        if current_user.employee_id == target_employee.id:
+            return
+        manager_emp = current_user.employee
+        subordinate_ids = {s.id for s in manager_emp.subordinates} if manager_emp else set()
+        if target_employee.id not in subordinate_ids:
+            raise HTTPException(status_code=403, detail="Нет доступа к генерации целей для этого сотрудника")
+        return
+
+    raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+
 def _persist_generated_goals(
     db: Session,
     employee: Employee,
@@ -266,6 +292,7 @@ async def generate_goals(
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    _ensure_generation_access(current_user, employee)
 
     # Get position and department
     position = request.position or (employee.position.name if employee.position else "Специалист")
@@ -330,6 +357,7 @@ async def generate_and_save_goals(
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    _ensure_generation_access(current_user, employee)
 
     existing_goal_texts = _load_existing_goal_texts(
         db,
@@ -374,6 +402,7 @@ async def save_accepted_generated_goals(
     employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    _ensure_generation_access(current_user, employee)
 
     existing_goal_texts = _load_existing_goal_texts(
         db,

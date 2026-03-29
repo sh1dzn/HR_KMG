@@ -8,6 +8,7 @@ from contextvars import ContextVar
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from app.services.ai_runtime import set_request_ai_runtime, reset_request_ai_runtime
 
 logger = logging.getLogger("hr_ai")
 
@@ -45,3 +46,17 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             rid,
         )
         return response
+
+
+class AIConfigMiddleware(BaseHTTPMiddleware):
+    """Injects per-request AI provider/key overrides from headers."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        provider = request.headers.get("X-AI-Provider")
+        api_key = request.headers.get("X-AI-Api-Key")
+        tokens = set_request_ai_runtime(provider, api_key)
+        request.state.ai_provider = provider
+        try:
+            return await call_next(request)
+        finally:
+            reset_request_ai_runtime(tokens)

@@ -44,8 +44,8 @@ export default function Heatmap({ quarter, year }) {
               onClick={() => setMode(m.key)}
               className="px-3 py-1.5 text-xs font-medium transition-colors"
               style={{
-                backgroundColor: mode === m.key ? 'var(--bg-brand-primary)' : 'var(--bg-primary)',
-                color: mode === m.key ? 'white' : 'var(--text-secondary)',
+                backgroundColor: mode === m.key ? 'var(--bg-brand-solid)' : 'var(--bg-primary)',
+                color: mode === m.key ? 'var(--bg-primary)' : 'var(--text-secondary)',
               }}
             >
               {m.label}

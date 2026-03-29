@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Literal
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
@@ -271,6 +272,17 @@ def _load_goal_or_404(db: Session, goal_id: str) -> Goal:
     return goal
 
 
+GOAL_SORT_COLUMNS = {
+    "updated_at": Goal.updated_at,
+    "created_at": Goal.created_at,
+    "status": Goal.status,
+    "weight": Goal.weight,
+    "deadline": Goal.deadline,
+    "year": Goal.year,
+    "quarter": Goal.quarter,
+}
+
+
 @router.get("/", response_model=GoalListResponse)
 async def get_goals(
     employee_id: Optional[int] = None,
@@ -278,13 +290,16 @@ async def get_goals(
     quarter: Optional[str] = None,
     year: Optional[int] = None,
     status: Optional[str] = None,
+    search: Optional[str] = Query(None, description="Поиск по тексту цели"),
+    sort_by: Optional[str] = Query(None, description="Поле сортировки: updated_at, created_at, status, weight, deadline"),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="Порядок: asc, desc"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Получить список целей с фильтрацией
+    Получить список целей с фильтрацией, поиском и сортировкой
     """
     query = db.query(Goal)
 
@@ -308,9 +323,15 @@ async def get_goals(
         query = query.filter(Goal.year == year)
     if status:
         query = query.filter(Goal.status == status)
+    if search:
+        query = query.filter(Goal.goal_text.ilike(f"%{search.strip()}%"))
 
     total = query.count()
-    goals = query.order_by(Goal.updated_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+
+    # Sorting
+    sort_col = GOAL_SORT_COLUMNS.get(sort_by, Goal.updated_at)
+    order_fn = desc if sort_order == "desc" else asc
+    goals = query.order_by(order_fn(sort_col)).offset((page - 1) * per_page).limit(per_page).all()
     generation_metadata = load_generation_metadata(db, [goal.goal_id for goal in goals])
     goal_responses = [
         _serialize_goal(db, goal, generation_metadata.get(str(goal.goal_id)))

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
+    # Anthropic
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-latest"
+
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./chroma_data"
     CHROMA_COLLECTION_NAME: str = "vnd_documents"

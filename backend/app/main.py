@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_db, engine
 from app.api import api_router, TAGS_METADATA
-from app.middleware import RequestIdMiddleware, RequestLoggingMiddleware
+from app.middleware import RequestIdMiddleware, RequestLoggingMiddleware, AIConfigMiddleware
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -83,6 +83,9 @@ app.add_middleware(
 # Request-ID tracing
 app.add_middleware(RequestIdMiddleware)
 
+# Per-request AI provider overrides (headers)
+app.add_middleware(AIConfigMiddleware)
+
 # Structured request logging
 app.add_middleware(RequestLoggingMiddleware)
 
@@ -150,6 +153,7 @@ async def health_check():
         "checks": {
             "database": "ok" if db_ok else "unavailable",
             "openai_configured": bool(settings.OPENAI_API_KEY),
+            "anthropic_configured": bool(settings.ANTHROPIC_API_KEY),
             "chroma_chunks": chroma_chunks,
         },
     }

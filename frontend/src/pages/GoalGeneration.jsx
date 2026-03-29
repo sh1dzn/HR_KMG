@@ -3,6 +3,7 @@ import { generateGoals, getFocusAreas, getEmployees, getGoals, saveAcceptedGener
 import EmployeePicker from '../components/EmployeePicker'
 import AIThinking from '../components/AIThinking'
 import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
+import { useAuth } from '../contexts/AuthContext'
 
 const normalizeGoalText = (t = '') =>
   t.toLowerCase().replace(/[^\wа-яА-Яa-zA-Z0-9%\s]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -23,6 +24,8 @@ const strategicStyle = (link) => {
 }
 
 export default function GoalGeneration() {
+  const { user, role } = useAuth()
+  const isEmployeeRole = role === 'employee'
   const currentPeriod = getCurrentPeriod()
   const yearOptions = getYearRange(currentPeriod.year, 1, 2)
   const [employeeId,         setEmployeeId]         = useState('')
@@ -46,15 +49,37 @@ export default function GoalGeneration() {
   const [cascadeLoading,     setCascadeLoading]     = useState(false)
 
   useEffect(() => {
-    Promise.all([getFocusAreas(), getEmployees()])
-      .then(([fa, emp]) => {
+    const load = async () => {
+      try {
+        const fa = await getFocusAreas()
         setFocusAreas(fa.focus_areas || [])
+
+        if (isEmployeeRole) {
+          const selfEmployeeId = user?.employee_id || ''
+          setEmployees(
+            user?.employee_id
+              ? [{
+                id: user.employee_id,
+                full_name: user.employee_name || 'Сотрудник',
+                position_name: user.position_name || null,
+                department_name: user.department_name || null,
+              }]
+              : []
+          )
+          setEmployeeId(selfEmployeeId)
+          return
+        }
+
+        const emp = await getEmployees()
         const list = emp.employees || []
         setEmployees(list)
         if (list.length > 0) setEmployeeId(list[0].id)
-      })
-      .catch(console.error)
-  }, [])
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    load()
+  }, [isEmployeeRole, user])
 
   // Load manager goals when employee changes
   useEffect(() => {
@@ -96,11 +121,14 @@ export default function GoalGeneration() {
   const handleGenerate = async () => {
     setLoading(true); setError(null)
     try {
+      if (!employeeId) {
+        throw new Error('Сотрудник не выбран')
+      }
       // Pass selected manager goals as text for cascading
       const managerGoalTexts = selectedManagerGoals.size > 0
         ? managerGoals.filter(g => selectedManagerGoals.has(g.id)).map(g => g.title)
         : null
-      const d = await generateGoals(employeeId, quarter, year, selectedFocusAreas.length > 0 ? selectedFocusAreas : null, count, managerGoalTexts)
+      const d = await generateGoals(Number(employeeId), quarter, year, selectedFocusAreas.length > 0 ? selectedFocusAreas : null, count, managerGoalTexts)
       setResult(d); setGoalStates({}); setSaveSummary(null)
     } catch (e) { setError(e.response?.data?.detail || 'Ошибка при генерации целей') }
     finally { setLoading(false) }
@@ -124,7 +152,7 @@ export default function GoalGeneration() {
         .filter(({ i }) => goalStates[i] === 'accepted')
         .map(({ g }) => g)
       const sr = await saveAcceptedGeneratedGoals({
-        employee_id: employeeId, quarter, year,
+        employee_id: Number(employeeId), quarter, year,
         accepted_goals: acceptedGoals,
         generation_context: result.generation_context || '',
         cascaded_from_manager: result.cascaded_from_manager || false,
@@ -149,6 +177,14 @@ export default function GoalGeneration() {
   }
 
   const selectedEmp = employees.find(e => e.id === employeeId)
+    || (user?.employee_id && Number(user.employee_id) === Number(employeeId)
+      ? {
+        id: user.employee_id,
+        full_name: user.employee_name || 'Сотрудник',
+        position_name: user.position_name || null,
+        department_name: user.department_name || null,
+      }
+      : null)
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-in">
@@ -166,13 +202,27 @@ export default function GoalGeneration() {
         <div className="mb-5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Параметры генерации</div>
 
         <div className="mb-5">
-          <EmployeePicker
-            employees={employees}
-            value={employeeId}
-            onChange={setEmployeeId}
-            label="Сотрудник"
-            emptyText={employees.length === 0 ? 'Загрузка...' : 'Не найдено'}
-          />
+          {isEmployeeRole ? (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Сотрудник</label>
+              <div className="rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {user?.employee_name || 'Текущий сотрудник'}
+                </div>
+                <div className="mt-0.5 text-xs" style={{ color: 'var(--text-quaternary)' }}>
+                  {[user?.position_name, user?.department_name].filter(Boolean).join(' · ') || 'Профиль сотрудника'}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmployeePicker
+              employees={employees}
+              value={employeeId}
+              onChange={setEmployeeId}
+              label="Сотрудник"
+              emptyText={employees.length === 0 ? 'Загрузка...' : 'Не найдено'}
+            />
+          )}
         </div>
 
         <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">

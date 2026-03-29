@@ -155,8 +155,8 @@ class GoalGenerator:
         )
 
         try:
-            if not settings.OPENAI_API_KEY:
-                raise RuntimeError("OPENAI_API_KEY is not configured")
+            if not self.llm.has_completion_credentials():
+                raise RuntimeError("No LLM credentials are configured")
             result = await self.llm.complete_json(
                 prompt=prompt,
                 system_prompt=self.SYSTEM_PROMPT,

@@ -19,7 +19,7 @@ logger = logging.getLogger("hr_ai.chat")
 
 MAX_CONTEXT_MESSAGES = 20
 TOKEN_FOOTER_PATTERN = re.compile(
-    r"(?:\n\n---\n`Токены: вход \d+, выход \d+, всего \d+`\s*)+$"
+    r"(?:\n\n(?:---\n)?`(?:Токены: вход \d+, выход \d+, всего \d+|токены \d+/\d+/\d+)`\s*)+$"
 )
 
 # ── Role-based system prompts ─────────────────────────────────────────────────
@@ -265,10 +265,7 @@ def _format_usage_footer(usage: Dict[str, int]) -> str:
     input_tokens = int(usage.get("input_tokens", 0))
     output_tokens = int(usage.get("output_tokens", 0))
     total_tokens = int(usage.get("total_tokens", input_tokens + output_tokens))
-    return (
-        "\n\n---\n"
-        f"`Токены: вход {input_tokens}, выход {output_tokens}, всего {total_tokens}`"
-    )
+    return f"\n\n`токены {input_tokens}/{output_tokens}/{total_tokens}`"
 
 
 def _strip_usage_footers(content: str) -> str:

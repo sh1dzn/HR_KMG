@@ -16,11 +16,39 @@ const client = axios.create({
 
 // ─── Auth token interceptors ────────────────────────────────────────────────
 
+const AI_PROVIDERS = ['openai', 'anthropic']
+const MODELS_BY_PROVIDER = {
+  openai: ['gpt-5-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini'],
+  anthropic: ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-3-7-sonnet-latest', 'claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest'],
+}
+
+const getAISettings = () => {
+  try {
+    const s = JSON.parse(localStorage.getItem('kmg-settings') || '{}')
+    const provider = AI_PROVIDERS.includes(s.aiProvider) ? s.aiProvider : 'openai'
+    const modelCandidate = s.aiModel || s.openaiModel || null
+    const model = modelCandidate && (MODELS_BY_PROVIDER[provider] || []).includes(modelCandidate)
+      ? modelCandidate
+      : null
+    const apiKey = typeof s.userApiKey === 'string' ? s.userApiKey.trim() : ''
+    return { provider, model, apiKey }
+  } catch {
+    return { provider: 'openai', model: null, apiKey: '' }
+  }
+}
+
 // Request interceptor: attach Bearer token
 client.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  const ai = getAISettings()
+  if (ai.provider) {
+    config.headers['X-AI-Provider'] = ai.provider
+  }
+  if (ai.apiKey) {
+    config.headers['X-AI-Api-Key'] = ai.apiKey
   }
   if (config.url?.startsWith('/auth')) {
     config.withCredentials = true
@@ -76,13 +104,9 @@ client.interceptors.response.use(
 )
 
 // Helper to get selected model from settings
-const VALID_MODELS = ['gpt-5-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o3-mini']
 const getSelectedModel = () => {
-  try {
-    const s = JSON.parse(localStorage.getItem('kmg-settings') || '{}')
-    const model = s.openaiModel
-    return model && VALID_MODELS.includes(model) ? model : null
-  } catch { return null }
+  const ai = getAISettings()
+  return ai.model
 }
 
 // Goal Evaluation API

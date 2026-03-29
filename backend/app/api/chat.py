@@ -5,7 +5,7 @@ import logging
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -29,6 +29,8 @@ router = APIRouter()
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def list_conversations(
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    per_page: int = Query(50, ge=1, le=100, description="Записей на страницу"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -37,7 +39,8 @@ async def list_conversations(
         db.query(ChatConversation)
         .filter(ChatConversation.user_id == current_user.id)
         .order_by(ChatConversation.updated_at.desc())
-        .limit(50)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
 

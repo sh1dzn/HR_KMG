@@ -13,6 +13,7 @@ chromadb==0.4.22
 
 # OpenAI and AI
 openai==1.12.0
+anthropic==0.49.0
 tiktoken==0.5.2
 
 # Data validation

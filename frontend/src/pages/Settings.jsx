@@ -4,7 +4,9 @@ const STORAGE_KEY = 'kmg-settings'
 const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '') || '/api'
 
 const defaultSettings = {
-  openaiModel: 'gpt-4o',
+  aiProvider: 'openai',
+  aiModel: 'gpt-5-mini',
+  userApiKey: '',
   evaluationLanguage: 'ru',
   smartThreshold: 70,
   maxGoalsPerEmployee: 25,
@@ -12,7 +14,12 @@ const defaultSettings = {
   notificationsEnabled: true,
 }
 
-const modelOptions = [
+const providerOptions = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'anthropic', label: 'Anthropic' },
+]
+
+const openaiModelOptions = [
   { value: 'gpt-5-mini', label: 'GPT-5 Mini', desc: 'Новейшая модель — высокое качество при низкой стоимости' },
   { value: 'gpt-4o', label: 'GPT-4o', desc: 'Мощная и надёжная — лучшее качество оценки SMART' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini', desc: 'Быстрая и экономичная, хорошее качество' },
@@ -20,7 +27,19 @@ const modelOptions = [
   { value: 'o3-mini', label: 'O3 Mini', desc: 'Reasoning модель — глубокий анализ, медленнее' },
   { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', desc: 'Максимальная скорость, базовое качество' },
 ]
-const VALID_MODELS = modelOptions.map((m) => m.value)
+
+const anthropicModelOptions = [
+  { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', desc: 'Сильная универсальная модель для сложных ответов' },
+  { value: 'claude-opus-4-1', label: 'Claude Opus 4.1', desc: 'Максимальное качество и глубина рассуждений' },
+  { value: 'claude-3-7-sonnet-latest', label: 'Claude 3.7 Sonnet', desc: 'Хороший баланс качества и скорости' },
+  { value: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet', desc: 'Стабильная модель для рабочих задач' },
+  { value: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku', desc: 'Быстрые и экономичные ответы' },
+]
+
+const MODEL_OPTIONS_BY_PROVIDER = {
+  openai: openaiModelOptions,
+  anthropic: anthropicModelOptions,
+}
 
 const languageOptions = [
   { value: 'ru', label: 'Русский' },
@@ -87,10 +106,21 @@ export default function Settings() {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = { ...defaultSettings, ...JSON.parse(stored) }
-        // Reset model if it's not in the valid list
-        if (!VALID_MODELS.includes(parsed.openaiModel)) {
-          parsed.openaiModel = defaultSettings.openaiModel
+
+        // Backward compatibility for old key
+        if (!parsed.aiModel && parsed.openaiModel) {
+          parsed.aiModel = parsed.openaiModel
         }
+        if (!providerOptions.some((p) => p.value === parsed.aiProvider)) {
+          parsed.aiProvider = defaultSettings.aiProvider
+        }
+        const currentModelOptions = MODEL_OPTIONS_BY_PROVIDER[parsed.aiProvider] || openaiModelOptions
+        const currentModelValues = currentModelOptions.map((m) => m.value)
+        if (!currentModelValues.includes(parsed.aiModel)) {
+          parsed.aiModel = currentModelOptions[0].value
+        }
+        if (typeof parsed.userApiKey !== 'string') parsed.userApiKey = ''
+
         setSettings(parsed)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
       }
@@ -129,21 +159,57 @@ export default function Settings() {
       </div>
 
       {/* AI Model */}
-      <SettingsSection title="AI Модель" description="Предпочтительная модель OpenAI для оценки и генерации целей">
+      <SettingsSection title="AI Модель" description="Выбор провайдера, модели и персонального ключа (если нужно)">
+        <FieldRow label="Провайдер" description="OpenAI или Anthropic">
+          <div className="grid grid-cols-2 gap-2">
+            {providerOptions.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => {
+                  const nextModel = (MODEL_OPTIONS_BY_PROVIDER[p.value] || [])[0]?.value || ''
+                  setSettings(prev => {
+                    const next = {
+                      ...prev,
+                      aiProvider: p.value,
+                      aiModel: (MODEL_OPTIONS_BY_PROVIDER[p.value] || []).some((m) => m.value === prev.aiModel)
+                        ? prev.aiModel
+                        : nextModel,
+                    }
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+                    return next
+                  })
+                  setSaved(false)
+                }}
+                className="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                style={{
+                  border: `1.5px solid ${settings.aiProvider === p.value ? 'var(--fg-brand-primary, #1570EF)' : 'var(--border-secondary)'}`,
+                  backgroundColor: settings.aiProvider === p.value ? 'var(--bg-brand-primary, #EFF8FF)' : 'var(--bg-primary)',
+                  color: settings.aiProvider === p.value ? 'var(--text-brand-primary)' : 'var(--text-secondary)',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </FieldRow>
+
+        <div style={{ height: '1px', backgroundColor: 'var(--border-secondary)' }} />
+
         <FieldRow label="Модель" description="Влияет на качество и скорость оценки">
           <div className="space-y-2">
-            {modelOptions.map((m) => (
+            {(MODEL_OPTIONS_BY_PROVIDER[settings.aiProvider] || []).map((m) => (
               <label key={m.value}
                 className="flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors"
                 style={{
-                  border: `1.5px solid ${settings.openaiModel === m.value ? 'var(--fg-brand-primary, #1570EF)' : 'var(--border-secondary)'}`,
-                  backgroundColor: settings.openaiModel === m.value ? 'var(--bg-brand-primary, #EFF8FF)' : 'var(--bg-primary)',
+                  border: `1.5px solid ${settings.aiModel === m.value ? 'var(--fg-brand-primary, #1570EF)' : 'var(--border-secondary)'}`,
+                  backgroundColor: settings.aiModel === m.value ? 'var(--bg-brand-primary, #EFF8FF)' : 'var(--bg-primary)',
                 }}
               >
                 <input
                   type="radio" name="model" value={m.value}
-                  checked={settings.openaiModel === m.value}
-                  onChange={() => update('openaiModel', m.value)}
+                  checked={settings.aiModel === m.value}
+                  onChange={() => update('aiModel', m.value)}
                   className="mt-0.5 h-4 w-4 flex-shrink-0"
                   style={{ accentColor: 'var(--fg-brand-primary)' }}
                 />
@@ -153,6 +219,27 @@ export default function Settings() {
                 </div>
               </label>
             ))}
+          </div>
+        </FieldRow>
+
+        <div style={{ height: '1px', backgroundColor: 'var(--border-secondary)' }} />
+
+        <FieldRow
+          label="Персональный API ключ"
+          description="Опционально: если пусто, используется ключ из .env на сервере"
+        >
+          <div className="space-y-2">
+            <input
+              type="password"
+              className="input-field w-full"
+              value={settings.userApiKey}
+              onChange={(e) => update('userApiKey', e.target.value)}
+              placeholder={settings.aiProvider === 'anthropic' ? 'sk-ant-...' : 'sk-proj-...'}
+              autoComplete="off"
+            />
+            <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>
+              Ключ хранится локально в браузере для вашей сессии.
+            </div>
           </div>
         </FieldRow>
       </SettingsSection>
@@ -177,8 +264,7 @@ export default function Settings() {
               type="range" min="30" max="95" step="5"
               value={settings.smartThreshold}
               onChange={(e) => update('smartThreshold', +e.target.value)}
-              className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
-              style={{ accentColor: 'var(--fg-brand-primary)' }}
+              className="range-field flex-1 cursor-pointer"
             />
             <span className="w-12 text-center text-sm font-semibold rounded-lg px-2 py-1"
               style={{
@@ -257,6 +343,19 @@ export default function Settings() {
                     }}
                   >
                     OpenAI: {serverInfo.checks?.openai_configured ? 'настроен' : 'не настроен'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{
+                      backgroundColor: serverInfo.checks?.anthropic_configured ? 'var(--bg-success-primary, #ECFDF3)' : 'var(--bg-error-primary, #FEF3F2)',
+                      color: serverInfo.checks?.anthropic_configured ? 'var(--text-success-primary, #039855)' : 'var(--fg-error-secondary, #D92D20)',
+                    }}
+                  >
+                    Anthropic: {serverInfo.checks?.anthropic_configured ? 'настроен' : 'не настроен'}
+                  </span>
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
+                  >
+                    Провайдер: {settings.aiProvider}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
                     style={{
