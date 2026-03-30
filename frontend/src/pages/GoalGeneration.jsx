@@ -597,7 +597,7 @@ export default function GoalGeneration() {
                           rows={3}
                           value={goalEdits[idx] ?? goal.goal_text}
                           onChange={(e) => handleGoalTextEdit(idx, e.target.value)}
-                          onBlur={() => setTimeout(() => setEditingIdx(null), 200)}
+                          onBlur={() => setTimeout(() => { setEditingIdx(null); setGoalLiveScores(prev => { const n = { ...prev }; delete n[idx]; return n }) }, 200)}
                           autoFocus
                           style={{ resize: 'vertical' }}
                         />

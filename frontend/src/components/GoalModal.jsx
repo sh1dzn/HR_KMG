@@ -146,12 +146,12 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-[60]" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      <div className="fixed inset-0 z-[70]" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[70] flex items-end sm:items-start justify-center sm:p-4 sm:pt-[8vh] overflow-y-auto">
+      <div className="fixed inset-0 z-[80] flex items-end sm:items-start justify-center sm:p-4 sm:pt-[8vh] overflow-y-auto">
         <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl animate-fade-in max-h-[92vh] sm:max-h-[85vh] overflow-y-auto"
           style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}
           onClick={(e) => e.stopPropagation()}
