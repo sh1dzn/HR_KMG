@@ -305,8 +305,8 @@ export default function Documents() {
       {/* Upload modal */}
       {showUpload && (
         <>
-          <div className="fixed inset-0 z-50" style={{ backgroundColor: 'rgba(12,17,29,0.48)', backdropFilter: 'blur(2px)' }} onClick={() => setShowUpload(false)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[70]" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setShowUpload(false)} />
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" onClick={() => setShowUpload(false)}>
             <div className="card w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Загрузить документ</h3>
 
