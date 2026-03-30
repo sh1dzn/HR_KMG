@@ -126,24 +126,30 @@ SYSTEM_PROMPT_ADMIN = """Ты — AI-ассистент системы упра�
 
 
 def _get_employee_context(user: User, db: Session) -> str:
-    """Build employee context string."""
+    """Build employee context string with full goal details."""
     emp = user.employee
     if not emp:
         return "Информация о сотруднике недоступна."
 
-    goals = db.query(Goal).filter(Goal.employee_id == emp.id).order_by(Goal.created_at.desc()).limit(10).all()
+    goals = db.query(Goal).filter(Goal.employee_id == emp.id).order_by(Goal.created_at.desc()).all()
     goal_lines = []
     for g in goals:
         status_label = g.status.value if hasattr(g.status, 'value') else str(g.status)
-        goal_lines.append(f"  - [{status_label}] {g.goal_text[:100]}")
+        metric = g.metric or "—"
+        weight = g.weight or 0
+        deadline = g.deadline.isoformat() if g.deadline else "—"
+        quarter = g.quarter.value if hasattr(g.quarter, 'value') else str(g.quarter) if g.quarter else "—"
+        goal_lines.append(f"  - [{status_label}] {g.goal_text[:150]} | Показатель: {metric} | Вес: {weight}% | Срок: {deadline} | Период: {quarter} {g.year or ''}")
 
     parts = [f"Имя: {emp.full_name}"]
     if emp.position:
         parts.append(f"Должность: {emp.position.name}")
     if emp.department:
         parts.append(f"Подразделение: {emp.department.name}")
+    if emp.manager:
+        parts.append(f"Руководитель: {emp.manager.full_name}")
     if goal_lines:
-        parts.append(f"Текущие цели ({len(goals)}):")
+        parts.append(f"Цели сотрудника ({len(goals)}):")
         parts.extend(goal_lines)
     else:
         parts.append("Целей пока нет.")
@@ -152,7 +158,7 @@ def _get_employee_context(user: User, db: Session) -> str:
 
 
 def _get_team_context(user: User, db: Session) -> str:
-    """Build team context for manager."""
+    """Build comprehensive team context for manager."""
     emp = user.employee
     if not emp:
         return "Информация о команде недоступна."
@@ -169,36 +175,80 @@ def _get_team_context(user: User, db: Session) -> str:
         s = g.status.value if hasattr(g.status, 'value') else str(g.status)
         status_counts[s] = status_counts.get(s, 0) + 1
 
-    lines = [f"Подчинённых: {len(subordinates)}", f"Целей команды: {len(goals)}"]
+    lines = [
+        f"=== КОМАНДА ===",
+        f"Подчинённых: {len(subordinates)}",
+        f"Целей команды: {len(goals)}",
+    ]
     if status_counts:
-        lines.append("По статусам: " + ", ".join(f"{k}: {v}" for k, v in status_counts.items()))
+        lines.append(f"По статусам: {', '.join(f'{k}: {v}' for k, v in status_counts.items())}")
 
-    for sub in subordinates[:10]:
+    lines.append("\nДетали по подчинённым:")
+    for sub in subordinates:
         sub_goals = [g for g in goals if g.employee_id == sub.id]
-        pos = sub.position.name if sub.position else ""
-        lines.append(f"  - {sub.full_name} ({pos}): {len(sub_goals)} целей")
+        pos = sub.position.name if sub.position else "—"
+        goal_details = []
+        for g in sub_goals:
+            st = g.status.value if hasattr(g.status, 'value') else str(g.status)
+            goal_details.append(f"    [{st}] {g.goal_text[:100]}")
+        lines.append(f"\n  {sub.full_name} ({pos}): {len(sub_goals)} целей")
+        lines.extend(goal_details[:5])
 
     return "\n".join(lines)
 
 
 def _get_system_context(db: Session) -> str:
-    """Build system-wide context for admin."""
-    total_employees = db.query(Employee).filter(Employee.is_active == True).count()
-    total_goals = db.query(Goal).count()
-    departments = db.query(Department).all()
+    """Build comprehensive system context for admin with full DB data."""
+    from sqlalchemy import func
 
+    employees = db.query(Employee).filter(Employee.is_active == True).all()
+    departments = db.query(Department).filter(Department.is_active == True).all()
+    goals = db.query(Goal).all()
+
+    # Overall stats
     status_counts = {}
-    for row in db.query(Goal.status).all():
-        s = row[0].value if hasattr(row[0], 'value') else str(row[0])
+    for g in goals:
+        s = g.status.value if hasattr(g.status, 'value') else str(g.status)
         status_counts[s] = status_counts.get(s, 0) + 1
 
     lines = [
-        f"Всего сотрудников: {total_employees}",
-        f"Всего целей: {total_goals}",
+        f"=== ПОЛНАЯ СТАТИСТИКА СИСТЕМЫ ===",
+        f"Всего сотрудников: {len(employees)}",
+        f"Всего целей: {len(goals)}",
         f"Подразделений: {len(departments)}",
+        f"Цели по статусам: {', '.join(f'{k}: {v}' for k, v in sorted(status_counts.items()))}",
+        "",
     ]
-    if status_counts:
-        lines.append("Цели по статусам: " + ", ".join(f"{k}: {v}" for k, v in status_counts.items()))
+
+    # Department breakdown
+    dept_map = {d.id: d for d in departments}
+    lines.append("=== ПОДРАЗДЕЛЕНИЯ ===")
+    for dept in departments:
+        dept_emps = [e for e in employees if e.department_id == dept.id]
+        dept_goals = [g for g in goals if g.employee_id in {e.id for e in dept_emps}]
+        dept_status = {}
+        for g in dept_goals:
+            s = g.status.value if hasattr(g.status, 'value') else str(g.status)
+            dept_status[s] = dept_status.get(s, 0) + 1
+        lines.append(f"\n{dept.name}:")
+        lines.append(f"  Сотрудников: {len(dept_emps)}, Целей: {len(dept_goals)}")
+        if dept_status:
+            lines.append(f"  По статусам: {', '.join(f'{k}: {v}' for k, v in dept_status.items())}")
+
+    # Employee list with goals summary (first 50)
+    lines.append("\n=== СОТРУДНИКИ (первые 50) ===")
+    for emp in employees[:50]:
+        emp_goals = [g for g in goals if g.employee_id == emp.id]
+        pos = emp.position.name if emp.position else "—"
+        dept_name = dept_map.get(emp.department_id, None)
+        dept_str = dept_name.name if dept_name else "—"
+        mgr = emp.manager.full_name if emp.manager else "—"
+        goal_statuses = {}
+        for g in emp_goals:
+            s = g.status.value if hasattr(g.status, 'value') else str(g.status)
+            goal_statuses[s] = goal_statuses.get(s, 0) + 1
+        status_str = ", ".join(f"{k}: {v}" for k, v in goal_statuses.items()) if goal_statuses else "нет целей"
+        lines.append(f"  {emp.full_name} | {pos} | {dept_str} | Руководитель: {mgr} | Цели: {status_str}")
 
     return "\n".join(lines)
 
