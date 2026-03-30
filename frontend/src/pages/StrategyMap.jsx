@@ -25,7 +25,7 @@ function MindMapGraph({ objectives, onSelectObjective, selectedId, animated }) {
     if (!el) return
     const update = () => {
       const w = el.clientWidth
-      const h = Math.max(480, w * 0.5)
+      const h = w < 640 ? Math.max(360, w * 0.8) : Math.max(480, w * 0.5)
       setDims({ w, h })
     }
     update()
@@ -283,7 +283,7 @@ export default function StrategyMap() {
       {error && <div className="status-error rounded-xl px-4 py-3 text-sm">{error}</div>}
 
       {data && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Направления', value: summary.total_objectives, color: 'var(--fg-brand-primary)' },
             { label: 'Целей', value: summary.total_goals, color: 'var(--text-primary)' },
@@ -299,7 +299,7 @@ export default function StrategyMap() {
       )}
 
       {data && (
-        <div className="card overflow-hidden" style={{ minHeight: '480px' }}>
+        <div className="card overflow-hidden" style={{ minHeight: '320px' }}>
           <MindMapGraph objectives={objectives} onSelectObjective={handleSelect} selectedId={selectedId} animated={animated} />
         </div>
       )}

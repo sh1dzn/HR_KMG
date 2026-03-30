@@ -238,12 +238,17 @@ export default function Documents() {
               {/* Content */}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{doc.title}</div>
-                <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>
+                <div className="text-xs mt-0.5 truncate hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>
                   {doc.content_preview}
                 </div>
+                {/* Mobile type badge */}
+                <span className="sm:hidden inline-block mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  style={{ backgroundColor: 'var(--bg-tertiary)', color: DOC_TYPE_COLORS[doc.doc_type] || 'var(--text-quaternary)' }}>
+                  {doc.doc_type_label}
+                </span>
               </div>
 
-              {/* Meta */}
+              {/* Meta (desktop) */}
               <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
                 <span
                   className="rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -328,7 +333,7 @@ export default function Documents() {
                   <input name="title" type="text" required className="input-field w-full" placeholder="Название документа" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Тип</label>
                     <select name="doc_type" className="select-field w-full">

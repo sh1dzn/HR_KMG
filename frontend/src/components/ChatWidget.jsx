@@ -463,7 +463,7 @@ export default function ChatWidget() {
                     {messages.map((msg, idx) => (
                       <div key={msg.id || idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div
-                          className="max-w-[85%] rounded-lg px-4 py-2.5 text-sm leading-relaxed"
+                          className="max-w-[92%] sm:max-w-[85%] rounded-lg px-3 sm:px-4 py-2.5 text-sm leading-relaxed"
                           style={msg.role === 'user'
                             ? {
                               backgroundColor: 'var(--bg-brand-solid)',

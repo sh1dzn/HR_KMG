@@ -129,7 +129,7 @@ export default function SmartCoach({ initialText = '', onReformulated }) {
           <div className="flex flex-col sm:flex-row gap-6">
             {/* Score ring */}
             <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <ScoreRing score={overall} size={88} />
+              <ScoreRing score={overall} size={72} />
               <span className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>SMART Score</span>
             </div>
 
