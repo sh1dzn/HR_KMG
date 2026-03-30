@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { generateGoals, getFocusAreas, getEmployees, getGoals, saveAcceptedGeneratedGoals } from '../api/client'
+import { useState, useEffect, useRef } from 'react'
+import { generateGoals, getFocusAreas, getEmployees, getGoals, saveAcceptedGeneratedGoals, quickScore } from '../api/client'
 import EmployeePicker from '../components/EmployeePicker'
 import AIThinking from '../components/AIThinking'
 import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
@@ -39,8 +39,29 @@ export default function GoalGeneration() {
   const [focusAreas,         setFocusAreas]         = useState([])
   const [employees,          setEmployees]          = useState([])
   const [goalStates,         setGoalStates]         = useState({})
+  const [goalEdits,          setGoalEdits]          = useState({})   // { idx: editedText }
+  const [goalLiveScores,     setGoalLiveScores]     = useState({})   // { idx: scoreData }
+  const [editingIdx,         setEditingIdx]         = useState(null)
   const [saving,             setSaving]             = useState(false)
   const [saveSummary,        setSaveSummary]        = useState(null)
+  const editTimerRef = useRef({})
+
+  const handleGoalTextEdit = (idx, newText) => {
+    setGoalEdits(prev => ({ ...prev, [idx]: newText }))
+    // Update the actual goal object so it saves with the edited text
+    if (result?.generated_goals?.[idx]) {
+      result.generated_goals[idx] = { ...result.generated_goals[idx], goal_text: newText }
+    }
+    // Live scoring
+    clearTimeout(editTimerRef.current[idx])
+    if (newText.trim().length >= 5) {
+      editTimerRef.current[idx] = setTimeout(() => {
+        quickScore(newText).then(data => {
+          setGoalLiveScores(prev => ({ ...prev, [idx]: data }))
+        }).catch(() => {})
+      }, 600)
+    }
+  }
 
   // Cascade state
   const [managerInfo,        setManagerInfo]        = useState(null) // { id, name }
@@ -569,7 +590,46 @@ export default function GoalGeneration() {
                         <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium status-warning">Дубликат</span>
                       )}
                     </div>
-                    <h3 className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.goal_text}</h3>
+                    {editingIdx === idx ? (
+                      <textarea
+                        className="input-field w-full text-sm leading-relaxed"
+                        rows={3}
+                        value={goalEdits[idx] ?? goal.goal_text}
+                        onChange={(e) => handleGoalTextEdit(idx, e.target.value)}
+                        onBlur={() => setEditingIdx(null)}
+                        autoFocus
+                        style={{ resize: 'vertical' }}
+                      />
+                    ) : (
+                      <h3 className="text-sm font-semibold leading-snug cursor-pointer group"
+                        style={{ color: 'var(--text-primary)' }}
+                        onClick={() => { setEditingIdx(idx); setGoalEdits(prev => ({ ...prev, [idx]: prev[idx] ?? goal.goal_text })) }}
+                        title="Нажмите чтобы редактировать"
+                      >
+                        {goal.goal_text}
+                        <svg className="inline-block ml-1.5 h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </h3>
+                    )}
+                    {/* Live SMART score for edited goal */}
+                    {goalLiveScores[idx] && editingIdx === idx && (
+                      <div className="flex flex-wrap gap-1.5 mt-2 animate-fade-in">
+                        {['specific', 'measurable', 'achievable', 'relevant', 'time_bound'].map((key) => {
+                          const c = goalLiveScores[idx].criteria?.[key]
+                          if (!c) return null
+                          const s = c.score || 0
+                          const clr = s >= 0.7 ? 'var(--fg-success-primary)' : s >= 0.5 ? 'var(--text-warning-primary)' : 'var(--fg-error-primary)'
+                          const bg = s >= 0.7 ? 'var(--bg-success-secondary)' : s >= 0.5 ? 'var(--bg-warning-secondary)' : 'var(--bg-error-secondary)'
+                          return (
+                            <span key={key} className="rounded-full px-2 py-0.5 text-xs font-medium transition-all duration-300"
+                              style={{ backgroundColor: bg, color: clr }}>
+                              {key === 'time_bound' ? 'T' : key[0].toUpperCase()} {Math.round(s * 100)}%
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                     <div className="mt-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
                       <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Показатель: </span>
                       {goal.metric}

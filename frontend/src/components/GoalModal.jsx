@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { getGoal, getGoalWorkflow, approveGoal, rejectGoal, submitGoal, commentGoal } from '../api/client'
+import { useEffect, useState, useRef } from 'react'
+import { getGoal, getGoalWorkflow, approveGoal, rejectGoal, submitGoal, commentGoal, createGoal, updateGoal, quickScore } from '../api/client'
+import { useAuth } from '../contexts/AuthContext'
 
 const statusConfig = {
   draft: { label: 'Черновик', dot: 'var(--fg-quaternary)' },
@@ -26,6 +27,7 @@ const getScoreStyle = (s) => {
 const fmt = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n.toFixed(d) : '0' }
 
 export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
+  const { user } = useAuth()
   const [goal, setGoal] = useState(initialGoal)
   const [wf, setWf] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -33,8 +35,60 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
   const [actionLoading, setActionLoading] = useState(null)
   const [actionError, setActionError] = useState(null)
 
+  // Create/edit mode
+  const isCreateMode = !initialGoal?.id
+  const [editTitle, setEditTitle] = useState(initialGoal?.title || '')
+  const [editMetric, setEditMetric] = useState(initialGoal?.metric || '')
+  const [editWeight, setEditWeight] = useState(initialGoal?.weight || 20)
+  const [saving, setSaving] = useState(false)
+
+  // Live SMART scoring
+  const [liveScore, setLiveScore] = useState(null)
+  const scoreTimer = useRef(null)
+
   useEffect(() => {
-    if (!initialGoal?.id) return
+    clearTimeout(scoreTimer.current)
+    if (editTitle.trim().length < 5) { setLiveScore(null); return }
+    scoreTimer.current = setTimeout(() => {
+      quickScore(editTitle).then(setLiveScore).catch(() => {})
+    }, 600)
+    return () => clearTimeout(scoreTimer.current)
+  }, [editTitle])
+
+  const handleSaveGoal = async () => {
+    if (!editTitle.trim() || editTitle.trim().length < 10) {
+      setActionError('Минимум 10 символов для текста цели')
+      return
+    }
+    setSaving(true)
+    setActionError(null)
+    try {
+      if (isCreateMode) {
+        await createGoal({
+          title: editTitle.trim(),
+          metric: editMetric.trim() || null,
+          weight: editWeight,
+          employee_id: user?.employee_id,
+          quarter: 'Q1',
+          year: 2026,
+        })
+      } else {
+        await updateGoal(goal.id, {
+          title: editTitle.trim(),
+          metric: editMetric.trim() || null,
+          weight: editWeight,
+        })
+      }
+      if (onUpdate) onUpdate()
+      onClose()
+    } catch (err) {
+      setActionError(err.response?.data?.detail || 'Ошибка сохранения')
+    }
+    setSaving(false)
+  }
+
+  useEffect(() => {
+    if (!initialGoal?.id) { setLoading(false); return }
     setLoading(true)
     Promise.all([
       getGoal(initialGoal.id).catch(() => initialGoal),
@@ -42,6 +96,9 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
     ]).then(([fullGoal, wfData]) => {
       setGoal(fullGoal)
       setWf(wfData)
+      setEditTitle(fullGoal.title || '')
+      setEditMetric(fullGoal.metric || '')
+      setEditWeight(fullGoal.weight || 0)
     }).finally(() => setLoading(false))
   }, [initialGoal])
 
@@ -52,12 +109,13 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  if (!goal) return null
+  if (!goal && !isCreateMode) return null
 
-  const sc = statusConfig[goal.status] || statusConfig.draft
-  const currentIdx = statusFlow.indexOf(goal.status)
-  const isSubmitted = goal.status === 'submitted'
-  const isDraft = goal.status === 'draft' || goal.status === 'active'
+  const sc = statusConfig[goal?.status || 'draft'] || statusConfig.draft
+  const currentIdx = statusFlow.indexOf(goal?.status || 'draft')
+  const isSubmitted = goal?.status === 'submitted'
+  const isDraft = isCreateMode || goal?.status === 'draft' || goal?.status === 'active'
+  const canEdit = isCreateMode || isDraft
 
   const handleAction = async (action) => {
     const text = comment.trim() || null
@@ -111,18 +169,29 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
                   style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}
                 >
                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sc.dot }} />
-                  {sc.label}
+                  {isCreateMode ? 'Новая цель' : sc.label}
                 </span>
-                {goal.goal_type && (
+                {goal?.goal_type && (
                   <span className="text-xs rounded-full px-2 py-0.5"
                     style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
                   >{goal.goal_type}</span>
                 )}
-                {goal.strategic_link && (
+                {goal?.strategic_link && (
                   <span className="text-xs rounded-full px-2 py-0.5 badge-brand">{goal.strategic_link}</span>
                 )}
               </div>
-              <h2 className="text-base font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{goal.title}</h2>
+              {canEdit ? (
+                <textarea
+                  className="input-field w-full text-sm leading-relaxed"
+                  rows={3}
+                  placeholder="Введите текст цели... Например: Увеличить объём продаж на 20% к концу Q2 2026"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  style={{ resize: 'vertical', minHeight: '60px' }}
+                />
+              ) : (
+                <h2 className="text-base font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{goal?.title}</h2>
+              )}
             </div>
             <button onClick={onClose}
               className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
@@ -168,6 +237,57 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
 
           {/* Body */}
           <div className="px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+            {/* Live SMART Score (create/edit mode) */}
+            {canEdit && liveScore && (
+              <div className="flex flex-wrap gap-1.5 animate-fade-in">
+                {['specific', 'measurable', 'achievable', 'relevant', 'time_bound'].map((key) => {
+                  const c = liveScore.criteria?.[key]
+                  if (!c) return null
+                  const s = c.score || 0
+                  const clr = s >= 0.7 ? 'var(--fg-success-primary)' : s >= 0.5 ? 'var(--text-warning-primary)' : 'var(--fg-error-primary)'
+                  const bg = s >= 0.7 ? 'var(--bg-success-secondary)' : s >= 0.5 ? 'var(--bg-warning-secondary)' : 'var(--bg-error-secondary)'
+                  return (
+                    <div key={key} className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-300"
+                      style={{ backgroundColor: bg, color: clr }} title={c.tip}>
+                      <span className="font-bold">{key === 'time_bound' ? 'T' : key[0].toUpperCase()}</span>
+                      <span className="tabular-nums">{Math.round(s * 100)}%</span>
+                    </div>
+                  )
+                })}
+                <div className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold"
+                  style={{
+                    backgroundColor: liveScore.overall_score >= 0.7 ? 'var(--bg-success-secondary)' : liveScore.overall_score >= 0.5 ? 'var(--bg-warning-secondary)' : 'var(--bg-error-secondary)',
+                    color: liveScore.overall_score >= 0.7 ? 'var(--fg-success-primary)' : liveScore.overall_score >= 0.5 ? 'var(--text-warning-primary)' : 'var(--fg-error-primary)',
+                  }}>
+                  {Math.round(liveScore.overall_score * 100)}%
+                </div>
+              </div>
+            )}
+
+            {/* Editable fields (create/edit mode) */}
+            {canEdit && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Показатель</label>
+                  <input type="text" className="input-field w-full text-sm" placeholder="KPI, метрика достижения"
+                    value={editMetric} onChange={(e) => setEditMetric(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-tertiary)' }}>Вес (%)</label>
+                  <input type="number" className="input-field w-full text-sm" min="0" max="100"
+                    value={editWeight} onChange={(e) => setEditWeight(+e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {/* Save button (create/edit mode) */}
+            {canEdit && (
+              <button type="button" onClick={handleSaveGoal} disabled={saving || editTitle.trim().length < 10}
+                className="btn-primary w-full flex items-center justify-center gap-2">
+                {saving ? 'Сохранение...' : isCreateMode ? 'Создать цель' : 'Сохранить изменения'}
+              </button>
+            )}
+
             {/* Info grid */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {[
