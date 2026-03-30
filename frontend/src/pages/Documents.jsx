@@ -130,21 +130,28 @@ export default function Documents() {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="card p-4">
+      {/* Search & Filters */}
+      <div className="card p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            placeholder="Поиск по названию..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="input-field flex-1"
-          />
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: 'var(--fg-quaternary)' }}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Поиск документов по названию, ключевым словам..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="input-field w-full text-sm"
+              style={{ paddingLeft: '40px', height: '44px' }}
+            />
+          </div>
           <select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}
             className="select-field"
-            style={{ minWidth: '180px' }}
+            style={{ minWidth: '180px', height: '44px' }}
           >
             <option value="">Все типы</option>
             {docTypes.map((t) => (
