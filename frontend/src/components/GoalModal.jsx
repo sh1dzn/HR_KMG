@@ -151,7 +151,9 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[80] flex items-end sm:items-start justify-center sm:p-4 sm:pt-[8vh] overflow-y-auto">
+      <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto"
+        onClick={onClose}
+      >
         <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl animate-fade-in max-h-[92vh] sm:max-h-[85vh] overflow-y-auto"
           style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-secondary)' }}
           onClick={(e) => e.stopPropagation()}
