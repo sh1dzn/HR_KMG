@@ -2,30 +2,32 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { analyzeStrategy } from '../api/client'
 import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
 
-/* ── Helpers ──────────────────────────────────────────────────────────────── */
-
 function coverageColor(s) {
   if (s >= 0.5) return 'var(--fg-success-primary)'
   if (s >= 0.2) return 'var(--text-warning-primary)'
   return 'var(--fg-error-primary)'
 }
-
 function coverageBg(s) {
   if (s >= 0.5) return 'var(--bg-success-secondary)'
   if (s >= 0.2) return 'var(--bg-warning-secondary)'
   return 'var(--bg-error-secondary)'
 }
 
-/* ── Mind Map SVG ─────────────────────────────────────────────────────────── */
+/* ── Mind Map with zoom ──────────────────────────────────────────────────── */
 
 function MindMapGraph({ objectives, onSelectObjective, selectedId, animated }) {
   const svgRef = useRef(null)
-  const [dims, setDims] = useState({ w: 900, h: 600 })
+  const [dims, setDims] = useState({ w: 900, h: 560 })
+  const [viewBox, setViewBox] = useState(null)
 
   useEffect(() => {
     const el = svgRef.current?.parentElement
     if (!el) return
-    const update = () => setDims({ w: el.clientWidth, h: Math.max(500, el.clientWidth * 0.55) })
+    const update = () => {
+      const w = el.clientWidth
+      const h = Math.max(480, w * 0.5)
+      setDims({ w, h })
+    }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
@@ -33,142 +35,126 @@ function MindMapGraph({ objectives, onSelectObjective, selectedId, animated }) {
 
   const cx = dims.w / 2
   const cy = dims.h / 2
-  const radius = Math.min(cx, cy) * 0.65
+  const radius = Math.min(cx, cy) * 0.6
 
-  // Position objectives in a circle around center
   const nodes = objectives.map((obj, i) => {
     const angle = (i / objectives.length) * 2 * Math.PI - Math.PI / 2
-    return {
-      ...obj,
-      x: cx + radius * Math.cos(angle),
-      y: cy + radius * Math.sin(angle),
-      angle,
-      idx: i,
-    }
+    return { ...obj, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle), angle, idx: i }
   })
 
+  // Zoom to selected node
+  useEffect(() => {
+    if (!selectedId) {
+      setViewBox(null)
+      return
+    }
+    const node = nodes.find(n => n.id === selectedId)
+    if (!node) return
+    const zoomW = dims.w * 0.5
+    const zoomH = dims.h * 0.5
+    setViewBox(`${node.x - zoomW / 2} ${node.y - zoomH / 2} ${zoomW} ${zoomH}`)
+  }, [selectedId, dims.w, dims.h, nodes.length]) // eslint-disable-line
+
+  const currentViewBox = viewBox || `0 0 ${dims.w} ${dims.h}`
+
   return (
-    <svg ref={svgRef} width={dims.w} height={dims.h} className="block">
+    <svg ref={svgRef} width={dims.w} height={dims.h} viewBox={currentViewBox}
+      className="block transition-all duration-500" style={{ cursor: selectedId ? 'zoom-out' : 'default' }}
+      onClick={(e) => { if (e.target === svgRef.current && selectedId) onSelectObjective(selectedId) }}>
       <defs>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.15" /></filter>
       </defs>
 
-      {/* Connecting lines from center to objectives */}
+      {/* Lines center → objectives */}
       {nodes.map((n, i) => {
         if (i >= animated) return null
-        const isSelected = selectedId === n.id
+        const sel = selectedId === n.id
         return (
-          <line key={`line-${n.id}`}
-            x1={cx} y1={cy} x2={n.x} y2={n.y}
-            stroke={isSelected ? 'var(--fg-brand-primary)' : 'var(--border-secondary)'}
-            strokeWidth={isSelected ? 2.5 : 1.5}
-            strokeDasharray={isSelected ? 'none' : '6 4'}
-            style={{
-              opacity: i < animated ? 1 : 0,
-              transition: 'opacity 0.5s ease, stroke 0.3s ease',
-            }}
-          />
+          <line key={`l-${n.id}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
+            stroke={sel ? 'var(--fg-brand-primary)' : 'var(--border-secondary)'}
+            strokeWidth={sel ? 2.5 : 1.5} strokeDasharray={sel ? 'none' : '6 4'}
+            style={{ opacity: i < animated ? 1 : 0, transition: 'all 0.5s ease' }} />
         )
       })}
 
-      {/* Department sub-nodes when objective is selected */}
+      {/* Department sub-nodes (selected) */}
       {nodes.map((n) => {
         if (selectedId !== n.id) return null
-        const depts = (n.departments || []).filter(d => d.goal_count > 0 || d.has_gap).slice(0, 6)
-        const subRadius = radius * 0.35
+        const depts = (n.departments || []).filter(d => d.goal_count > 0 || d.has_gap).slice(0, 8)
+        const subR = radius * 0.38
         return depts.map((dept, di) => {
-          const subAngle = n.angle + ((di - (depts.length - 1) / 2) * 0.35)
-          const dx = n.x + subRadius * Math.cos(subAngle)
-          const dy = n.y + subRadius * Math.sin(subAngle)
+          const spread = Math.min(0.4, 2.5 / depts.length)
+          const subAngle = n.angle + ((di - (depts.length - 1) / 2) * spread)
+          const dx = n.x + subR * Math.cos(subAngle)
+          const dy = n.y + subR * Math.sin(subAngle)
+          const isGap = dept.has_gap
           return (
-            <g key={`dept-${dept.id}`} className="animate-fade-in">
+            <g key={`d-${dept.id}`} className="animate-fade-in">
               <line x1={n.x} y1={n.y} x2={dx} y2={dy}
-                stroke={dept.has_gap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}
-                strokeWidth={1} strokeDasharray="3 3" opacity={0.6} />
-              <circle cx={dx} cy={dy} r={18}
-                fill={dept.has_gap ? 'var(--bg-error-secondary)' : 'var(--bg-success-secondary)'}
-                stroke={dept.has_gap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}
-                strokeWidth={1.5} />
-              <text x={dx} y={dy} textAnchor="middle" dominantBaseline="central"
-                className="text-[8px] font-bold" fill={dept.has_gap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}>
-                {dept.goal_count}
+                stroke={isGap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}
+                strokeWidth={1.5} strokeDasharray="4 3" opacity={0.5} />
+              <circle cx={dx} cy={dy} r={20}
+                fill={isGap ? 'var(--bg-error-secondary)' : 'var(--bg-success-secondary)'}
+                stroke={isGap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}
+                strokeWidth={1.5} filter="url(#shadow)" />
+              <text x={dx} y={dy + 1} textAnchor="middle" dominantBaseline="central"
+                className="text-[9px] font-bold"
+                fill={isGap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}>
+                {isGap ? '—' : dept.goal_count}
               </text>
-              <text x={dx} y={dy + 26} textAnchor="middle"
-                className="text-[9px]" fill="var(--text-tertiary)">
-                {dept.name.length > 12 ? dept.name.slice(0, 11) + '…' : dept.name}
-              </text>
+              <foreignObject x={dx - 45} y={dy + 24} width={90} height={28}>
+                <div xmlns="http://www.w3.org/1999/xhtml"
+                  className="text-center text-[8px] leading-tight font-medium"
+                  style={{ color: isGap ? 'var(--fg-error-primary)' : 'var(--text-tertiary)' }}>
+                  {dept.name.length > 20 ? dept.name.slice(0, 18) + '…' : dept.name}
+                </div>
+              </foreignObject>
             </g>
           )
         })
       })}
 
       {/* Center node */}
-      <circle cx={cx} cy={cy} r={40}
-        fill="var(--fg-brand-primary)" filter="url(#glow)" />
-      <text x={cx} y={cy - 6} textAnchor="middle" className="text-[10px] font-bold" fill="white">
-        Стратегия
-      </text>
-      <text x={cx} y={cy + 8} textAnchor="middle" className="text-[9px]" fill="rgba(255,255,255,0.8)">
-        компании
-      </text>
+      <circle cx={cx} cy={cy} r={42} fill="var(--fg-brand-primary)" filter="url(#glow)" />
+      <text x={cx} y={cy - 6} textAnchor="middle" className="text-[11px] font-bold" fill="white">Стратегия</text>
+      <text x={cx} y={cy + 9} textAnchor="middle" className="text-[9px]" fill="rgba(255,255,255,0.8)">компании</text>
 
       {/* Objective nodes */}
       {nodes.map((n, i) => {
         if (i >= animated) return null
-        const isSelected = selectedId === n.id
-        const gapCount = (n.departments || []).filter(d => d.has_gap).length
-        const nodeRadius = isSelected ? 32 : 28
+        const sel = selectedId === n.id
+        const gaps = (n.departments || []).filter(d => d.has_gap).length
+        const r = sel ? 34 : 28
 
         return (
-          <g key={`node-${n.id}`}
-            onClick={() => onSelectObjective(n.id)}
-            className="cursor-pointer"
-            style={{ transition: 'transform 0.3s ease' }}
-          >
-            {/* Node circle */}
-            <circle cx={n.x} cy={n.y} r={nodeRadius}
-              fill={isSelected ? coverageBg(n.coverage_score) : 'var(--bg-primary)'}
-              stroke={isSelected ? coverageColor(n.coverage_score) : 'var(--border-secondary)'}
-              strokeWidth={isSelected ? 2.5 : 1.5}
-              filter={isSelected ? 'url(#glow)' : 'none'}
-              style={{ transition: 'all 0.3s ease' }}
-            />
-
-            {/* Goals count */}
-            <text x={n.x} y={n.y - 3} textAnchor="middle" dominantBaseline="central"
-              className="text-sm font-bold" fill={coverageColor(n.coverage_score)}
-              style={{ transition: 'fill 0.3s ease' }}>
+          <g key={`n-${n.id}`} onClick={(e) => { e.stopPropagation(); onSelectObjective(n.id) }}
+            className="cursor-pointer">
+            <circle cx={n.x} cy={n.y} r={r}
+              fill={sel ? coverageBg(n.coverage_score) : 'var(--bg-primary)'}
+              stroke={sel ? coverageColor(n.coverage_score) : 'var(--border-secondary)'}
+              strokeWidth={sel ? 3 : 1.5}
+              filter={sel ? 'url(#glow)' : 'url(#shadow)'}
+              style={{ transition: 'all 0.3s ease' }} />
+            <text x={n.x} y={n.y - 2} textAnchor="middle" dominantBaseline="central"
+              className="text-sm font-bold" fill={coverageColor(n.coverage_score)}>
               {n.total_goals_matched}
             </text>
-            <text x={n.x} y={n.y + 11} textAnchor="middle"
-              className="text-[8px]" fill="var(--text-quaternary)">
-              целей
-            </text>
+            <text x={n.x} y={n.y + 12} textAnchor="middle" className="text-[7px]" fill="var(--text-quaternary)">целей</text>
 
-            {/* Gap badge */}
-            {gapCount > 0 && (
+            {gaps > 0 && (
               <>
-                <circle cx={n.x + nodeRadius * 0.7} cy={n.y - nodeRadius * 0.7} r={9}
-                  fill="var(--fg-error-primary)" />
-                <text x={n.x + nodeRadius * 0.7} y={n.y - nodeRadius * 0.7} textAnchor="middle" dominantBaseline="central"
-                  className="text-[8px] font-bold" fill="white">
-                  {gapCount}
-                </text>
+                <circle cx={n.x + r * 0.7} cy={n.y - r * 0.7} r={10} fill="var(--fg-error-primary)" />
+                <text x={n.x + r * 0.7} y={n.y - r * 0.7 + 1} textAnchor="middle" dominantBaseline="central"
+                  className="text-[8px] font-bold" fill="white">{gaps}</text>
               </>
             )}
 
-            {/* Label below */}
-            <foreignObject
-              x={n.x - 70} y={n.y + nodeRadius + 4}
-              width={140} height={36}
-            >
+            <foreignObject x={n.x - 65} y={n.y + r + 6} width={130} height={34}>
               <div xmlns="http://www.w3.org/1999/xhtml"
-                className="text-center text-[10px] leading-tight font-medium px-1"
-                style={{ color: isSelected ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                {n.title.length > 40 ? n.title.slice(0, 38) + '…' : n.title}
+                className="text-center text-[9px] leading-tight font-medium px-1"
+                style={{ color: sel ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                {n.title.length > 35 ? n.title.slice(0, 33) + '…' : n.title}
               </div>
             </foreignObject>
           </g>
@@ -183,8 +169,6 @@ function MindMapGraph({ objectives, onSelectObjective, selectedId, animated }) {
 function ObjectiveDetail({ objective }) {
   if (!objective) return null
   const depts = (objective.departments || []).filter(d => d.goal_count > 0 || d.has_gap)
-  const gaps = depts.filter(d => d.has_gap)
-  const covered = depts.filter(d => !d.has_gap)
 
   return (
     <div className="card p-5 animate-fade-in">
@@ -198,16 +182,9 @@ function ObjectiveDetail({ objective }) {
             style={{ backgroundColor: coverageBg(objective.coverage_score), color: coverageColor(objective.coverage_score) }}>
             {objective.total_goals_matched} целей
           </span>
-          {gaps.length > 0 && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full"
-              style={{ backgroundColor: 'var(--bg-error-secondary)', color: 'var(--fg-error-primary)' }}>
-              {gaps.length} пробел{gaps.length > 1 ? (gaps.length < 5 ? 'а' : 'ов') : ''}
-            </span>
-          )}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {depts.map((dept) => (
           <div key={dept.id} className="rounded-xl px-4 py-3"
             style={{
@@ -219,7 +196,7 @@ function ObjectiveDetail({ objective }) {
                 {dept.name}
               </span>
               <span className="text-xs font-medium" style={{ color: dept.has_gap ? 'var(--fg-error-primary)' : 'var(--text-quaternary)' }}>
-                {dept.has_gap ? 'Нет целей' : `${dept.goal_count}`}
+                {dept.has_gap ? 'Нет целей' : dept.goal_count}
               </span>
             </div>
             {dept.goals?.length > 0 && (
@@ -253,21 +230,13 @@ export default function StrategyMap() {
   const [animated, setAnimated] = useState(0)
 
   const loadMap = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    setData(null)
-    setSelectedId(null)
-    setAnimated(0)
+    setLoading(true); setError(null); setData(null); setSelectedId(null); setAnimated(0)
     try {
       const result = await analyzeStrategy(quarter, year)
       setData(result)
       const total = (result.objectives || []).length
-      for (let i = 0; i <= total; i++) {
-        setTimeout(() => setAnimated(i), 300 + i * 250)
-      }
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Ошибка анализа стратегии')
-    }
+      for (let i = 0; i <= total; i++) setTimeout(() => setAnimated(i), 300 + i * 250)
+    } catch (e) { setError(e.response?.data?.detail || 'Ошибка анализа стратегии') }
     setLoading(false)
   }, [quarter, year])
 
@@ -276,7 +245,6 @@ export default function StrategyMap() {
   const objectives = data?.objectives || []
   const summary = data?.summary || {}
   const selectedObj = objectives.find(o => o.id === selectedId)
-
   const handleSelect = (id) => setSelectedId(prev => prev === id ? null : id)
 
   return (
@@ -286,22 +254,19 @@ export default function StrategyMap() {
         <div>
           <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Карта стратегии</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            AI-анализ связи целей со стратегическими направлениями компании
+            AI-анализ связи целей со стратегическими направлениями. Нажмите на узел для масштабирования.
           </p>
         </div>
         <div className="flex gap-2">
-          <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)}
-            style={{ width: 'auto', paddingRight: '36px' }}>
+          <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
             {QUARTERS.map(q => <option key={q}>{q}</option>)}
           </select>
-          <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)}
-            style={{ width: 'auto', paddingRight: '36px' }}>
+          <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
             {yearOptions.map(y => <option key={y}>{y}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="card p-12 flex flex-col items-center gap-4">
           <svg className="h-10 w-10 animate-spin" style={{ color: 'var(--fg-brand-primary)' }} viewBox="0 0 24 24" fill="none">
@@ -317,7 +282,6 @@ export default function StrategyMap() {
 
       {error && <div className="status-error rounded-xl px-4 py-3 text-sm">{error}</div>}
 
-      {/* Summary strip */}
       {data && (
         <div className="grid grid-cols-4 gap-3">
           {[
@@ -334,19 +298,12 @@ export default function StrategyMap() {
         </div>
       )}
 
-      {/* Mind Map */}
       {data && (
-        <div className="card overflow-hidden" style={{ minHeight: '400px' }}>
-          <MindMapGraph
-            objectives={objectives}
-            onSelectObjective={handleSelect}
-            selectedId={selectedId}
-            animated={animated}
-          />
+        <div className="card overflow-hidden" style={{ minHeight: '480px' }}>
+          <MindMapGraph objectives={objectives} onSelectObjective={handleSelect} selectedId={selectedId} animated={animated} />
         </div>
       )}
 
-      {/* Detail panel */}
       {selectedObj && <ObjectiveDetail objective={selectedObj} />}
     </div>
   )
