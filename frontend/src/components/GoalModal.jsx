@@ -205,8 +205,8 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
             </button>
           </div>
 
-          {/* Pipeline */}
-          <div className="px-3 py-3 sm:px-6 sm:py-4 flex justify-center" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
+          {/* Pipeline (hide in create mode) */}
+          {!isCreateMode && <div className="px-3 py-3 sm:px-6 sm:py-4 flex justify-center" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
             <div className="flex items-center gap-1">
               {statusFlow.map((step, i) => {
                 const isPast = i < currentIdx
@@ -233,7 +233,7 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
                 )
               })}
             </div>
-          </div>
+          </div>}
 
           {/* Body */}
           <div className="px-4 py-4 sm:px-6 sm:py-5 space-y-4">
@@ -288,39 +288,41 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
               </button>
             )}
 
-            {/* Info grid */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {[
-                { label: 'Сотрудник', value: goal.employee_name },
-                { label: 'Должность', value: goal.position_name },
-                { label: 'Подразделение', value: goal.department_name },
-                { label: 'Руководитель', value: goal.manager_name },
-                { label: 'Вес', value: `${fmt(goal.weight)}%` },
-                { label: 'SMART', value: goal.smart_score != null ? `${fmt(goal.smart_score * 100)}%` : '—', style: getScoreStyle(goal.smart_score) },
-              ].map(d => (
-                <div key={d.label} className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
-                  <div className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--text-quaternary)' }}>{d.label}</div>
-                  <div className="text-sm font-medium mt-0.5 truncate" style={d.style || { color: 'var(--text-primary)' }}>{d.value || '—'}</div>
-                </div>
-              ))}
-            </div>
+            {/* Info grid (only in view/existing mode) */}
+            {!isCreateMode && (
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {[
+                  { label: 'Сотрудник', value: goal?.employee_name },
+                  { label: 'Должность', value: goal?.position_name },
+                  { label: 'Подразделение', value: goal?.department_name },
+                  { label: 'Руководитель', value: goal?.manager_name },
+                  { label: 'Вес', value: `${fmt(goal?.weight)}%` },
+                  { label: 'SMART', value: goal?.smart_score != null ? `${fmt(goal.smart_score * 100)}%` : '—', style: getScoreStyle(goal?.smart_score) },
+                ].map(d => (
+                  <div key={d.label} className="rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                    <div className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--text-quaternary)' }}>{d.label}</div>
+                    <div className="text-sm font-medium mt-0.5 truncate" style={d.style || { color: 'var(--text-primary)' }}>{d.value || '—'}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            {/* Metric */}
-            {goal.metric && (
+            {/* Metric (only in view mode, edit mode has its own input) */}
+            {!canEdit && goal?.metric && (
               <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
                 <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Показатель: </span>{goal.metric}
               </div>
             )}
 
             {/* Period */}
-            {goal.quarter && (
+            {!isCreateMode && goal?.quarter && (
               <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
                 <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Период: </span>{goal.quarter} {goal.year}
               </div>
             )}
 
-            {/* SMART details */}
-            {goal.smart_details && (
+            {/* SMART details (view mode only) */}
+            {!isCreateMode && goal?.smart_details && (
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-quaternary)' }}>SMART-оценка</div>
                 <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
@@ -339,8 +341,8 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
               </div>
             )}
 
-            {/* Actions */}
-            {(isDraft || isSubmitted) && (
+            {/* Actions (not in create mode) */}
+            {!isCreateMode && (isDraft || isSubmitted) && (
               <div className="flex flex-wrap gap-2 pt-2" style={{ borderTop: '1px solid var(--border-secondary)' }}>
                 {isDraft && (
                   <button onClick={() => handleAction('submit')} disabled={actionLoading === 'submit'}
@@ -372,7 +374,16 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
               </div>
             )}
 
-            {/* Comment */}
+            {/* Error for create mode */}
+            {isCreateMode && actionError && (
+              <div className="rounded-lg px-3 py-2 text-sm"
+                style={{ backgroundColor: 'var(--bg-error-secondary)', color: 'var(--text-error-primary)' }}
+              >{actionError}</div>
+            )}
+
+            {/* Comment, error, workflow (not in create mode) */}
+            {!isCreateMode && (
+            <>
             <div className="flex gap-2">
               <input type="text" className="input-field flex-1 text-sm"
                 placeholder="Добавить комментарий..."
@@ -435,6 +446,8 @@ export default function GoalModal({ goal: initialGoal, onClose, onUpdate }) {
                   )}
                 </div>
               </div>
+            )}
+            </>
             )}
           </div>
         </div>
