@@ -1,222 +1,444 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import {
+  ArrowDownTrayIcon,
+  ArrowsRightLeftIcon,
+  BoltIcon,
+  BuildingOffice2Icon,
+  ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
+  Squares2X2Icon,
+} from '@heroicons/react/24/outline'
 import { analyzeStrategy } from '../api/client'
 import { getCurrentPeriod, getYearRange, QUARTERS } from '../utils/period'
 
-function coverageColor(s) {
-  if (s >= 0.5) return 'var(--fg-success-primary)'
-  if (s >= 0.2) return 'var(--text-warning-primary)'
-  return 'var(--fg-error-primary)'
-}
-function coverageBg(s) {
-  if (s >= 0.5) return 'var(--bg-success-secondary)'
-  if (s >= 0.2) return 'var(--bg-warning-secondary)'
-  return 'var(--bg-error-secondary)'
-}
-
-/* ── Mind Map with zoom ──────────────────────────────────────────────────── */
-
-function MindMapGraph({ objectives, onSelectObjective, selectedId, animated }) {
-  const svgRef = useRef(null)
-  const [dims, setDims] = useState({ w: 900, h: 560 })
-  const [viewBox, setViewBox] = useState(null)
-
-  useEffect(() => {
-    const el = svgRef.current?.parentElement
-    if (!el) return
-    const update = () => {
-      const w = el.clientWidth
-      const h = w < 640 ? Math.max(360, w * 0.8) : Math.max(480, w * 0.5)
-      setDims({ w, h })
+function coverageTone(score) {
+  if (score >= 0.5) {
+    return {
+      badgeClass: 'badge-success',
+      textColor: 'var(--text-success-primary)',
+      accent: 'var(--fg-success-primary)',
+      softBg: 'var(--bg-success-primary)',
+      surfaceBg: 'var(--bg-success-secondary)',
+      border: 'var(--border-success)',
+      label: 'Сильное покрытие',
     }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
-
-  const cx = dims.w / 2
-  const cy = dims.h / 2
-  const radius = Math.min(cx, cy) * 0.6
-
-  const nodes = objectives.map((obj, i) => {
-    const angle = (i / objectives.length) * 2 * Math.PI - Math.PI / 2
-    return { ...obj, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle), angle, idx: i }
-  })
-
-  // Zoom to selected node
-  useEffect(() => {
-    if (!selectedId) {
-      setViewBox(null)
-      return
+  }
+  if (score >= 0.2) {
+    return {
+      badgeClass: 'badge-warning',
+      textColor: 'var(--text-warning-primary)',
+      accent: 'var(--fg-warning-primary)',
+      softBg: 'var(--bg-warning-primary)',
+      surfaceBg: 'var(--bg-warning-secondary)',
+      border: 'var(--border-warning)',
+      label: 'Частичное покрытие',
     }
-    const node = nodes.find(n => n.id === selectedId)
-    if (!node) return
-    const zoomW = dims.w * 0.5
-    const zoomH = dims.h * 0.5
-    setViewBox(`${node.x - zoomW / 2} ${node.y - zoomH / 2} ${zoomW} ${zoomH}`)
-  }, [selectedId, dims.w, dims.h, nodes.length]) // eslint-disable-line
+  }
+  return {
+    badgeClass: 'badge-error',
+    textColor: 'var(--text-error-primary)',
+    accent: 'var(--fg-error-primary)',
+    softBg: 'var(--bg-error-primary)',
+    surfaceBg: 'var(--bg-error-secondary)',
+    border: 'var(--border-error-secondary)',
+    label: 'Есть разрывы',
+  }
+}
 
-  const currentViewBox = viewBox || `0 0 ${dims.w} ${dims.h}`
+function objectiveCoveragePercent(objective) {
+  const departments = objective?.departments || []
+  if (!departments.length) return 0
+  const covered = departments.filter((dept) => !dept.has_gap).length
+  return Math.round((covered / departments.length) * 100)
+}
+
+function makeGapRadar(objectives) {
+  return objectives
+    .flatMap((objective) => {
+      const objectivePercent = objectiveCoveragePercent(objective)
+      return (objective.departments || [])
+        .filter((dept) => dept.has_gap)
+        .map((dept) => ({
+          id: `${objective.id}-${dept.id}`,
+          objectiveId: objective.id,
+          objectiveTitle: objective.title,
+          departmentId: dept.id,
+          departmentName: dept.name,
+          priority: 100 - objectivePercent + Math.min(25, (objective.description || '').length / 8),
+          objectivePercent,
+        }))
+    })
+    .sort((a, b) => b.priority - a.priority)
+}
+
+function exportGapRadar(items, quarter, year) {
+  if (!items.length || typeof window === 'undefined') return
+  const rows = [
+    ['Приоритет', 'Стратегическое направление', 'Подразделение', 'Покрытие направления %'],
+    ...items.map((item, index) => [
+      index + 1,
+      item.objectiveTitle,
+      item.departmentName,
+      item.objectivePercent,
+    ]),
+  ]
+
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+    .join('\n')
+
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `strategy-gap-radar-${quarter}-${year}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function SummaryCard({ icon: Icon, label, value, tone = 'default', helper }) {
+  const colorMap = {
+    default: 'var(--text-primary)',
+    brand: 'var(--fg-brand-primary)',
+    success: 'var(--fg-success-primary)',
+    warning: 'var(--fg-warning-primary)',
+    error: 'var(--fg-error-primary)',
+  }
 
   return (
-    <svg ref={svgRef} width={dims.w} height={dims.h} viewBox={currentViewBox}
-      className="block transition-all duration-500" style={{ cursor: selectedId ? 'zoom-out' : 'default' }}
-      onClick={(e) => { if (e.target === svgRef.current && selectedId) onSelectObjective(selectedId) }}>
-      <defs>
-        <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-        <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.15" /></filter>
-      </defs>
-
-      {/* Lines center → objectives */}
-      {nodes.map((n, i) => {
-        if (i >= animated) return null
-        const sel = selectedId === n.id
-        return (
-          <line key={`l-${n.id}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
-            stroke={sel ? 'var(--fg-brand-primary)' : 'var(--border-secondary)'}
-            strokeWidth={sel ? 2.5 : 1.5} strokeDasharray={sel ? 'none' : '6 4'}
-            style={{ opacity: i < animated ? 1 : 0, transition: 'all 0.5s ease' }} />
-        )
-      })}
-
-      {/* Department sub-nodes (selected) */}
-      {nodes.map((n) => {
-        if (selectedId !== n.id) return null
-        const depts = (n.departments || []).filter(d => d.goal_count > 0 || d.has_gap).slice(0, 8)
-        const subR = radius * 0.38
-        return depts.map((dept, di) => {
-          const spread = Math.min(0.4, 2.5 / depts.length)
-          const subAngle = n.angle + ((di - (depts.length - 1) / 2) * spread)
-          const dx = n.x + subR * Math.cos(subAngle)
-          const dy = n.y + subR * Math.sin(subAngle)
-          const isGap = dept.has_gap
-          return (
-            <g key={`d-${dept.id}`} className="animate-fade-in">
-              <line x1={n.x} y1={n.y} x2={dx} y2={dy}
-                stroke={isGap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}
-                strokeWidth={1.5} strokeDasharray="4 3" opacity={0.5} />
-              <circle cx={dx} cy={dy} r={20}
-                fill={isGap ? 'var(--bg-error-secondary)' : 'var(--bg-success-secondary)'}
-                stroke={isGap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}
-                strokeWidth={1.5} filter="url(#shadow)" />
-              <text x={dx} y={dy + 1} textAnchor="middle" dominantBaseline="central"
-                className="text-[9px] font-bold"
-                fill={isGap ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)'}>
-                {isGap ? '—' : dept.goal_count}
-              </text>
-              <foreignObject x={dx - 45} y={dy + 24} width={90} height={28}>
-                <div xmlns="http://www.w3.org/1999/xhtml"
-                  className="text-center text-[8px] leading-tight font-medium"
-                  style={{ color: isGap ? 'var(--fg-error-primary)' : 'var(--text-tertiary)' }}>
-                  {dept.name.length > 20 ? dept.name.slice(0, 18) + '…' : dept.name}
-                </div>
-              </foreignObject>
-            </g>
-          )
-        })
-      })}
-
-      {/* Center node */}
-      <circle cx={cx} cy={cy} r={42} fill="var(--fg-brand-primary)" filter="url(#glow)" />
-      <text x={cx} y={cy - 6} textAnchor="middle" className="text-[11px] font-bold" fill="white">Стратегия</text>
-      <text x={cx} y={cy + 9} textAnchor="middle" className="text-[9px]" fill="rgba(255,255,255,0.8)">компании</text>
-
-      {/* Objective nodes */}
-      {nodes.map((n, i) => {
-        if (i >= animated) return null
-        const sel = selectedId === n.id
-        const gaps = (n.departments || []).filter(d => d.has_gap).length
-        const r = sel ? 34 : 28
-
-        return (
-          <g key={`n-${n.id}`} onClick={(e) => { e.stopPropagation(); onSelectObjective(n.id) }}
-            className="cursor-pointer">
-            <circle cx={n.x} cy={n.y} r={r}
-              fill={sel ? coverageBg(n.coverage_score) : 'var(--bg-primary)'}
-              stroke={sel ? coverageColor(n.coverage_score) : 'var(--border-secondary)'}
-              strokeWidth={sel ? 3 : 1.5}
-              filter={sel ? 'url(#glow)' : 'url(#shadow)'}
-              style={{ transition: 'all 0.3s ease' }} />
-            <text x={n.x} y={n.y - 2} textAnchor="middle" dominantBaseline="central"
-              className="text-sm font-bold" fill={coverageColor(n.coverage_score)}>
-              {n.total_goals_matched}
-            </text>
-            <text x={n.x} y={n.y + 12} textAnchor="middle" className="text-[7px]" fill="var(--text-quaternary)">целей</text>
-
-            {gaps > 0 && (
-              <>
-                <circle cx={n.x + r * 0.7} cy={n.y - r * 0.7} r={10} fill="var(--fg-error-primary)" />
-                <text x={n.x + r * 0.7} y={n.y - r * 0.7 + 1} textAnchor="middle" dominantBaseline="central"
-                  className="text-[8px] font-bold" fill="white">{gaps}</text>
-              </>
-            )}
-
-            <foreignObject x={n.x - 65} y={n.y + r + 6} width={130} height={34}>
-              <div xmlns="http://www.w3.org/1999/xhtml"
-                className="text-center text-[9px] leading-tight font-medium px-1"
-                style={{ color: sel ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                {n.title.length > 35 ? n.title.slice(0, 33) + '…' : n.title}
-              </div>
-            </foreignObject>
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-/* ── Detail Panel ─────────────────────────────────────────────────────────── */
-
-function ObjectiveDetail({ objective }) {
-  if (!objective) return null
-  const depts = (objective.departments || []).filter(d => d.goal_count > 0 || d.has_gap)
-
-  return (
-    <div className="card p-5 animate-fade-in">
-      <div className="flex items-start justify-between gap-3 mb-4">
+    <div className="card px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{objective.title}</h3>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{objective.description}</p>
+          <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>{label}</div>
+          <div className="mt-2 text-2xl font-semibold" style={{ color: colorMap[tone] || colorMap.default }}>{value}</div>
+          {helper ? <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{helper}</div> : null}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full"
-            style={{ backgroundColor: coverageBg(objective.coverage_score), color: coverageColor(objective.coverage_score) }}>
-            {objective.total_goals_matched} целей
-          </span>
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-lg"
+          style={{
+            backgroundColor: tone === 'error' ? 'var(--bg-error-primary)' : tone === 'success' ? 'var(--bg-success-primary)' : tone === 'warning' ? 'var(--bg-warning-primary)' : 'var(--bg-brand-primary)',
+            color: colorMap[tone] || 'var(--fg-brand-primary)',
+          }}
+        >
+          <Icon className="h-5 w-5" />
         </div>
-      </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {depts.map((dept) => (
-          <div key={dept.id} className="rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: dept.has_gap ? 'var(--bg-error-secondary)' : 'var(--bg-secondary)',
-              border: `1px solid ${dept.has_gap ? 'var(--border-error)' : 'var(--border-secondary)'}`,
-            }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium" style={{ color: dept.has_gap ? 'var(--fg-error-primary)' : 'var(--text-primary)' }}>
-                {dept.name}
-              </span>
-              <span className="text-xs font-medium" style={{ color: dept.has_gap ? 'var(--fg-error-primary)' : 'var(--text-quaternary)' }}>
-                {dept.has_gap ? 'Нет целей' : dept.goal_count}
-              </span>
-            </div>
-            {dept.goals?.length > 0 && (
-              <div className="mt-1.5 space-y-1">
-                {dept.goals.slice(0, 3).map((g) => (
-                  <div key={g.id} className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    <span className="h-1 w-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--fg-brand-primary)' }} />
-                    <span className="truncate">{g.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   )
 }
 
-/* ── Page ──────────────────────────────────────────────────────────────────── */
+function ObjectiveList({ objectives, selectedId, onSelect }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+        <div>
+          <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Стратегические направления</div>
+          <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>Список отсортирован по покрытию и количеству пробелов.</div>
+        </div>
+        <div className="badge-gray">{objectives.length}</div>
+      </div>
+      <div className="max-h-[680px] overflow-y-auto">
+        {objectives.map((objective) => {
+          const tone = coverageTone(objective.coverage_score)
+          const percent = objectiveCoveragePercent(objective)
+          const gaps = (objective.departments || []).filter((dept) => dept.has_gap).length
+          const isActive = selectedId === objective.id
+          return (
+            <button
+              key={objective.id}
+              type="button"
+              onClick={() => onSelect(objective.id)}
+              className="w-full px-5 py-4 text-left transition-colors duration-150"
+              style={{
+                backgroundColor: isActive ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+                borderBottom: '1px solid var(--border-secondary)',
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold leading-5" style={{ color: 'var(--text-primary)' }}>{objective.title}</div>
+                  <div className="mt-1 line-clamp-2 text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>{objective.description}</div>
+                </div>
+                <div className={`flex-shrink-0 ${tone.badgeClass}`}>{percent}%</div>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <div style={{ color: 'var(--text-quaternary)' }}>Цели</div>
+                  <div className="mt-1 font-semibold" style={{ color: 'var(--text-primary)' }}>{objective.total_goals_matched}</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-quaternary)' }}>Без пробела</div>
+                  <div className="mt-1 font-semibold" style={{ color: tone.textColor }}>{(objective.departments || []).length - gaps}</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-quaternary)' }}>Пробелы</div>
+                  <div className="mt-1 font-semibold" style={{ color: gaps > 0 ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)' }}>{gaps}</div>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function DepartmentCascade({ objective, departmentFilter, setDepartmentFilter }) {
+  const visibleDepartments = useMemo(() => {
+    const departments = objective?.departments || []
+    if (departmentFilter === 'gap') return departments.filter((dept) => dept.has_gap)
+    if (departmentFilter === 'covered') return departments.filter((dept) => !dept.has_gap)
+    return departments
+  }, [objective, departmentFilter])
+
+  if (!objective) {
+    return (
+      <div className="card p-8">
+        <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Выберите направление</div>
+        <div className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>Справа появится каскад по подразделениям и список связанных целей.</div>
+      </div>
+    )
+  }
+
+  const tone = coverageTone(objective.coverage_score)
+  const totalDepartments = (objective.departments || []).length
+  const coveredDepartments = (objective.departments || []).filter((dept) => !dept.has_gap).length
+  const gaps = totalDepartments - coveredDepartments
+  const percent = objectiveCoveragePercent(objective)
+
+  return (
+    <div className="space-y-4">
+      <div className="card overflow-hidden">
+        <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className={tone.badgeClass}>{tone.label}</div>
+                <div className="badge-gray">{percent}% покрытие</div>
+              </div>
+              <div className="mt-3 text-lg font-semibold leading-7" style={{ color: 'var(--text-primary)' }}>{objective.title}</div>
+              <div className="mt-2 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>{objective.description}</div>
+            </div>
+            <div className="grid w-full grid-cols-3 gap-2 lg:w-[320px]">
+              <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Подразделений</div>
+                <div className="mt-1 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{totalDepartments}</div>
+              </div>
+              <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-success-primary)', border: '1px solid var(--border-success)' }}>
+                <div className="text-xs" style={{ color: 'var(--text-success-primary)' }}>Покрыто</div>
+                <div className="mt-1 text-lg font-semibold" style={{ color: 'var(--text-success-primary)' }}>{coveredDepartments}</div>
+              </div>
+              <div className="rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-error-primary)', border: '1px solid var(--border-error-secondary)' }}>
+                <div className="text-xs" style={{ color: 'var(--text-error-primary)' }}>Пробелы</div>
+                <div className="mt-1 text-lg font-semibold" style={{ color: 'var(--text-error-primary)' }}>{gaps}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 px-5 py-3" style={{ borderBottom: '1px solid var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}>
+          {[
+            { id: 'all', label: 'Все подразделения' },
+            { id: 'gap', label: 'Только с пробелом' },
+            { id: 'covered', label: 'Только покрытые' },
+          ].map((item) => {
+            const active = departmentFilter === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="rounded-lg px-3 py-2 text-xs font-medium transition-colors duration-150"
+                onClick={() => setDepartmentFilter(item.id)}
+                style={{
+                  backgroundColor: active ? 'var(--bg-primary)' : 'transparent',
+                  color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  border: `1px solid ${active ? 'var(--border-primary)' : 'var(--border-secondary)'}`,
+                }}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
+          {visibleDepartments.length === 0 ? (
+            <div className="px-5 py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>Нет подразделений для выбранного фильтра.</div>
+          ) : visibleDepartments.map((dept) => (
+            <div key={dept.id} className="px-5 py-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-sm font-semibold" style={{ color: dept.has_gap ? 'var(--text-error-primary)' : 'var(--text-primary)' }}>{dept.name}</div>
+                    <div className={dept.has_gap ? 'badge-error' : 'badge-success'}>{dept.has_gap ? 'Нет связки' : `${dept.goal_count} целей`}</div>
+                  </div>
+                  {dept.has_gap ? (
+                    <div className="mt-2 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+                      Для этого направления у подразделения нет найденных целей. Это прямой кандидат на постановку или каскадирование.
+                    </div>
+                  ) : (
+                    <div className="mt-3 grid gap-2">
+                      {(dept.goals || []).map((goal) => (
+                        <div
+                          key={goal.id}
+                          className="rounded-lg px-3 py-3"
+                          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}
+                        >
+                          <div className="text-sm leading-6" style={{ color: 'var(--text-primary)' }}>{goal.text}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                            {goal.employee_name ? <span>{goal.employee_name}</span> : null}
+                            {goal.status ? <span>• {goal.status}</span> : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="w-full lg:w-[180px]">
+                  <div className="rounded-lg px-3 py-3" style={{ backgroundColor: dept.has_gap ? 'var(--bg-error-primary)' : tone.softBg, border: `1px solid ${dept.has_gap ? 'var(--border-error-secondary)' : tone.border}` }}>
+                    <div className="text-xs" style={{ color: dept.has_gap ? 'var(--text-error-primary)' : tone.textColor }}>Статус подразделения</div>
+                    <div className="mt-1 text-sm font-semibold" style={{ color: dept.has_gap ? 'var(--text-error-primary)' : tone.textColor }}>
+                      {dept.has_gap ? 'Требуется новая цель' : 'Есть операционное покрытие'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GapRadar({ items, onJump, quarter, year }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <BoltIcon className="h-4 w-4" style={{ color: 'var(--fg-error-primary)' }} />
+            Gap Radar
+          </div>
+          <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            Killer feature: автоматический список самых критичных разрывов, чтобы не искать их вручную по всей карте.
+          </div>
+        </div>
+        <button type="button" className="btn-secondary" onClick={() => exportGapRadar(items, quarter, year)} disabled={!items.length}>
+          <ArrowDownTrayIcon className="h-4 w-4" />
+          Экспорт CSV
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <div className="px-5 py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>Критичных разрывов не найдено.</div>
+      ) : (
+        <div className="divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
+          {items.slice(0, 8).map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onJump(item.objectiveId)}
+              className="flex w-full flex-col gap-3 px-5 py-4 text-left transition-colors duration-150 sm:flex-row sm:items-center sm:justify-between"
+              style={{ backgroundColor: 'var(--bg-primary)' }}
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <div
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
+                  style={{ backgroundColor: 'var(--bg-error-primary)', color: 'var(--text-error-primary)' }}
+                >
+                  {index + 1}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.objectiveTitle}</div>
+                  <div className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>{item.departmentName} не имеет целей по этому направлению.</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="badge-error">Приоритет {Math.round(item.priority)}</div>
+                <div className="badge-gray">Покрытие {item.objectivePercent}%</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CoverageMatrix({ objectives, selectedId, onSelect }) {
+  const departments = useMemo(() => {
+    const names = new Map()
+    objectives.forEach((objective) => {
+      (objective.departments || []).forEach((dept) => {
+        if (!names.has(dept.id)) names.set(dept.id, dept.name)
+      })
+    })
+    return Array.from(names.entries()).map(([id, name]) => ({ id, name }))
+  }, [objectives])
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+        <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <Squares2X2Icon className="h-4 w-4" />
+          Матрица покрытия
+        </div>
+        <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          Быстрый обзор по всем направлениям и подразделениям без наложений и лишней графики.
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <tr>
+              <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--text-quaternary)' }}>Направление</th>
+              {departments.map((dept) => (
+                <th key={dept.id} className="px-3 py-3 text-center font-medium" style={{ color: 'var(--text-quaternary)' }}>{dept.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {objectives.map((objective) => (
+              <tr
+                key={objective.id}
+                onClick={() => onSelect(objective.id)}
+                className="cursor-pointer transition-colors duration-150"
+                style={{ backgroundColor: selectedId === objective.id ? 'var(--bg-secondary)' : 'var(--bg-primary)' }}
+              >
+                <td className="px-4 py-3 align-top" style={{ borderTop: '1px solid var(--border-secondary)' }}>
+                  <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{objective.title}</div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{objectiveCoveragePercent(objective)}% покрытия</div>
+                </td>
+                {departments.map((dept) => {
+                  const match = (objective.departments || []).find((entry) => entry.id === dept.id)
+                  const cellBg = !match
+                    ? 'var(--bg-secondary)'
+                    : match.has_gap
+                      ? 'var(--bg-error-primary)'
+                      : 'var(--bg-success-primary)'
+                  const cellColor = !match
+                    ? 'var(--text-quaternary)'
+                    : match.has_gap
+                      ? 'var(--text-error-primary)'
+                      : 'var(--text-success-primary)'
+                  return (
+                    <td key={dept.id} className="px-3 py-3 text-center align-middle" style={{ borderTop: '1px solid var(--border-secondary)' }}>
+                      <div className="inline-flex min-w-[40px] items-center justify-center rounded-md px-2 py-1 text-xs font-semibold" style={{ backgroundColor: cellBg, color: cellColor }}>
+                        {!match ? '—' : match.has_gap ? '0' : match.goal_count}
+                      </div>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 export default function StrategyMap() {
   const currentPeriod = getCurrentPeriod()
@@ -227,84 +449,151 @@ export default function StrategyMap() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
-  const [animated, setAnimated] = useState(0)
+  const [search, setSearch] = useState('')
+  const [showOnlyGaps, setShowOnlyGaps] = useState(false)
+  const [departmentFilter, setDepartmentFilter] = useState('all')
 
   const loadMap = useCallback(async () => {
-    setLoading(true); setError(null); setData(null); setSelectedId(null); setAnimated(0)
+    setLoading(true)
+    setError(null)
+    setData(null)
     try {
       const result = await analyzeStrategy(quarter, year)
       setData(result)
-      const total = (result.objectives || []).length
-      for (let i = 0; i <= total; i++) setTimeout(() => setAnimated(i), 300 + i * 250)
-    } catch (e) { setError(e.response?.data?.detail || 'Ошибка анализа стратегии') }
-    setLoading(false)
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Ошибка анализа стратегии')
+    } finally {
+      setLoading(false)
+    }
   }, [quarter, year])
 
-  useEffect(() => { loadMap() }, [loadMap])
+  useEffect(() => {
+    loadMap()
+  }, [loadMap])
 
-  const objectives = data?.objectives || []
+  const objectives = useMemo(() => {
+    const source = data?.objectives || []
+    return source
+      .map((objective) => ({
+        ...objective,
+        gapCount: (objective.departments || []).filter((dept) => dept.has_gap).length,
+        coveragePercent: objectiveCoveragePercent(objective),
+      }))
+      .filter((objective) => {
+        const query = search.trim().toLowerCase()
+        const matchesQuery = !query || `${objective.title} ${objective.description}`.toLowerCase().includes(query)
+        const matchesGap = !showOnlyGaps || objective.gapCount > 0
+        return matchesQuery && matchesGap
+      })
+      .sort((a, b) => {
+        if (a.coveragePercent !== b.coveragePercent) return a.coveragePercent - b.coveragePercent
+        if (a.gapCount !== b.gapCount) return b.gapCount - a.gapCount
+        return b.total_goals_matched - a.total_goals_matched
+      })
+  }, [data, search, showOnlyGaps])
+
+  useEffect(() => {
+    if (!objectives.length) {
+      setSelectedId(null)
+      return
+    }
+    const hasSelected = objectives.some((objective) => objective.id === selectedId)
+    if (!hasSelected) setSelectedId(objectives[0].id)
+  }, [objectives, selectedId])
+
+  useEffect(() => {
+    setDepartmentFilter('all')
+  }, [selectedId])
+
+  const selectedObjective = objectives.find((objective) => objective.id === selectedId) || null
   const summary = data?.summary || {}
-  const selectedObj = objectives.find(o => o.id === selectedId)
-  const handleSelect = (id) => setSelectedId(prev => prev === id ? null : id)
+  const gapRadar = useMemo(() => makeGapRadar(data?.objectives || []), [data])
+  const strongestObjective = useMemo(() => {
+    if (!data?.objectives?.length) return null
+    return [...data.objectives].sort((a, b) => objectiveCoveragePercent(b) - objectiveCoveragePercent(a))[0]
+  }, [data])
+  const weakestObjective = objectives[0] || null
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="max-w-3xl">
           <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Карта стратегии</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            AI-анализ связи целей со стратегическими направлениями. Нажмите на узел для масштабирования.
+          <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-tertiary)' }}>
+            Каскад стратегических направлений по подразделениям и целям. Новый layout убирает наложения, делает проблемные зоны явными и позволяет быстро перейти к слабому месту.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select className="select-field" value={quarter} onChange={(e) => setQuarter(e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
-            {QUARTERS.map(q => <option key={q}>{q}</option>)}
+            {QUARTERS.map((q) => <option key={q}>{q}</option>)}
           </select>
           <select className="select-field" value={year} onChange={(e) => setYear(+e.target.value)} style={{ width: 'auto', paddingRight: '36px' }}>
-            {yearOptions.map(y => <option key={y}>{y}</option>)}
+            {yearOptions.map((y) => <option key={y}>{y}</option>)}
           </select>
+          <button type="button" className="btn-secondary" onClick={loadMap}>
+            <ArrowsRightLeftIcon className="h-4 w-4" />
+            Обновить
+          </button>
         </div>
       </div>
 
-      {loading && (
-        <div className="card p-12 flex flex-col items-center gap-4">
-          <svg className="h-10 w-10 animate-spin" style={{ color: 'var(--fg-brand-primary)' }} viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <div className="text-center">
-            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>AI анализирует стратегию...</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Извлечение направлений и сопоставление целей</div>
+      {loading ? (
+        <div className="card p-12">
+          <div className="flex items-center gap-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+            AI анализирует стратегию и пересчитывает покрытие.
           </div>
         </div>
-      )}
+      ) : null}
 
-      {error && <div className="status-error rounded-xl px-4 py-3 text-sm">{error}</div>}
+      {error ? <div className="status-error rounded-lg px-4 py-3 text-sm">{error}</div> : null}
 
-      {data && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: 'Направления', value: summary.total_objectives, color: 'var(--fg-brand-primary)' },
-            { label: 'Целей', value: summary.total_goals, color: 'var(--text-primary)' },
-            { label: 'Подразделений', value: summary.total_departments, color: 'var(--text-primary)' },
-            { label: 'Пробелов', value: summary.total_gaps, color: summary.total_gaps > 0 ? 'var(--fg-error-primary)' : 'var(--fg-success-primary)' },
-          ].map(m => (
-            <div key={m.label} className="card px-4 py-3 text-center">
-              <div className="text-2xl font-semibold" style={{ color: m.color }}>{m.value}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-quaternary)' }}>{m.label}</div>
+      {data ? (
+        <>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard icon={BuildingOffice2Icon} label="Стратегических направлений" value={summary.total_objectives || 0} tone="brand" />
+            <SummaryCard icon={Squares2X2Icon} label="Связанных целей" value={summary.total_goals || 0} helper="По выбранному периоду" />
+            <SummaryCard icon={ExclamationTriangleIcon} label="Разрывов" value={summary.total_gaps || 0} tone={(summary.total_gaps || 0) > 0 ? 'error' : 'success'} helper={(summary.total_gaps || 0) > 0 ? 'Нужны действия' : 'Критичных разрывов нет'} />
+            <SummaryCard icon={BoltIcon} label="Самое слабое направление" value={weakestObjective ? `${weakestObjective.coveragePercent}%` : '—'} tone={weakestObjective?.gapCount ? 'warning' : 'success'} helper={weakestObjective?.title || 'Нет данных'} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.45fr)]">
+            <div className="space-y-4">
+              <div className="card p-4">
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                  <MagnifyingGlassIcon className="h-4 w-4" style={{ color: 'var(--text-quaternary)' }} />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Поиск по направлению"
+                    className="w-full bg-transparent text-sm outline-none"
+                    style={{ color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  <input type="checkbox" checked={showOnlyGaps} onChange={(e) => setShowOnlyGaps(e.target.checked)} />
+                  Только направления с пробелами
+                </label>
+                {strongestObjective ? (
+                  <div className="mt-4 rounded-lg px-3 py-3" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)' }}>
+                    <div className="text-xs" style={{ color: 'var(--text-quaternary)' }}>Лучшее покрытие</div>
+                    <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{strongestObjective.title}</div>
+                    <div className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{objectiveCoveragePercent(strongestObjective)}% подразделений уже закрыты.</div>
+                  </div>
+                ) : null}
+              </div>
+
+              <ObjectiveList objectives={objectives} selectedId={selectedId} onSelect={setSelectedId} />
             </div>
-          ))}
-        </div>
-      )}
 
-      {data && (
-        <div className="card overflow-hidden" style={{ minHeight: '320px' }}>
-          <MindMapGraph objectives={objectives} onSelectObjective={handleSelect} selectedId={selectedId} animated={animated} />
-        </div>
-      )}
+            <DepartmentCascade objective={selectedObjective} departmentFilter={departmentFilter} setDepartmentFilter={setDepartmentFilter} />
+          </div>
 
-      {selectedObj && <ObjectiveDetail objective={selectedObj} />}
+          <GapRadar items={gapRadar} onJump={setSelectedId} quarter={quarter} year={year} />
+
+          <CoverageMatrix objectives={objectives} selectedId={selectedId} onSelect={setSelectedId} />
+        </>
+      ) : null}
     </div>
   )
 }
